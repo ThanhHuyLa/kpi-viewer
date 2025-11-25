@@ -307,12 +307,48 @@
     z-index: 4;
 }
 
+
 /* Hàng tổng hợp dưới cùng */
 .progress-summary-row td {
     background: #fff9c4 !important;
     font-weight: 600 !important;
 }
 
+/* === STYLE BẢNG KPI THỜI ĐIỂM GẦN NHẤT === */
+#latestTableWrapper {
+    max-height: 800px;              /* nếu bảng cao hơn sẽ có scroll dọc */
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-top: 4px;
+}
+
+#latestTableWrapper table {
+    width: auto;                    /* auto width theo nội dung */
+    table-layout: auto;
+    border-collapse: collapse;
+}
+
+/* Cố định cột 1 */
+#latestTableWrapper table th:first-child,
+#latestTableWrapper table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #f9fafb;
+    white-space: nowrap;
+}
+
+/* Header nằm trên cùng khi scroll */
+#latestTableWrapper table thead th {
+    top: 0;
+    z-index: 4;
+}
+#latestTableWrapper table thead th:first-child {
+    z-index: 5;
+}
 
 
         tr:hover {
@@ -948,6 +984,9 @@
         // BẢNG NGƯỠNG KPI
         let kpiThresholdMap = null;
         let worstCellThresholdMap = null;   // sheet "WorstCell Threshold"
+        // ==== CẤU HÌNH FILE KPI NẶNG ====
+        const HEAVY_KPI_ROW_THRESHOLD = 5000;   // > 3k dòng coi là file nặng
+        let isHeavyKpiFile = false;
 
         Chart.register(ChartDataLabels);
 
@@ -1271,7 +1310,7 @@ function processMultipleFiles(files) {
     currentData = null;
     wsFilterValues = null;
     selectedKpiColumns = new Set();
-
+    isHeavyKpiFile = false;   // reset cờ file nặng khi chọn bộ file mới
     // Xoá chart cũ nếu còn
     Object.values(chartInstances).forEach(ch => ch.destroy());
     chartInstances = {};
@@ -1363,6 +1402,7 @@ function processMultipleFiles(files) {
             currentData = null;
             wsFilterValues = null;
             selectedKpiColumns = new Set();
+            isHeavyKpiFile = false;        // reset cờ file nặng khi chọn file lẻ
 
             // xoá chart cũ nếu còn
             Object.values(chartInstances).forEach(ch => ch.destroy());
@@ -1733,9 +1773,32 @@ function updateCharts() {
     const columns = Object.keys(jsonData[0]);
     numericColumns = detectColumnsAndNumeric(columns);
 
+    // ==== ĐÁNH DẤU SHEET KPI NẶNG ====
+    // Điều kiện file nặng:
+    // 1) Số dòng > ngưỡng
+    // 2) Số cột > 30
+    const colCount = columns.length;
+
+    isHeavyKpiFile =
+        (Array.isArray(jsonData) && jsonData.length > HEAVY_KPI_ROW_THRESHOLD) ||
+        colCount > 30;
+
+    console.log(
+        "Số dòng:", jsonData.length,
+        "Số cột:", colCount,
+        "isHeavyKpiFile =", isHeavyKpiFile
+    );
+
+
     // mỗi lần đổi sheet thì reset lại KPI & filter
-    selectedKpiColumns = new Set(numericColumns);
+    //  - nếu file nặng -> TẮT HẾT KPI (set rỗng)
+    //  - nếu file bình thường -> bật hết KPI như cũ
+    selectedKpiColumns = isHeavyKpiFile
+        ? new Set()
+        : new Set(numericColumns);
+
     wsFilterValues = null;
+
 
     buildWsFilterOptions(jsonData);
     buildKpiFilterOptions();
@@ -1986,6 +2049,7 @@ function detectColumnsAndNumeric(columns) {
                 renderCharts();
                 renderExcelStyleTable();
                 renderLatestKpiTable();
+                renderWorstCellTable();   // 🔁 cập nhật luôn Worst Cell / Non-Traffic
             };
 
             container.onclick = (e) => {
@@ -2005,6 +2069,7 @@ function detectColumnsAndNumeric(columns) {
                 renderCharts();
                 renderExcelStyleTable();
                 renderLatestKpiTable();
+                renderWorstCellTable();   // 🔁 cập nhật luôn Worst Cell / Non-Traffic
             };
 
             if (searchInput) {
@@ -2403,11 +2468,28 @@ function detectColumnsAndNumeric(columns) {
 
             if (!activeKpiCols.length) {
                 const container = document.getElementById('chartsContainer');
-                container.innerHTML = '<p style="padding:8px; font-size:0.9em; color:#6b7280;">Không có KPI nào được chọn để vẽ biểu đồ.</p>';
+                if (container) {
+                    container.innerHTML =
+                        '<p style="padding:8px; font-size:0.9em; color:#6b7280;">Không có KPI nào được chọn để vẽ biểu đồ.</p>';
+                }
+
                 Object.values(chartInstances).forEach(ch => ch.destroy());
                 chartInstances = {};
+
+                // 🔁 Không có KPI nào -> reset luôn các bảng liên quan
+                if (typeof renderExcelStyleTable === "function") {
+                    renderExcelStyleTable();
+                }
+                if (typeof renderLatestKpiTable === "function") {
+                    renderLatestKpiTable();
+                }
+                if (typeof renderWorstCellTable === "function") {
+                    renderWorstCellTable();
+                }
+
                 return;
             }
+
 
             const container = document.getElementById("chartsContainer");
             applyChartsPerRow();
@@ -2551,53 +2633,83 @@ function detectColumnsAndNumeric(columns) {
                     }
                 }
 
-                if (chartType === "funnel") {
-                    const latestLabel = getLatestPeriodLabel(currentData);
-                    const periodCol = periodColumnName;
-                    const wsNameCol = getCellNameColumn();
+if (chartType === "funnel") {
+    const latestLabel = getLatestPeriodLabel(currentData);
+    const periodCol = periodColumnName;
+    const wsNameCol = getCellNameColumn();
 
-                    const totalByWS = {};
+    const totalByWS = {};
 
-                    currentData.forEach((row) => {
-                        const wsName    = row[wsNameCol];
-                        const rawPeriod = row[periodCol];
-                        const rawVal    = row[valueCol];
-                        const scale     = getKpiScaleForColumn(valueCol);
-                        const numeric   = parseFloat(rawVal);
+    // Tính giá trị KPI cho từng WS tại thời điểm mới nhất
+    currentData.forEach((row) => {
+        const wsName    = row[wsNameCol];
+        const rawPeriod = row[periodCol];
+        const rawVal    = row[valueCol];
+        const scale     = getKpiScaleForColumn(valueCol);
+        const numeric   = parseFloat(rawVal);
 
-                        if (!wsName || rawPeriod == null || isNaN(numeric)) return;
+        if (!wsName || rawPeriod == null || isNaN(numeric)) return;
 
-                        const value = numeric * scale;
-                        const norm  = normalizePeriod(rawPeriod);
-                        if (!norm || norm.label !== latestLabel) return;
+        const value = numeric * scale;
+        const norm  = normalizePeriod(rawPeriod);
+        if (!norm || norm.label !== latestLabel) return;
 
-                        const wsStr   = String(wsName);
-                        const wsLower = wsStr.toLowerCase();
+        const wsStr   = String(wsName);
+        const wsLower = wsStr.toLowerCase();
 
-                        if (!wsPassesTextFilters(wsLower)) return;
-                        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr)) return;
+        if (!wsPassesTextFilters(wsLower)) return;
+        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr)) return;
 
-                        totalByWS[wsStr] = value;
-                    });
+        totalByWS[wsStr] = value;
+    });
 
-                    // Sắp xếp theo funnelSortOrder (desc: lớn→nhỏ, asc: nhỏ→lớn)
-                    const order = funnelSortOrder === "asc" ? 1 : -1;
-                    const sorted = Object.entries(totalByWS)
-                        .sort((a, b) => order * (a[1] - b[1]));
+    const entries = Object.entries(totalByWS);
 
-                    labels = sorted.map(([ws]) => ws);
-                    datasets = [
-                        {
-                            data: sorted.map(([, v]) => v),
-                            backgroundColor: generateDistinctColors(sorted.length),
-                            borderWidth: 1,
-                        }
-                    ];
+    let filteredEntries;
 
-                    if (periodLabelEl && latestLabel) {
-                        periodLabelEl.textContent = `Ngày: ${latestLabel}`;
-                    }
-                }
+    if (entries.length <= 30) {
+        // Ít hơn hoặc bằng 30 cell -> giữ nguyên
+        filteredEntries = entries.slice();
+    } else {
+        // Nhiều hơn 30 cell:
+        //   - Lấy 20 giá trị cao nhất
+        //   - Lấy 10 giá trị thấp nhất
+        const descSorted = [...entries].sort((a, b) => b[1] - a[1]);
+        const top20 = descSorted.slice(0, 20);
+        const bottom10 = descSorted.slice(-10);
+
+        const seen = new Set();
+        filteredEntries = [];
+
+        [...top20, ...bottom10].forEach(([name, val]) => {
+            const key = String(name);
+            if (!seen.has(key)) {
+                seen.add(key);
+                filteredEntries.push([name, val]);
+            }
+        });
+    }
+
+    // Áp thứ tự hiển thị theo combobox Funnel Sort
+    if (funnelSortOrder === "asc") {
+        filteredEntries.sort((a, b) => a[1] - b[1]);   // nhỏ -> lớn
+    } else {
+        filteredEntries.sort((a, b) => b[1] - a[1]);   // lớn -> nhỏ
+    }
+
+    labels = filteredEntries.map(([ws]) => ws);
+    datasets = [
+        {
+            data: filteredEntries.map(([, v]) => v),
+            backgroundColor: generateDistinctColors(filteredEntries.length),
+            borderWidth: 1,
+        }
+    ];
+
+    if (periodLabelEl && latestLabel) {
+        periodLabelEl.textContent = `Ngày: ${latestLabel}`;
+    }
+}
 
                 let internalType = chartType;
                 if (chartType === 'stackedArea') {
@@ -3095,7 +3207,15 @@ function detectColumnsAndNumeric(columns) {
             }
 
             if (!worstCard || !worstTableEl || !worstTitleEl) return;
-
+            if (isHeavyKpiFile && (!selectedKpiColumns || selectedKpiColumns.size === 0)) {
+                worstCard.style.display = "none";
+                worstTableEl.innerHTML = "";
+                if (nonCard && nonTableEl) {
+                    nonCard.style.display = "none";
+                    nonTableEl.innerHTML = "";
+                }
+                return;
+            }
             let rows = null;
 
             if (typeof mergedDataPerSheet !== "undefined" &&
@@ -3625,18 +3745,19 @@ function renderLatestKpiTable() {
         return;
     }
 
-    titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
+      titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
 
-    let html = "<table><thead><tr>";
+    // Tạo bảng và bọc trong wrapper để có scroll dọc + cố định header/cột 1
+    let html = '<table id="latestKpiTable"><thead><tr>';
     html +=
-        '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">WS_NAME / CELL_NAME</th>';
+        '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">Name</th>';
     activeKpiCols.forEach((col) => {
         html += `<th style="background:#4b5563; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">${col}</th>`;
     });
     html += "</tr></thead><tbody>";
 
     wsList.forEach((ws) => {
-        html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">${ws}</td>`;
+        html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600; white-space:nowrap;">${ws}</td>`;
         activeKpiCols.forEach((col) => {
             const v = byWs[ws][col];
             let display = "";
@@ -3682,9 +3803,10 @@ function renderLatestKpiTable() {
     });
 
     html += "</tbody></table>";
-    tableDiv.innerHTML = html;
+    tableDiv.innerHTML = `<div id="latestTableWrapper">${html}</div>`;
     tableCard.style.display = "block";
 }
+
 
         async function handleEmailSubmit(e) {
             e.preventDefault();
