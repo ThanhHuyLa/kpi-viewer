@@ -945,6 +945,9 @@
         let emailIntroTouched = false;
         let chartConfigAppliedOnce = false;   // áp sheet từ cấu hình cũ đúng 1 lần
 
+        // BẢNG NGƯỠNG KPI
+        let kpiThresholdMap = null;
+
         Chart.register(ChartDataLabels);
 
         function updateWsSearchKeywordsFromInputs() {
@@ -1535,6 +1538,69 @@ function processMultipleFiles(files) {
 
             return best;
         }
+// ====== ĐỌC FILE "KPI Threshhold.xlsx" ======
+async function ensureKpiThresholdsLoaded() {
+    // Đã load rồi thì thôi
+    if (kpiThresholdMap !== null) return kpiThresholdMap;
+
+    kpiThresholdMap = {}; // tránh null để không gọi lại nhiều lần
+
+    try {
+        // File KPI Threshhold.xlsx để cùng thư mục với index.html
+        const resp = await fetch("KPI Threshhold.xlsx");
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        const buf = await resp.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+
+        // Tên sheet đúng trong file bạn gửi là "KPI Threshold"
+        const sheet =
+            wb.Sheets["KPI Threshold"] || wb.Sheets[wb.SheetNames[0]];
+        if (!sheet) return kpiThresholdMap;
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        rows.forEach((r) => {
+            const id = String(r["KPI ID"] || "").trim();
+            const name = String(r["KPI Name"] || "").trim();
+            const op = String(r["operator"] || "").trim();   // <, >, =
+            const thr = parseFloat(r["Threshold"]);
+
+            if (!op || isNaN(thr)) return;
+
+            const entry = { op, value: thr };
+
+            // map theo KPI ID, KPI Name và có thể reuse cho nhiều chỗ
+            if (id) kpiThresholdMap[id] = entry;
+            if (name) kpiThresholdMap[name] = entry;
+        });
+
+        console.log("Loaded KPI threshold count =", Object.keys(kpiThresholdMap).length);
+    } catch (e) {
+        console.warn("Không đọc được KPI Threshhold.xlsx:", e);
+        kpiThresholdMap = {}; // để khỏi thử lại nhiều lần
+    }
+
+    return kpiThresholdMap;
+}
+
+// Tìm threshold theo tên cột KPI (dùng meta map để match ID / Alias)
+function getThresholdForKpiColumn(kpiCol) {
+    if (!kpiThresholdMap || !Object.keys(kpiThresholdMap).length) return null;
+    if (!kpiCol) return null;
+
+    const meta = findKpiMetaForColumn(kpiCol) || {};
+    const keysToTry = [];
+
+    if (meta.id) keysToTry.push(String(meta.id).trim());
+    if (meta.name) keysToTry.push(String(meta.name).trim());
+    keysToTry.push(String(kpiCol).trim());
+
+    for (const key of keysToTry) {
+        if (kpiThresholdMap[key]) return kpiThresholdMap[key];
+    }
+    return null;
+}
 
         // 👉 KPI MAC SDU: dùng để set default chart = stackedArea
         function isMacSduKpi(kpiCol) {
@@ -3387,96 +3453,144 @@ if (nonCard && nonTableEl && nonTitleEl) {
 
         }
 
-        function renderLatestKpiTable() {
-            if (!currentData || numericColumns.length === 0) return;
+function renderLatestKpiTable() {
+    const tableCard = document.getElementById("latestTableCard");
+    const tableDiv = document.getElementById("latestTable");
+    const titleEl = document.getElementById("latestTableTitle");
 
-            const tableCard = document.getElementById("latestTableCard");
-            const tableDiv  = document.getElementById("latestTable");
-            const titleEl   = document.getElementById("latestTableTitle");
-            if (!tableCard || !tableDiv || !titleEl) return;
 
-            const latestLabel = getLatestPeriodLabel(currentData);
-            if (!latestLabel) {
-                tableCard.style.display = "none";
-                return;
+    if (!tableCard || !tableDiv || !titleEl) return;
+    if (!currentData || !currentData.length || !periodColumnName) {
+        tableCard.style.display = "none";
+        return;
+    }
+
+    // Nếu chưa load KPI Threshhold thì trigger load & render lại sau khi xong
+    if (kpiThresholdMap === null) {
+        ensureKpiThresholdsLoaded().then(() => {
+            if (tableCard && tableCard.style.display !== "none") {
+                renderLatestKpiTable();
+            }
+        });
+    }
+
+    const latestLabel = getLatestPeriodLabel(currentData);
+    if (!latestLabel) {
+        tableCard.style.display = "none";
+        return;
+    }
+
+    const activeKpiCols = numericColumns.filter((col) =>
+        selectedKpiColumns.has(col)
+    );
+
+    if (!activeKpiCols.length) {
+        titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có KPI nào được chọn`;
+        tableDiv.innerHTML = "";
+        tableCard.style.display = "block";
+        return;
+    }
+
+    const periodCol = periodColumnName;
+    const wsNameCol = getCellNameColumn(); // 👉 Bảng “KPI thời điểm gần nhất” cũng theo CELL_NAME
+
+    const byWs = {};
+
+    currentData.forEach((row) => {
+        const wsName = row[wsNameCol];
+        const rawPeriod = row[periodCol];
+        if (!wsName || rawPeriod === undefined || rawPeriod === null) return;
+
+        const norm = normalizePeriod(rawPeriod);
+        if (!norm || norm.label !== latestLabel) return;
+
+        const wsStr = String(wsName);
+        const wsLower = wsStr.toLowerCase();
+
+        if (!wsPassesTextFilters(wsLower)) return;
+        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr))
+            return;
+
+        if (!byWs[wsStr]) byWs[wsStr] = {};
+
+        activeKpiCols.forEach((col) => {
+            const v = row[col];
+            const num = parseFloat(v);
+            if (!isNaN(num)) {
+                const scale = getKpiScaleForColumn(col);
+                byWs[wsStr][col] = num * scale;
+            }
+        });
+    });
+
+    const wsList = Object.keys(byWs).sort();
+    if (wsList.length === 0) {
+        titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có dữ liệu khớp bộ lọc`;
+        tableDiv.innerHTML = "";
+        tableCard.style.display = "block";
+        return;
+    }
+
+    titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
+
+    let html = "<table><thead><tr>";
+    html +=
+        '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">WS_NAME / CELL_NAME</th>';
+    activeKpiCols.forEach((col) => {
+        html += `<th style="background:#4b5563; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">${col}</th>`;
+    });
+    html += "</tr></thead><tbody>";
+
+    wsList.forEach((ws) => {
+        html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">${ws}</td>`;
+        activeKpiCols.forEach((col) => {
+            const v = byWs[ws][col];
+            let display = "";
+            if (typeof v === "number" && !isNaN(v)) {
+                display = Math.round(v * 1000) / 1000;
             }
 
-            const activeKpiCols = numericColumns.filter(col => selectedKpiColumns.has(col));
+            // ==== Áp dụng ngưỡng từ KPI Threshhold ====
+            let condStyle = "";
+            if (typeof v === "number" && !isNaN(v) && kpiThresholdMap) {
+                const thr = getThresholdForKpiColumn(col);
+                if (thr) {
+                    const num = v;
+                    const t = thr.value;
+                    const op = thr.op;
+                    let isBad = false;
 
-            if (!activeKpiCols.length) {
-                titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có KPI nào được chọn`;
-                tableDiv.innerHTML  = "";
-                tableCard.style.display = "block";
-                return;
-            }
-
-            const periodCol = periodColumnName;
-            const wsNameCol = getCellNameColumn();   // 👉 Bảng “KPI thời điểm gần nhất” cũng theo CELL_NAME
-
-            const byWs = {};
-
-            currentData.forEach((row) => {
-                const wsName    = row[wsNameCol];
-                const rawPeriod = row[periodCol];
-                if (!wsName || rawPeriod === undefined || rawPeriod === null) return;
-
-                const norm = normalizePeriod(rawPeriod);
-                if (!norm || norm.label !== latestLabel) return;
-
-                const wsStr   = String(wsName);
-                const wsLower = wsStr.toLowerCase();
-
-                if (!wsPassesTextFilters(wsLower)) return;
-                if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr))
-                    return;
-
-                if (!byWs[wsStr]) byWs[wsStr] = {};
-
-                activeKpiCols.forEach((col) => {
-                    const v   = row[col];
-                    const num = parseFloat(v);
-                    if (!isNaN(num)) {
-                        const scale = getKpiScaleForColumn(col);
-                        byWs[wsStr][col] = num * scale;
+                    if (op === "<") {
+                        isBad = num < t;
+                    } else if (op === ">") {
+                        isBad = num > t;
+                    } else if (op === "<=") {
+                        isBad = num <= t;
+                    } else if (op === ">=") {
+                        isBad = num >= t;
+                    } else if (op === "=" || op === "==") {
+                        isBad = num === t;
                     }
-                });
-            });
 
-            const wsList = Object.keys(byWs).sort();
-            if (wsList.length === 0) {
-                titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có dữ liệu khớp bộ lọc`;
-                tableDiv.innerHTML  = "";
-                tableCard.style.display = "block";
-                return;
+                    // Nếu vi phạm điều kiện ⇒ tô đỏ
+                    if (isBad) {
+                        condStyle =
+                            "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                    }
+                }
             }
 
-            titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
+            const baseStyle =
+                "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+            html += `<td style="${baseStyle}${condStyle}">${display}</td>`;
+        });
+        html += "</tr>";
+    });
 
-            let html = "<table><thead><tr>";
-            html += '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">WS_NAME / CELL_NAME</th>';
-            activeKpiCols.forEach((col) => {
-                html += `<th style="background:#4b5563; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">${col}</th>`;
-            });
-            html += "</tr></thead><tbody>";
-
-            wsList.forEach((ws) => {
-                html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">${ws}</td>`;
-                activeKpiCols.forEach((col) => {
-                    const v = byWs[ws][col];
-                    let display = "";
-                    if (typeof v === "number" && !isNaN(v)) {
-                        display = Math.round(v * 1000) / 1000;
-                    }
-                    html += `<td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center;">${display}</td>`;
-                });
-                html += "</tr>";
-            });
-
-            html += "</tbody></table>";
-
-            tableDiv.innerHTML = html;
-            tableCard.style.display = "block";
-        }
+    html += "</tbody></table>";
+    tableDiv.innerHTML = html;
+    tableCard.style.display = "block";
+}
 
         async function handleEmailSubmit(e) {
             e.preventDefault();
