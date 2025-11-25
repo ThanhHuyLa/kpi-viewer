@@ -1542,7 +1542,9 @@ function processMultipleFiles(files) {
             const lower = String(kpiCol).toLowerCase();
             return (
                 lower.includes("mac sdu data vol trans dl dtch") ||
-                lower.includes("mac sdu data vol rcvd ul dtch")
+                lower.includes("mac sdu data vol rcvd ul dtch") ||
+                lower.includes("pdcp sdu volume, dl") ||
+                lower.includes("pdcp sdu volume, ul")
             );
         }
 
