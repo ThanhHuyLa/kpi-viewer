@@ -947,6 +947,7 @@
 
         // BẢNG NGƯỠNG KPI
         let kpiThresholdMap = null;
+        let worstCellThresholdMap = null;   // sheet "WorstCell Threshold"
 
         Chart.register(ChartDataLabels);
 
@@ -1600,6 +1601,58 @@ function getThresholdForKpiColumn(kpiCol) {
         if (kpiThresholdMap[key]) return kpiThresholdMap[key];
     }
     return null;
+}
+// ====== ĐỌC SHEET "WorstCell Threshold" CHO WORST CELL & NON-TRAFFIC ======
+async function ensureWorstCellThresholdsLoaded() {
+    // Đã load rồi thì thôi
+    if (worstCellThresholdMap !== null) return worstCellThresholdMap;
+
+    worstCellThresholdMap = {}; // tránh null để không gọi lại nhiều lần
+
+    try {
+        const resp = await fetch("KPI Threshhold.xlsx");
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+        const buf = await resp.arrayBuffer();
+        const wb  = XLSX.read(buf, { type: "array" });
+
+        const sheet = wb.Sheets["WorstCell Threshold"];
+        if (!sheet) {
+            console.warn('Không tìm thấy sheet "WorstCell Threshold" trong KPI Threshhold.xlsx');
+            return worstCellThresholdMap;
+        }
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        rows.forEach((r) => {
+            const name = String(r["KPI Name"] || "").trim();
+            const op   = String(r["operator"] || "").trim();   // <, >, <=, >=, =, ...
+            const thr  = parseFloat(r["Threshold"]);
+
+            if (!name || !op || isNaN(thr)) return;
+
+            worstCellThresholdMap[name] = { op, value: thr };
+        });
+
+        console.log(
+            "Loaded WorstCell threshold count =",
+            Object.keys(worstCellThresholdMap).length
+        );
+    } catch (e) {
+        console.warn("Không đọc được sheet WorstCell Threshold:", e);
+        worstCellThresholdMap = {}; // để khỏi thử lại nhiều lần
+    }
+
+    return worstCellThresholdMap;
+}
+
+// Lấy threshold cho 1 KPI theo tên hiển thị cột (KPI Name)
+function getWorstCellThresholdByName(kpiDisplayName) {
+    if (!worstCellThresholdMap || !Object.keys(worstCellThresholdMap).length) return null;
+    if (!kpiDisplayName) return null;
+
+    const key = String(kpiDisplayName).trim();
+    return worstCellThresholdMap[key] || null;
 }
 
         // 👉 KPI MAC SDU: dùng để set default chart = stackedArea
@@ -3031,6 +3084,16 @@ function detectColumnsAndNumeric(columns) {
             const nonTableEl   = document.getElementById("nonTrafficTable");
             const nonTitleEl   = document.getElementById("nonTrafficTitle");
 
+            // Load ngưỡng WorstCell threshold (sheet "WorstCell Threshold") nếu chưa load
+            if (worstCellThresholdMap === null) {
+                ensureWorstCellThresholdsLoaded().then(() => {
+                    if (worstCard) {
+                        // Gọi render lại sau khi đã có ngưỡng
+                        renderWorstCellTable();
+                    }
+                });
+            }
+
             if (!worstCard || !worstTableEl || !worstTitleEl) return;
 
             let rows = null;
@@ -3384,39 +3447,70 @@ const otherCols = cleanColumns.filter(col => {
                             display = formatNumberSmart(display);
                         }
 
-                        let condStyle = "";
+                let condStyle = "";
 
-                        if (kpiAccessColKey && colKey === kpiAccessColKey) {
-                            const num = toNumber(value);
-                            if (num !== null && num < 95) {
-                                condStyle =
-                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                            }
+        // Ưu tiên dùng file cấu hình sheet "WorstCell Threshold" nếu có
+                if (worstCellThresholdMap && Object.keys(worstCellThresholdMap).length) {
+                    // Xác định tên KPI để tra trong bảng ngưỡng
+                    let kpiDisplayName = colKey;
+                    if (colKey === "__PO")       kpiDisplayName = "PO";
+                    else if (colKey === "__province") kpiDisplayName = "Province";
+
+                    const thr = getWorstCellThresholdByName(kpiDisplayName);
+
+                    if (thr && isNumericLike(value)) {
+                        const num = toNumber(value);
+                        const t   = thr.value;
+                        const op  = thr.op;
+                        let isBad = false;
+
+                        if (num !== null) {
+                            if (op === "<")       isBad = num <  t;
+                            else if (op === ">")  isBad = num >  t;
+                            else if (op === "<=") isBad = num <= t;
+                            else if (op === ">=") isBad = num >= t;
+                            else if (op === "=" || op === "==") isBad = num === t;
                         }
 
-                        if (kpiDropColKey && colKey === kpiDropColKey) {
-                            const num = toNumber(value);
-                            if (num !== null && num > 3) {
-                                condStyle =
-                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                            }
+                        if (isBad) {
+                            condStyle =
+                                "background:#fee2e2; color:#b91c1c; font-weight:700;";
                         }
+                    }
+                } else {
+                    // Fallback: nếu chưa có sheet WorstCell Threshold -> dùng rule cứng như cũ
+                    if (kpiAccessColKey && colKey === kpiAccessColKey) {
+                        const num = toNumber(value);
+                        if (num !== null && num < 95) {
+                            condStyle =
+                                "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                        }
+                    }
 
-                        if (kpiAvailColKey && colKey === kpiAvailColKey) {
-                            const num = toNumber(value);
-                            if (num !== null && num === 0) {
-                                condStyle =
-                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                            }
-                        }
+                    if (kpiDropColKey && colKey === kpiDropColKey) {
+                        const num = toNumber(value);
+                if (num !== null && num > 3) {
+                    condStyle =
+                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                }
+            }
 
-                        if (kpiSnChangeColKey && colKey === kpiSnChangeColKey) {
-                            const num = toNumber(value);
-                            if (num !== null && num < 70) {
-                                condStyle =
-                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                            }
-                        }
+            if (kpiAvailColKey && colKey === kpiAvailColKey) {
+                const num = toNumber(value);
+                if (num !== null && num === 0) {
+                    condStyle =
+                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                }
+            }
+
+            if (kpiSnChangeColKey && colKey === kpiSnChangeColKey) {
+                const num = toNumber(value);
+                if (num !== null && num < 70) {
+                    condStyle =
+                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                }
+            }
+        }
 
                         const baseCell =
                             "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
