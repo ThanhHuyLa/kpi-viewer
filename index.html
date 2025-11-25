@@ -1,0 +1,4903 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KPI Viewer and Report</title>
+
+    <!-- XLSX & Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+                Ubuntu, Cantarell, sans-serif;
+            background: #f3f4f6; /* xám trắng nhẹ */
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: #111827;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #3749a5; /* xanh đậm hiện đại */
+            text-shadow: 0 2px 4px rgba(55, 73, 165, 0.15);
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 24px 16px;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: scale(1.02);
+        }
+
+        .upload-area.dragover {
+            border-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 12px;
+        }
+
+        .upload-area h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 30px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .file-info {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            display: none;
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .charts-section {
+            display: none;
+        }
+
+        .charts-section.show {
+            display: block;
+        }
+
+        .chart-controls {
+            background: white;
+            border-radius: 15px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        }
+
+        .chart-controls h3 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-grid {
+            display: flex;
+            gap: 16px;
+            flex-wrap: nowrap;          /* 3 combobox luôn cùng 1 hàng trên desktop */
+            align-items: flex-end;      /* canh đáy cho đẹp */
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;                    /* mỗi combobox chiếm đều chiều ngang */
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .control-group select {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95em;
+            cursor: pointer;
+            background: white;
+            transition: border-color 0.3s;
+        }
+
+        .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        }
+
+        .chart-card h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 380px;
+        }
+
+        #chartsContainer {
+            display: grid;
+            gap: 20px;
+            --charts-per-row: 2;
+            grid-template-columns: repeat(var(--charts-per-row), minmax(0, 1fr));
+            margin-bottom: 24px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #667eea;
+            font-size: 1em;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .data-table {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+            margin-top: 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        .data-table h3 {
+            color: #111827;
+            margin-bottom: 10px;
+            font-size: 1.15em;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        th,
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+/* === STYLE BẢNG TIẾN ĐỘ ĐO KIỂM === */
+.progress-table {
+    font-size: 14px;
+    border-collapse: collapse;
+    margin: 8px 0;
+    width: auto;                /* không bắt buộc 100% */
+    table-layout: fixed;        /* để tính left sticky ổn định */
+}
+
+/* header xanh giống Worst Cell */
+.progress-table th {
+    background: #1e3a8a;
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 10px;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid #d1d5db;
+}
+
+.progress-table td {
+    padding: 6px 10px;
+    text-align: center;
+    white-space: nowrap;
+    border: 1px solid #e5e7eb;
+}
+
+.progress-table tr:hover {
+    background: #f3f4ff;
+}
+
+/* chiều rộng 4 cột đầu – có thể chỉnh thêm nếu muốn */
+.progress-table th:nth-child(1),
+.progress-table td:nth-child(1) { min-width: 40px; }  /* STT  */
+.progress-table th:nth-child(2),
+.progress-table td:nth-child(2) { min-width: 60px; }  /* PO   */
+.progress-table th:nth-child(3),
+.progress-table td:nth-child(3) { min-width: 80px; }  /* Tỉnh */
+.progress-table th:nth-child(4),
+.progress-table td:nth-child(4) { min-width: 80px; }  /* Số trạm */
+
+/* Sticky 4 cột đầu: chỉ dùng class .sticky-col do JS gắn */
+.progress-table .sticky-col {
+    z-index: 3;
+}
+
+/* Header sticky đè lên body một chút để không bị gãy */
+.progress-table thead .sticky-col {
+    z-index: 4;
+}
+
+/* Hàng tổng hợp dưới cùng */
+.progress-summary-row td {
+    background: #fff9c4 !important;
+    font-weight: 600 !important;
+}
+
+
+
+        tr:hover {
+            background: #f3f4ff;
+        }
+
+        /* WS_NAME filter */
+        #wsFilterContainer {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 8px;
+            border: 1px dashed #cbd5f5;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #kpiFilterContainer {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 8px;
+            border: 1px dashed #e5e7eb;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .kpi-filter-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px 10px;
+        }
+
+        .ws-filter-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .ws-filter-search {
+            flex: 1 1 160px;
+            min-width: 0;
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 0.85em;
+        }
+
+        .ws-filter-toolbar button {
+            border: none;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.8em;
+            cursor: pointer;
+            background: #e0e7ff;
+            color: #374151;
+            white-space: nowrap;
+        }
+
+        .ws-filter-toolbar button:hover {
+            background: #c7d2fe;
+        }
+
+        .ws-filter-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 6px 10px;
+        }
+
+        .ws-chip {
+            background: #eef2ff;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.8em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .ws-chip input {
+            accent-color: #667eea;
+        }
+
+        /* KPI Overview header row */
+        .excel-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .excel-date-filter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .excel-date-filter label {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .excel-date-filter input[type="date"] {
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 0.85em;
+        }
+
+        #excelTable table {
+            width: auto;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            table-layout: auto;
+        }
+
+        #excelTable {
+            position: relative;
+        }
+
+        #excelTable table th,
+        #excelTable table td {
+            position: relative;
+        }
+
+        #excelTable .sticky-col {
+            z-index: 3;
+        }
+
+        #excelTable thead .sticky-col {
+            z-index: 4;
+        }
+
+        #excelTable table th:nth-child(1),
+        #excelTable table td:nth-child(1),
+        #excelTable table th:nth-child(2),
+        #excelTable table td:nth-child(2),
+        #excelTable table th:nth-child(3),
+        #excelTable table td:nth-child(3) {
+            white-space: nowrap;
+        }
+
+        .excel-latest-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.8em;
+            cursor: pointer;
+            background: #e0e7ff;
+            color: #374151;
+            white-space: nowrap;
+        }
+
+        .excel-latest-btn:hover {
+            background: #c7d2fe;
+        }
+
+        /* Email form */
+        .email-section {
+            margin-top: 24px;
+        }
+
+        .email-form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .email-form-group label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 4px;
+            font-size: 0.9em;
+        }
+
+        .email-form-group input,
+        .email-form-group textarea {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        .email-form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .email-form-group input:focus,
+        .email-form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .email-status {
+            margin-top: 8px;
+            font-size: 0.85em;
+            min-height: 18px;
+        }
+
+        .email-status.success {
+            color: #43a047;
+        }
+
+        .email-status.error {
+            color: #e53935;
+        }
+
+        .email-section-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            font-size: 0.85em;
+        }
+
+        .email-section-options label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .email-section-options input[type="checkbox"] {
+            accent-color: #667eea;
+        }
+
+        .email-actions-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .control-grid {
+                flex-direction: column;
+                flex-wrap: nowrap;
+            }
+            #chartsContainer {
+                --charts-per-row: 1;
+            }
+        }
+        .upload-sub-actions {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .upload-sub-btn {
+            background: rgba(102, 126, 234, 0.12);
+            padding: 8px 16px;
+            border-radius: 999px;
+            cursor: pointer;
+            color: #4f46e5;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.25s ease;
+        }
+
+        .upload-sub-btn:hover {
+            background: rgba(102, 126, 234, 0.22);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.25);
+        }
+
+        .upload-sub-separator {
+            color: #9ca3af;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo giữ kiểu cũ: không ép CSS, chỉ là 1 ảnh -->
+    <img src="logo.png" class="corner-logo" alt="Logo" />
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 KPI Viewer and Report</h1>
+        </div>
+
+        <!-- Upload -->
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3>Tải file Excel KPI</h3>
+
+                <div class="upload-sub-actions">
+                    <label class="upload-sub-btn">
+                        📄 Chọn file Excel
+                        <input
+                            type="file"
+                            id="fileInputFiles"
+                            class="file-input"
+                            accept=".xlsx,.xls"
+                            multiple
+                            onchange="handleFileFromFiles(event)"
+                        />
+                    </label>
+
+                    <span class="upload-sub-separator">hoặc</span>
+
+                    <label class="upload-sub-btn">
+                        📂 Chọn thư mục Excel
+                        <input
+                            type="file"
+                            id="fileInputFolder"
+                            class="file-input"
+                            webkitdirectory
+                            directory
+                            onchange="handleFileFromFolder(event)"
+                        />
+                    </label>
+                </div>
+            </div>
+
+            <div class="file-info" id="fileInfo"></div>
+
+            <!-- ✅ Combobox chọn folder + nhóm file trong folder -->
+            <div
+                id="folderFileSelectors"
+                style="
+                    margin-top:8px;
+                    display:none;
+                    gap:8px;
+                    align-items:center;
+                    flex-wrap:wrap;
+                "
+            >
+                <label style="font-size:0.9em;">
+                    Thư mục:
+                    <select id="folderSelect" style="margin-left:4px; padding:4px 8px;"></select>
+                </label>
+
+                <label style="font-size:0.9em;">
+                    Nhóm file:
+                    <select id="fileGroupSelect" style="margin-left:4px; padding:4px 8px; min-width:220px;"></select>
+                </label>
+
+                <button
+                    type="button"
+                    id="loadGroupBtn"
+                    style="
+                        padding:4px 10px;
+                        border-radius:6px;
+                        border:1px solid #2563eb;
+                        background:#2563eb;
+                        color:#fff;
+                        font-size:0.9em;
+                        cursor:pointer;
+                    "
+                >
+                    Chọn nhóm file
+                </button>
+            </div>
+            <div class="loading" id="loading">⏳ Đang xử lý file...</div>
+        </div>
+
+        <!-- TIẾN ĐỘ ĐO KIỂM (IMPORT FILE EXCEL) -->
+        <div class="data-table" id="progressCard" style="margin-top: 16px;">
+            <h3>Tiến Độ Đo Kiểm</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+                <label style="
+                    display:inline-flex;
+                    align-items:center;
+                    padding:6px 10px;
+                    border-radius:6px;
+                    background:#f0f4ff;
+                    border:1px solid #b0c4ff;
+                    font-size:0.9em;
+                    cursor:pointer;
+                ">
+                    📂 Chọn file Excel tiến độ
+                    <input type="file" id="progressFileInput" accept=".xlsx,.xls" style="display:none;">
+                </label>
+                <span id="progressStatus" style="font-size:0.85em;color:#666;">
+                    Chọn file Excel tiến độ đo kiểm (tải từ Google Sheet về máy, sheet "CQT-SSV").
+                </span>
+                <select id="progressPOFilter" style="padding:6px 10px; border-radius:6px; border:1px solid #b0b0b0; display:none;">
+                    <option value="ALL">Tất cả PO</option>
+                </select>
+            </div>
+            <div id="progressTable"></div>
+        </div>
+
+
+
+        <div class="charts-section" id="chartsSection">
+            <!-- 1. TÙY CHỈNH BIỂU ĐỒ -->
+            <div class="chart-controls">
+                <h3>⚙️ Tùy chỉnh biểu đồ</h3>
+                <div class="control-grid">
+                    <div class="control-group">
+                        <label>📄 Sheet:</label>
+                        <select id="sheetSelect" onchange="updateCharts()"></select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>🧩 Số chart trên 1 hàng:</label>
+                        <select id="chartsPerRowSelect">
+                            <option value="1">1 chart / hàng</option>
+                            <option value="2" selected>2 chart / hàng</option>
+                            <option value="3">3 chart / hàng</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>⏱ Khoảng ngày gần nhất:</label>
+                        <select id="daysWindowSelect">
+                            <option value="7">7 ngày</option>
+                            <option value="14" selected>14 ngày</option>
+                            <option value="30">30 ngày</option>
+                            <option value="40">40 ngày</option>
+                            <option value="ALL">Toàn bộ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-group" style="margin-top: 14px">
+                    <!-- ĐÃ ĐỔI WS_NAME -> CELL_NAME -->
+                    <label>🧵 Chọn WS/SITE/CELL_NAME hiển thị:</label>
+                    <div id="wsFilterContainer"></div>
+                </div>
+
+                <!-- Chọn KPI hiển thị -->
+                <div class="control-group" style="margin-top:12px;">
+                    <label>📌 Chọn KPI hiển thị:</label>
+                    <div id="kpiFilterContainer"></div>
+                </div>
+
+
+                <div class="control-group" style="margin-top:12px; max-width:240px;">
+                    <label>🔀 Thứ tự sắp xếp Funnel:</label>
+                    <select id="funnelSortSelect">
+                        <option value="desc" selected>Lớn → nhỏ</option>
+                        <option value="asc">Nhỏ → lớn</option>
+                    </select>
+                </div>
+
+                <p style="margin-top: 10px; font-size: 0.85em; color: #666">
+                    🔢 Hệ thống tự động nhận diện cột <strong>Period Time</strong> &
+                    <strong>WS_NAME / LNCEL name / NRCEL name</strong> theo tên cột. Vẽ biểu đồ cho tất cả các cột số
+                    (trừ 2 cột đầu). Mỗi cột số là một chart, bạn có thể chọn
+                    <strong>kiểu chart (line / bar / pie / doughnut / stacked area)</strong> và
+                    <strong>số chart trên 1 hàng</strong>.
+                </p>
+            </div>
+
+            <!-- 2. KPI OVERVIEW THEO MẪU EXCEL -->
+            <div
+                class="data-table"
+                id="excelTableCard"
+                style="margin-top: 20px; margin-bottom: 24px"
+            >
+                <div class="excel-header-row">
+                    <h3 id="excelTableTitle">KPI Overview (Ngày: ...)</h3>
+                    <div class="excel-date-filter">
+                        <label for="excelDateInput">Ngày:</label>
+                        <input type="date" id="excelDateInput" />
+                        <button type="button" id="excelLatestBtn" class="excel-latest-btn">Latest</button>
+                    </div>
+                </div>
+                <div id="excelTable"></div>
+            </div>
+
+            <!-- Charts -->
+            <div id="chartsContainer"></div>
+
+            <!-- 4. WORST CELL -->
+            <div class="data-table" id="worstCellCard" style="margin-top: 10px; display:none;">
+                <h3 id="worstCellTitle">Worst Cell (Thời điểm gần nhất)</h3>
+                <div id="worstCellTable"></div>
+            </div>
+
+            <!-- CELL NON-TRAFFIC -->
+            <div class="data-table" id="nonTrafficCard" style="margin-top: 16px; display:none;">
+                <h3 id="nonTrafficTitle">Cell Non-Traffic (Cell avail R = 0)</h3>
+                <div id="nonTrafficTable"></div>
+            </div>
+
+            <!-- 3. BẢNG KPI THỜI ĐIỂM GẦN NHẤT -->
+            <div class="data-table" id="latestTableCard" style="margin-top: 10px">
+                <h3 id="latestTableTitle">Bảng KPI thời điểm gần nhất</h3>
+                <div id="latestTable"></div>
+            </div>
+
+            <!-- 4. EMAIL -->
+            <div class="email-section">
+                <div class="chart-card">
+                    <h3>📧 Gửi Email báo cáo</h3>
+                    <p
+                        style="
+                            text-align: center;
+                            color: #666;
+                            margin-bottom: 16px;
+                            font-size: 0.9em;
+                        "
+                    >
+                    </p>
+                    <form id="emailForm">
+                        <div class="email-form-group">
+                            <label for="emailTo">Danh sách email (cách nhau bởi dấu phẩy)</label>
+                            <input
+                                type="text"
+                                id="emailTo"
+                                name="to"
+                                placeholder="vd: a@example.com, b@example.com"
+                            />
+                        </div>
+
+                        <div class="email-form-group">
+                            <label for="emailSubject">Tiêu đề</label>
+                            <input
+                                type="text"
+                                id="emailSubject"
+                                name="subject"
+                                placeholder="Báo cáo hiệu suất theo ngày..."
+                                required
+                            />
+                        </div>
+
+                        <div class="email-form-group">
+                            <label for="emailMessage">Nội dung (mở đầu email)</label>
+                            <textarea
+                                id="emailMessage"
+                                name="message"
+                                placeholder="Nhập nội dung email..."
+                                required
+                            ></textarea>
+                            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                                Gợi ý: Tiêu đề và Nội dung có thể dùng placeholder 
+                                <code>(POx)</code>, <code>(ngày gần nhất)</code>, 
+                                <code>(Số trạm onair)</code>, <code>(Tổng số trạm POx)</code>. 
+                                Khi xuất file .eml, các placeholder này sẽ tự thay bằng số liệu thực tế.
+                            </div>
+                        </div>
+
+
+
+
+                        <!-- Tick box PNG: nằm NGAY dưới label, mặc định tích sẵn -->
+                        <div style="margin:4px 0 8px 0;">
+                            <label style="font-size:13px;">
+                                <input
+                                    type="checkbox"
+                                    id="emailTablesAsImages"
+                                    checked
+                                >
+                                Xuất các bảng dưới dạng hình PNG
+                            </label>
+                        </div>
+
+                        <!-- CHỌN SECTION ĐƯA VÀO EMAIL -->
+                        <div class="email-form-group">
+                        <label>Các phần sẽ chèn vào email</label>
+
+                        <div class="email-section-options">
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="progress" checked>
+                                Tiến độ đo kiểm
+                            </label>
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="excel" checked>
+                                KPI Overview
+                            </label>
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="charts" checked>
+                                Biểu đồ KPI
+                            </label>
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="worst" checked>
+                                Worst Cell
+                            </label>
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="nonTraffic" checked>
+                                Cell Non-Traffic
+                            </label>
+                        </div>
+
+
+
+                        </div>
+
+                        <div class="email-actions-row">
+                            <button type="button" id="exportEmlChartsBtn" class="btn">
+                                💾 Xuất file Outlook
+                            </button>
+
+
+                        </div>
+                        <div class="email-status" id="emailStatus"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let workbook = null;
+        let currentData = null;
+        let chartInstances = {};
+        let numericColumns = [];
+        let wsFilterValues = null;
+        let currentWsValues = [];
+        let periodColumnName = null;
+        let wsNameColumnName = null;
+        let chartDaysWindow = 14;
+        let selectedKpiColumns = new Set();
+        let mergedDataPerSheet = null;
+
+        let wsSearchKeywords = ["", "", ""];
+        let kpiMetaMap = {};
+        let kpiMetaList = [];
+        let excelSelectedDate = null;
+        let funnelSortOrder = "desc";
+        let emailIntroTouched = false;
+        let chartConfigAppliedOnce = false;   // áp sheet từ cấu hình cũ đúng 1 lần
+
+        Chart.register(ChartDataLabels);
+
+        function updateWsSearchKeywordsFromInputs() {
+            const i1 = document.getElementById("wsSearchInput1");
+            const i2 = document.getElementById("wsSearchInput2");
+            const i3 = document.getElementById("wsSearchInput3");
+            wsSearchKeywords = [
+                i1 ? i1.value : "",
+                i2 ? i2.value : "",
+                i3 ? i3.value : "",
+            ];
+        }
+
+        function wsPassesTextFilters(wsLower) {
+            for (const kw of wsSearchKeywords) {
+                const trimmed = (kw || "").trim().toLowerCase();
+                if (!trimmed) continue;
+
+                const terms = trimmed
+                    .split(";")
+                    .map((t) => t.trim())
+                    .filter(Boolean);
+                if (!terms.length) continue;
+
+                const matchesThisBox = terms.some((term) => wsLower.includes(term));
+                if (!matchesThisBox) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        const uploadArea = document.getElementById("uploadArea");
+
+        uploadArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            uploadArea.classList.add("dragover");
+        });
+
+        uploadArea.addEventListener("dragleave", () => {
+            uploadArea.classList.remove("dragover");
+        });
+
+        uploadArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove("dragover");
+
+            const files = Array.from(e.dataTransfer.files || []).filter(f =>
+                /\.(xlsx|xls)$/i.test(f.name)
+            );
+
+            if (!files.length) {
+                alert("Kéo thả không có file Excel (.xlsx, .xls) hợp lệ!");
+                return;
+            }
+
+            if (files.length === 1) {
+                processFile(files[0]);
+            } else {
+                processMultipleFiles(files);
+            }
+        });
+
+        function handleFileFromFiles(e) {
+            const files = Array.from(e.target.files || []).filter(f =>
+                /\.(xlsx|xls)$/i.test(f.name)
+            );
+            if (!files.length) return;
+
+            if (files.length === 1) {
+                processFile(files[0]);
+            } else {
+                processMultipleFiles(files);
+            }
+        }
+
+        // ====== Biến global lưu map folder & nhóm file ======
+        let folderFileMap = {};      // { folderName: File[] }
+        let currentFolderName = "";
+        let currentGroupMap = {};    // { groupName: File[] }
+
+// Lấy tên folder con.
+// Nếu tất cả file nằm ngay trong thư mục được chọn (không có folder con)
+// thì trả về "(ROOT)"
+        function getFolderNameFromFile(file) {
+            const rel = file.webkitRelativePath;
+
+            if (!rel) {
+                // Trường hợp chọn từng file (không phải chọn thư mục)
+                return "(ROOT)";
+            }
+
+            // Chuẩn hóa cả / và \
+            const parts = rel.split(/[\\/]/);
+            // Ví dụ:
+            //  - Chọn folder: KPI Scheduler
+            //    + Không có folder con: "KPI Scheduler\\file1.xlsx"  -> parts.length = 2
+            //    + Có folder con:       "KPI Scheduler\\Sub\\f1.xlsx" -> parts.length >= 3
+
+            if (parts.length <= 2) {
+                // Chỉ có [Tên thư mục được chọn, Tên file]
+                return "(ROOT)";
+            }
+
+            // Có folder con
+            return parts[1] || "(ROOT)";
+        }
+
+
+
+        // Lấy group name = phần trước dấu "-" trong tên file
+        // 5G_KPI_Daily_Report-vnpt_tec-2025_11_20-... -> 5G_KPI_Daily_Report
+        function getGroupNameFromFile(file) {
+            const name = file.name || "";
+            const idx = name.indexOf("-");
+            if (idx > 0) {
+                return name.substring(0, idx);
+            }
+            // không có dấu "-" thì trả luôn full name
+            return name;
+        }
+
+// Giá trị đặc biệt cho lựa chọn "Tất cả"
+const ALL_FOLDERS_VALUE = "__ALL__";
+
+function populateFolderSelectOptions() {
+    const folderSelect = document.getElementById("folderSelect");
+    const groupSelect = document.getElementById("fileGroupSelect");
+    const wrapper = document.getElementById("folderFileSelectors");
+
+    if (!folderSelect || !groupSelect || !wrapper) return;
+
+    const folderNames = Object.keys(folderFileMap);
+
+    if (!folderNames.length) {
+        wrapper.style.display = "none";
+        return;
+    }
+
+    const hasOnlyRoot = folderNames.length === 1 && folderNames[0] === "(ROOT)";
+
+    wrapper.style.display = "flex";
+
+    if (hasOnlyRoot) {
+        // Chỉ có ROOT → ẩn combobox Thư mục, chỉ hiện Nhóm file
+        folderSelect.parentElement.style.display = "none";
+
+        currentFolderName = "(ROOT)";
+        buildGroupMapForCurrentFolder("(ROOT)");
+        return;
+    }
+
+    // Có folder con → hiện combobox Thư mục + thêm lựa chọn "Tất cả"
+    folderSelect.parentElement.style.display = "inline-block";
+
+    folderSelect.innerHTML = "";
+
+    // ➕ Option "Tất cả"
+    const allOpt = document.createElement("option");
+    allOpt.value = ALL_FOLDERS_VALUE;
+    allOpt.textContent = "Tất cả";
+    folderSelect.appendChild(allOpt);
+
+    // Các folder còn lại
+    folderNames.sort().forEach((folder) => {
+        const opt = document.createElement("option");
+        opt.value = folder;
+        opt.textContent = folder;
+        folderSelect.appendChild(opt);
+    });
+
+    // Mặc định chọn "Tất cả"
+    currentFolderName = ALL_FOLDERS_VALUE;
+    folderSelect.value = ALL_FOLDERS_VALUE;
+    buildGroupMapForCurrentFolder(ALL_FOLDERS_VALUE);
+}
+
+function buildGroupMapForCurrentFolder(folderName) {
+    const folderSelect = document.getElementById("folderSelect");
+    const groupSelect = document.getElementById("fileGroupSelect");
+    if (!groupSelect) return;
+
+    // Ưu tiên: tham số truyền vào -> giá trị combobox -> folder hiện tại
+    let effectiveFolder =
+        folderName ||
+        (folderSelect && folderSelect.value) ||
+        currentFolderName ||
+        "(ROOT)";
+
+
+    currentFolderName = effectiveFolder;
+
+    let filesInFolder = [];
+
+    if (effectiveFolder === ALL_FOLDERS_VALUE) {
+        // ✅ Tất cả folder: gộp toàn bộ file trong folderFileMap
+        Object.values(folderFileMap).forEach(list => {
+            filesInFolder = filesInFolder.concat(list);
+        });
+    } else {
+        // Một folder cụ thể
+        filesInFolder = folderFileMap[effectiveFolder] || [];
+    }
+
+    currentGroupMap = {};
+
+    filesInFolder.forEach((file) => {
+        const gName = getGroupNameFromFile(file); // hàm anh đang dùng
+        if (!currentGroupMap[gName]) currentGroupMap[gName] = [];
+        currentGroupMap[gName].push(file);
+    });
+
+    const groupNames = Object.keys(currentGroupMap).sort();
+
+    groupSelect.innerHTML = "";
+    groupNames.forEach((g) => {
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = `${g} (${currentGroupMap[g].length} file)`;
+        groupSelect.appendChild(opt);
+    });
+
+    if (groupNames.length) {
+        groupSelect.value = groupNames[0];
+    }
+}
+
+        function loadSelectedGroupFiles() {
+            const groupSelect = document.getElementById("fileGroupSelect");
+            if (!groupSelect) return;
+            const gName = groupSelect.value;
+            const files = currentGroupMap[gName] || [];
+
+            if (!files.length) {
+                alert("Nhóm file đang chọn không có file Excel nào.");
+                return;
+            }
+
+            // Gọi lại logic gộp nhiều file có sẵn
+            processMultipleFiles(files);
+        }
+
+        // Gắn event cho 2 combobox + nút
+        window.addEventListener("DOMContentLoaded", () => {
+            const folderSelect = document.getElementById("folderSelect");
+            const groupSelect = document.getElementById("fileGroupSelect");
+            const loadBtn = document.getElementById("loadGroupBtn");
+
+            if (folderSelect) {
+                folderSelect.addEventListener("change", () => {
+                    // Truyền đúng folder đang chọn vào hàm
+                    buildGroupMapForCurrentFolder(folderSelect.value);
+                });
+            }
+
+            if (groupSelect) {
+                // nếu muốn auto load khi đổi nhóm thì bỏ comment 2 dòng dưới
+                // groupSelect.addEventListener("change", () => {
+                //     loadSelectedGroupFiles();
+                // });
+            }
+
+            if (loadBtn) {
+                loadBtn.addEventListener("click", () => {
+                    loadSelectedGroupFiles();
+                });
+            }
+        });
+
+        // ✅ Hàm xử lý khi chọn "📂 Chọn thư mục Excel"
+        function handleFileFromFolder(e) {
+            const files = Array.from(e.target.files || []).filter((f) =>
+                /\.(xlsx|xls)$/i.test(f.name)
+            );
+            if (!files.length) {
+                alert("Thư mục không có file Excel (.xlsx, .xls)");
+                return;
+            }
+
+            // Build map folder -> danh sách file
+            folderFileMap = {};
+            files.forEach((file) => {
+                const folderName = getFolderNameFromFile(file);
+                if (!folderFileMap[folderName]) folderFileMap[folderName] = [];
+                folderFileMap[folderName].push(file);
+            });
+
+            // Cập nhật UI combobox
+            populateFolderSelectOptions();
+
+            // Mặc định: cũng có thể auto load nhóm đầu tiên luôn nếu anh muốn
+            // loadSelectedGroupFiles();
+        }
+
+
+        function handleFile(e) {
+            const files = Array.from(e.target.files || []).filter(f =>
+                /\.(xlsx|xls)$/i.test(f.name)
+            );
+
+            if (!files.length) {
+                alert("Không tìm thấy file Excel (.xlsx, .xls) trong thư mục đã chọn!");
+                return;
+            }
+
+            if (files.length === 1) {
+                processFile(files[0]);
+                return;
+            }
+
+            processMultipleFiles(files);
+        }
+
+// GỘP NHIỀU FILE EXCEL
+function processMultipleFiles(files) {
+    if (!files || !files.length) return;
+
+    // 🔁 Reset state giống processFile để không dính dữ liệu cũ
+    mergedDataPerSheet = {};
+    currentData = null;
+    wsFilterValues = null;
+    selectedKpiColumns = new Set();
+
+    // Xoá chart cũ nếu còn
+    Object.values(chartInstances).forEach(ch => ch.destroy());
+    chartInstances = {};
+    const chartsContainer = document.getElementById("chartsContainer");
+    if (chartsContainer) chartsContainer.innerHTML = "";
+
+    const loading = document.getElementById("loading");
+    const fileInfo = document.getElementById("fileInfo");
+
+    loading.classList.add("show");
+    fileInfo.innerHTML = "";
+    fileInfo.classList.remove("show");
+
+    let totalRows = 0;
+    let pending = files.length;
+
+    files.forEach((file, index) => {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, { type: "array", cellStyles: true });
+
+                // File đầu tiên dùng làm "workbook chính"
+                if (index === 0) {
+                    workbook = wb;
+                    buildGlobalKpiMetaMap();
+                }
+
+                wb.SheetNames.forEach((sheetName) => {
+                    const lower = sheetName.toLowerCase();
+                    if (lower.includes("report execution for")) return;
+                    if (lower.includes("documentation for")) return;
+
+                    const sheet = wb.Sheets[sheetName];
+                    if (!sheet) return;
+
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: null });
+                    if (!mergedDataPerSheet[sheetName]) {
+                        mergedDataPerSheet[sheetName] = [];
+                    }
+
+                    jsonData.forEach((row) => {
+                        // nếu cần biết file gốc thì có thể thêm row.__file = file.name;
+                        mergedDataPerSheet[sheetName].push(row);
+                    });
+
+                    totalRows += jsonData.length;
+                });
+
+                pending--;
+                if (pending === 0) {
+                    loading.classList.remove("show");
+
+                    fileInfo.innerHTML = `
+                        <strong>✅ Đã tải ${files.length} file.</strong><br>
+                        <strong>Số sheets (theo file đầu tiên):</strong> ${workbook.SheetNames.length}<br>
+                        <strong>Tổng số dòng (tất cả file):</strong> ${totalRows}
+                    `;
+                    fileInfo.classList.add("show");
+
+                    // Sau khi gộp xong → build lại dropdown sheet + chart + worst cell
+                    populateSheetSelect();
+                    updateCharts();
+                    renderWorstCellTable();
+
+                    const chartsSection = document.getElementById("chartsSection");
+                    if (chartsSection) chartsSection.classList.add("show");
+                }
+            } catch (error) {
+                console.error("Lỗi đọc file Excel:", error);
+                pending--;
+                if (pending === 0) {
+                    loading.classList.remove("show");
+                    fileInfo.innerHTML =
+                        `<span style="color:red;">❌ Lỗi khi đọc một hoặc nhiều file Excel.</span>`;
+                    fileInfo.classList.add("show");
+                }
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+        function processFile(file) {
+            mergedDataPerSheet = null;      // rất quan trọng: bỏ dữ liệu gộp cũ
+            currentData = null;
+            wsFilterValues = null;
+            selectedKpiColumns = new Set();
+
+            // xoá chart cũ nếu còn
+            Object.values(chartInstances).forEach(ch => ch.destroy());
+            chartInstances = {};
+            const chartsContainer = document.getElementById("chartsContainer");
+            if (chartsContainer) chartsContainer.innerHTML = "";
+
+            const loading = document.getElementById("loading");
+            const fileInfo = document.getElementById("fileInfo");
+
+            loading.classList.add("show");
+            fileInfo.innerHTML = "";
+            fileInfo.classList.remove("show");
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    workbook = XLSX.read(data, { type: "array", cellStyles: true });
+
+                    buildGlobalKpiMetaMap();
+
+                    loading.classList.remove("show");
+                    fileInfo.innerHTML = `
+                        <strong>✅ File đã được tải:</strong> ${file.name}<br>
+                        <strong>Số sheets:</strong> ${
+                            workbook.SheetNames.length
+                        }<br>
+                        <strong>Kích thước:</strong> ${(
+                            file.size / 1024
+                        ).toFixed(2)} KB
+                    `;
+                    fileInfo.classList.add("show");
+
+                    populateSheetSelect();
+                    updateCharts();
+                    renderWorstCellTable();
+
+                    document
+                        .getElementById("chartsSection")
+                        .classList.add("show");
+                } catch (error) {
+                    loading.classList.remove("show");
+                    alert("❌ Lỗi khi đọc file: " + error.message);
+                }
+                renderWorstCellTable();
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function populateSheetSelect() {
+            const select = document.getElementById("sheetSelect");
+            select.innerHTML = "";
+
+            const filtered = workbook.SheetNames.filter((name) => {
+                const lower = name.toLowerCase();
+                if (lower.includes("report execution for")) return false;
+                if (lower.includes("documentation for")) return false;
+                return true;
+            });
+
+            const sheetList = filtered.length > 0 ? filtered : workbook.SheetNames;
+
+            sheetList.forEach((name) => {
+                const option = document.createElement("option");
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+        }
+
+        function buildGlobalKpiMetaMap() {
+            kpiMetaMap = {};
+            kpiMetaList = [];
+
+            if (!workbook) return;
+
+            workbook.SheetNames.forEach((sheetName) => {
+                if (!sheetName.toLowerCase().includes("documentation for")) return;
+
+                const sheet = workbook.Sheets[sheetName];
+                if (!sheet) return;
+
+                const rows = XLSX.utils.sheet_to_json(sheet, {
+                    header: 1,
+                    defval: "",
+                });
+                if (!rows.length) return;
+
+                let headerRowIndex = -1;
+                for (let i = 0; i < rows.length; i++) {
+                    const r0 = String(rows[i][0] || "").toLowerCase();
+                    const r1 = String(rows[i][1] || "").toLowerCase();
+                    if (r0.includes("kpi id") && r1.includes("kpi alias")) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+                if (headerRowIndex === -1) return;
+
+                for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    const id = String(row[0] || "").trim();
+                    const alias = String(row[1] || "").trim();
+                    const unit = String(row[4] || "").trim();
+                    const category = "";
+
+                    if (!id && !alias) continue;
+
+                    const meta = { id, name: alias || id, unit, category };
+                    kpiMetaList.push(meta);
+                    if (alias) kpiMetaMap[alias] = meta;
+                    if (id) kpiMetaMap[id] = meta;
+                }
+            });
+
+            console.log("Loaded KPI meta count =", kpiMetaList.length);
+        }
+
+        function getKpiScaleForColumn(kpiCol) {
+            const meta = findKpiMetaForColumn(kpiCol);
+            if (!meta || !meta.unit) return 1;
+
+            const unitNorm = String(meta.unit).trim().toLowerCase();
+            if (unitNorm === "[mb]") {
+                return 1 / 1024;
+            }
+            return 1;
+        }
+
+        function getKpiTitleWithUnit(kpiCol) {
+            const meta = findKpiMetaForColumn(kpiCol) || {};
+            const unitLabel = getDisplayUnit(meta);
+            if (unitLabel) {
+                return `${kpiCol} (${unitLabel})`;
+            }
+            return kpiCol;
+        }
+
+        function getDisplayUnit(meta) {
+            if (!meta || !meta.unit) return '';
+            const unitNorm = String(meta.unit).trim().toLowerCase();
+            return unitNorm === "[mb]" ? "[GB]" : meta.unit;
+        }
+
+        function findKpiMetaForColumn(kpiCol) {
+            if (!kpiCol) return null;
+            const key = String(kpiCol).trim();
+
+            if (kpiMetaMap[key]) return kpiMetaMap[key];
+
+            if (!kpiMetaList || !kpiMetaList.length) return null;
+
+            const lower = key.toLowerCase();
+            let best = null;
+
+            kpiMetaList.forEach((meta) => {
+                ["name", "id"].forEach((field) => {
+                    const v = meta[field];
+                    if (!v) return;
+                    const vLower = String(v).toLowerCase();
+
+                    if (
+                        vLower === lower ||
+                        vLower.includes(lower) ||
+                        lower.includes(vLower)
+                    ) {
+                        if (!best) best = meta;
+                    }
+                });
+            });
+
+            return best;
+        }
+
+        // 👉 KPI MAC SDU: dùng để set default chart = stackedArea
+        function isMacSduKpi(kpiCol) {
+            if (!kpiCol) return false;
+            const lower = String(kpiCol).toLowerCase();
+            return (
+                lower.includes("mac sdu data vol trans dl dtch") ||
+                lower.includes("mac sdu data vol rcvd ul dtch")
+            );
+        }
+
+        function populateSheetSelectDirect() {
+            const sheetSelect = document.getElementById("sheetSelect");
+
+            sheetSelect.innerHTML = `
+                <option value="merged" selected>📂 Merged Dataset (${originalRows.length} dòng)</option>
+            `;
+        }
+
+        function processMergedExcelData(rows) {
+            originalRows = rows;
+            currentData = [...rows];
+
+            populateSheetSelectDirect();
+            populateKpiSelect(currentData);
+            populateDateSelect(currentData);
+
+            updateCharts();
+        }
+
+function updateCharts() {
+    if (!workbook) return;
+
+    const sheetSelect = document.getElementById("sheetSelect");
+
+    // Áp sheet đã lưu trong localStorage lần đầu sau khi có danh sách sheet
+    if (!chartConfigAppliedOnce && sheetSelect) {
+        try {
+            const raw = localStorage.getItem("chartConfig");
+            if (raw) {
+                const cfg = JSON.parse(raw);
+                if (cfg.sheet) {
+                    const hasOption = Array.from(sheetSelect.options).some(
+                        (opt) => opt.value === cfg.sheet
+                    );
+                    if (hasOption) {
+                        sheetSelect.value = cfg.sheet;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Không đọc được chartConfig:", e);
+        }
+        chartConfigAppliedOnce = true;
+    }
+
+    const sheetName =
+        (sheetSelect && sheetSelect.value) || workbook.SheetNames[0];
+
+    let jsonData;
+
+    if (mergedDataPerSheet && mergedDataPerSheet[sheetName]) {
+        jsonData = mergedDataPerSheet[sheetName];
+    } else {
+        const sheet = workbook.Sheets[sheetName];
+        jsonData = XLSX.utils.sheet_to_json(sheet);
+    }
+
+    if (!jsonData || jsonData.length === 0) {
+        alert("Sheet không có dữ liệu!");
+        return;
+    }
+
+    currentData = jsonData;
+    const columns = Object.keys(jsonData[0]);
+    numericColumns = detectColumnsAndNumeric(columns);
+
+    // mỗi lần đổi sheet thì reset lại KPI & filter
+    selectedKpiColumns = new Set(numericColumns);
+    wsFilterValues = null;
+
+    buildWsFilterOptions(jsonData);
+    buildKpiFilterOptions();
+    buildExcelDateOptions();
+    renderCharts();
+    fillDefaultEmailText();
+
+    // lưu lại cấu hình (sheet, daysWindow, chartsPerRow, funnelSort)
+    if (typeof saveChartConfig === "function") {
+        saveChartConfig();
+    }
+}
+
+
+        // ==== ĐOẠN QUAN TRỌNG: ƯU TIÊN LNCEL name / NRCEL name LÀM CELL_NAME ====
+        // Chọn cột CELL_NAME dùng chung: ưu tiên LNCEL name -> NRCEL name -> WS_NAME
+// ==== CHỌN CHÍNH XÁC CELL_NAME (ưu tiên LNCEL/NRCEL) ====
+// ==== CHỌN CHÍNH XÁC CELL_NAME (ưu tiên NRCEL / LNCEL) ====
+function getCellNameColumn() {
+    if (!currentData || !currentData.length) return wsNameColumnName;
+
+    const columns = Object.keys(currentData[0]);
+    const meta = columns.map(c => ({
+        name: c,
+        lower: String(c).toLowerCase().trim()
+    }));
+
+    const candidates = [];
+
+    function pushIf(testFn, weight) {
+        meta.forEach(col => {
+            if (testFn(col.lower)) {
+                candidates.push({ name: col.name, weight });
+            }
+        });
+    }
+
+    // 1. ƯU TIÊN CAO NHẤT: NRCEL name (đúng case của bạn)
+    pushIf(l => l === "nrcel name" || l === "nrcell name", 110);
+    pushIf(l =>
+        (l.includes("nrcel") || l.includes("nrcell")) &&
+        l.includes("name"),
+        100
+    );
+
+    // 2. LNCEL name
+    pushIf(l => l === "lncel name", 95);
+    pushIf(l => l.includes("lncel") && l.includes("name"), 90);
+
+    // 3. CELL_NAME chung chung
+    pushIf(l =>
+        l === "cell name" ||
+        l === "cell_name" ||
+        l === "cellname",
+        80
+    );
+    pushIf(l => l.includes("cell") && l.includes("name"), 75);
+
+    // 4. WS_NAME / site name fallback
+    pushIf(l =>
+        l === "ws_name" ||
+        l === "wsname" ||
+        l === "ws name",
+        60
+    );
+    pushIf(l => l.includes("ws") && l.includes("name"), 55);
+
+    // 5. NRBTS / MRBTS chỉ là fallback thấp (trong file bạn có 2 cột này)
+    pushIf(l => l.includes("nrbts") && l.includes("name"), 40);
+    pushIf(l => l.includes("mrbts") && l.includes("name"), 35);
+
+    // Nếu tìm được ứng viên thì lấy cái có weight cao nhất
+    if (candidates.length) {
+        candidates.sort((a, b) => b.weight - a.weight);
+        return candidates[0].name;
+    }
+
+    // 6. Fallback thông minh: chọn cột text (ít numeric) đầu tiên, KHÔNG phải Period/Time/Date
+    const periodSet = new Set();
+    meta.forEach(col => {
+        if (
+            col.lower.includes("period") ||
+            col.lower.includes("time") ||
+            col.lower.includes("date")
+        ) {
+            periodSet.add(col.name);
+        }
+    });
+
+    for (const colName of columns) {
+        if (periodSet.has(colName)) continue;
+
+        let numericCount = 0;
+        let total = 0;
+
+        currentData.forEach(row => {
+            const v = row[colName];
+            if (v === null || v === undefined || v === "") return;
+            total++;
+            if (!isNaN(parseFloat(v))) numericCount++;
+        });
+
+        // Chủ yếu là text → rất có thể là CELL_NAME
+        if (total > 0 && numericCount / total < 0.3) {
+            return colName;
+        }
+    }
+
+    // 7. Fallback cuối cùng
+    return wsNameColumnName || columns[1] || columns[0];
+}
+
+function detectColumnsAndNumeric(columns) {
+    // 1. Xác định cột Period (thời gian)
+    periodColumnName = null;
+
+    columns.forEach((col) => {
+        const lower = String(col).toLowerCase();
+        if (
+            !periodColumnName &&
+            (lower.includes("period") ||
+                lower.includes("time") ||
+                lower.includes("date"))
+        ) {
+            periodColumnName = col;
+        }
+    });
+
+    // Fallback nếu không tìm được
+    if (!periodColumnName) {
+        periodColumnName = columns[0];
+    }
+
+    // 2. Xác định CELL_NAME chung (ưu tiên NRCEL/LNCEL)
+    wsNameColumnName = getCellNameColumn();
+
+    // 3. Các cột kiểu "name" (MRBTS name, NRBTS name, NRCEL name, …)
+    //    => coi là cột dimension, KHÔNG phải KPI
+    const nameLikeCols = new Set();
+    columns.forEach(col => {
+        const lower = String(col).toLowerCase();
+        if (lower.includes("name")) {
+            nameLikeCols.add(col);
+        }
+    });
+
+    // 4. Hàm check số "thật": bỏ %, dấu phẩy, khoảng trắng,
+    //    và yêu cầu cả chuỗi chỉ là số (không cho kiểu "5G-..." nữa)
+    function isTrulyNumeric(val) {
+        if (val === null || val === undefined) return false;
+        let s = String(val).trim();
+        if (!s) return false;
+
+        // loại bỏ khoảng trắng, dấu phẩy
+        s = s.replace(/,/g, "").replace(/\s+/g, "");
+        // bỏ dấu % cuối nếu có
+        s = s.replace(/%$/, "");
+
+        // nếu sau khi xử lý mà vẫn có chữ => không phải số
+        if (!/^[-+]?\d*\.?\d+(e[+-]?\d+)?$/i.test(s)) return false;
+
+        return !isNaN(Number(s));
+    }
+
+    // 5. Detect các cột KPI số: bỏ Period, CELL_NAME và mọi cột "*name"
+    const numericCols = [];
+    columns.forEach((col) => {
+        if (col === periodColumnName) return;
+        if (col === wsNameColumnName) return;
+        if (nameLikeCols.has(col)) return; // MRBTS name, NRBTS name, NRCEL name,...
+
+        const isNumeric = currentData.some((row) => {
+            const v = row[col];
+            if (v === null || v === undefined || v === "") return false;
+            return isTrulyNumeric(v);
+        });
+
+        if (isNumeric) numericCols.push(col);
+    });
+
+    return numericCols;
+}
+
+        // ==== HẾT PHẦN SỬA CELL_NAME ====
+
+        function buildKpiFilterOptions() {
+            const container = document.getElementById('kpiFilterContainer');
+            if (!container) return;
+            if (!numericColumns || !numericColumns.length) {
+                container.innerHTML = '<div style="font-size:0.85em;color:#6b7280;">Không tìm thấy KPI dạng số.</div>';
+                return;
+            }
+
+            const prevInput = container.querySelector('#kpiSearchInput');
+            const prevKeyword = prevInput ? prevInput.value : '';
+
+            if (!(selectedKpiColumns instanceof Set)) {
+                selectedKpiColumns = new Set(numericColumns);
+            }
+
+            container.innerHTML = `
+                <div class="ws-filter-toolbar">
+                    <input type="text" id="kpiSearchInput" class="ws-filter-search"
+                        placeholder="Tìm KPI (vd: THR;Drop)">
+                    <button type="button" data-action="kpi-select-all">Chọn tất cả</button>
+                    <button type="button" data-action="kpi-clear-all">Bỏ hết</button>
+                </div>
+                <div class="kpi-filter-list"></div>
+            `;
+
+            const listEl = container.querySelector('.kpi-filter-list');
+            const searchInput = container.querySelector('#kpiSearchInput');
+            if (searchInput) searchInput.value = prevKeyword || '';
+
+            function renderList() {
+                listEl.innerHTML = '';
+                const searchVal = (searchInput?.value || '').trim().toLowerCase();
+                const terms = searchVal
+                    ? searchVal.split(';').map(t => t.trim()).filter(Boolean)
+                    : [];
+
+                numericColumns.forEach(col => {
+                    const colLower = String(col).toLowerCase();
+                    if (terms.length && !terms.some(term => colLower.includes(term))) {
+                        return;
+                    }
+                    const checked = selectedKpiColumns.has(col) ? 'checked' : '';
+                    listEl.innerHTML += `
+                        <label class="ws-chip">
+                            <input type="checkbox" class="kpi-filter-checkbox" value="${col}" ${checked}>
+                            ${col}
+                        </label>
+                    `;
+                });
+            }
+
+            renderList();
+
+            container.onchange = (e) => {
+                if (!e.target.classList.contains('kpi-filter-checkbox')) return;
+                const value = e.target.value;
+                if (e.target.checked) {
+                    selectedKpiColumns.add(value);
+                } else {
+                    selectedKpiColumns.delete(value);
+                }
+
+                renderCharts();
+                renderExcelStyleTable();
+                renderLatestKpiTable();
+            };
+
+            container.onclick = (e) => {
+                const btn = e.target.closest('button[data-action]');
+                if (!btn) return;
+
+                const action = btn.dataset.action;
+                const checkboxes = listEl.querySelectorAll('.kpi-filter-checkbox');
+
+                if (action === 'kpi-select-all') {
+                    checkboxes.forEach(cb => selectedKpiColumns.add(cb.value));
+                } else if (action === 'kpi-clear-all') {
+                    checkboxes.forEach(cb => selectedKpiColumns.delete(cb.value));
+                }
+
+                renderList();
+                renderCharts();
+                renderExcelStyleTable();
+                renderLatestKpiTable();
+            };
+
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    renderList();
+                });
+            }
+        }
+
+        function buildWsFilterOptions(data) {
+            const wsNameCol = getCellNameColumn();   // 👉 dùng CELL_NAME ưu tiên LNCEL/NRCEL
+            const container = document.getElementById("wsFilterContainer");
+            if (!container) return;
+
+            const set = new Set();
+            data.forEach((row) => {
+                const v = row[wsNameCol];
+                if (v !== undefined && v !== null && v !== "") {
+                    set.add(String(v));
+                }
+            });
+            currentWsValues = Array.from(set).sort();
+
+            if (!(wsFilterValues instanceof Set)) {
+                wsFilterValues = new Set(currentWsValues);
+            }
+
+            container.innerHTML = `
+                <div class="ws-filter-toolbar">
+                    <input type="text" id="wsSearchInput1" class="ws-filter-search"
+                        placeholder="Filter 1 (vd: PO1;PO2)">
+                    <input type="text" id="wsSearchInput2" class="ws-filter-search"
+                        placeholder="Filter 2 (lọc tiếp kết quả 1)">
+                    <input type="text" id="wsSearchInput3" class="ws-filter-search"
+                        placeholder="Filter 3 (lọc tiếp kết quả 2)">
+                    <button type="button" data-action="select-all">Chọn tất cả</button>
+                    <button type="button" data-action="clear-all">Bỏ hết</button>
+                </div>
+                <div class="ws-filter-list"></div>
+            `;
+
+            const searchInput1 = container.querySelector("#wsSearchInput1");
+            const searchInput2 = container.querySelector("#wsSearchInput2");
+            const searchInput3 = container.querySelector("#wsSearchInput3");
+            const listEl       = container.querySelector(".ws-filter-list");
+
+            const renderWsList = () => {
+                updateWsSearchKeywordsFromInputs();
+                listEl.innerHTML = "";
+
+                currentWsValues.forEach((v) => {
+                    const wsLower = v.toLowerCase();
+                    if (!wsPassesTextFilters(wsLower)) return;
+
+                    const checked = wsFilterValues.has(v) ? "checked" : "";
+                    listEl.innerHTML += `
+                        <label class="ws-chip">
+                            <input type="checkbox" class="ws-filter-checkbox" value="${v}" ${checked}>
+                            ${v}
+                        </label>
+                    `;
+                });
+            };
+
+            renderWsList();
+
+            container.onchange = (e) => {
+                if (!e.target.classList.contains("ws-filter-checkbox")) return;
+                const value = e.target.value;
+
+                if (e.target.checked) {
+                    wsFilterValues.add(value);
+                } else {
+                    wsFilterValues.delete(value);
+                }
+
+                renderCharts();
+                renderExcelStyleTable();
+                renderLatestKpiTable();
+            };
+
+            container.onclick = (e) => {
+                const btn = e.target.closest("button[data-action]");
+                if (!btn) return;
+
+                const action = btn.dataset.action;
+                const checkboxes = listEl.querySelectorAll(".ws-filter-checkbox");
+
+                if (action === "select-all") {
+                    checkboxes.forEach((cb) => wsFilterValues.add(cb.value));
+                } else if (action === "clear-all") {
+                    checkboxes.forEach((cb) => wsFilterValues.delete(cb.value));
+                }
+
+                renderWsList();
+                renderCharts();
+                renderExcelStyleTable();
+                renderLatestKpiTable();
+            };
+
+            [searchInput1, searchInput2, searchInput3].forEach((inp) => {
+                if (!inp) return;
+                inp.addEventListener("input", () => {
+                    renderWsList();
+                    renderCharts();
+                    renderExcelStyleTable();
+                    renderLatestKpiTable();
+                });
+            });
+        }
+
+        // ===== Xử lý Period Time (day / hour) =====
+
+        function parsePeriodDateTime(value) {
+            let dateObj = null;
+            let hasTime = false;
+
+            if (value instanceof Date) {
+                dateObj = value;
+            } else if (typeof value === "number") {
+                // Excel date code (có thể kèm giờ)
+                try {
+                    const d = XLSX.SSF.parse_date_code(value);
+                    if (d) {
+                        dateObj = new Date(
+                            d.y,
+                            d.m - 1,
+                            d.d,
+                            d.H || 0,
+                            d.M || 0,
+                            d.S || 0
+                        );
+                        hasTime = !!(d.H || d.M || d.S);
+                    }
+                } catch (e) {}
+            } else if (value != null && value !== "") {
+                const parsed = new Date(value);
+                if (!isNaN(parsed.getTime())) {
+                    dateObj = parsed;
+                }
+            }
+
+            if (dateObj) {
+                if (
+                    dateObj.getHours() !== 0 ||
+                    dateObj.getMinutes() !== 0 ||
+                    dateObj.getSeconds() !== 0
+                ) {
+                    hasTime = true;
+                }
+            }
+
+            return { dateObj, hasTime };
+        }
+
+        // Chuẩn hóa Period để dùng chung trong group/trục X
+        function normalizePeriod(value) {
+            const { dateObj, hasTime } = parsePeriodDateTime(value);
+
+            if (dateObj) {
+                const yyyy = dateObj.getFullYear();
+                const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+                const dd = String(dateObj.getDate()).padStart(2, "0");
+
+                let label = `${yyyy}-${mm}-${dd}`;
+                if (hasTime) {
+                    const hh = String(dateObj.getHours()).padStart(2, "0");
+                    const mi = String(dateObj.getMinutes()).padStart(2, "0");
+                    label = `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+                }
+
+                return {
+                    label,
+                    sortValue: dateObj.getTime(),
+                };
+            }
+
+            return {
+                label: String(value),
+                sortValue: 0,
+            };
+        }
+
+        // Phân biệt Period là mức day hay hour
+        function isPeriodHourly() {
+            if (!currentData || !currentData.length || !periodColumnName) return false;
+
+            const periodCol = periodColumnName;
+            for (let i = 0; i < currentData.length; i++) {
+                const raw = currentData[i][periodCol];
+                if (raw === undefined || raw === null || raw === "") continue;
+
+                const { hasTime } = parsePeriodDateTime(raw);
+                if (hasTime) return true;
+            }
+            return false;
+        }
+
+        // Text trục X cho chart
+        function getXAxisLabel(chartType) {
+            if (chartType === "funnel") {
+                // Funnel: trục X là CELL_NAME
+                return getCellNameColumn();
+            }
+            // Các chart còn lại: Period Time / Period Hour
+            return isPeriodHourly() ? "Period Hour" : "Period Time";
+        }
+        // Lấy ngày (Date) mới nhất từ currentData theo cột periodColumnName
+        function getLatestDateFromCurrentData() {
+            if (!currentData || !currentData.length || !periodColumnName) return null;
+
+            const periodCol = periodColumnName;
+            let latestTs = -Infinity;
+
+            currentData.forEach((row) => {
+                const raw = row[periodCol];
+                if (raw === undefined || raw === null) return;
+
+                let dateObj = null;
+
+                if (raw instanceof Date) {
+                    dateObj = raw;
+                } else if (typeof raw === "number") {
+                    try {
+                        const d = XLSX.SSF.parse_date_code(raw);
+                        if (d) {
+                            dateObj = new Date(d.y, d.m - 1, d.d);
+                        }
+                    } catch (e) {}
+                } else {
+                    const parsed = new Date(raw);
+                    if (!isNaN(parsed.getTime())) {
+                        dateObj = parsed;
+                    }
+                }
+
+                if (dateObj) {
+                    const ts = dateObj.getTime();
+                    if (ts > latestTs) {
+                        latestTs = ts;
+                    }
+                }
+            });
+
+            if (latestTs === -Infinity) return null;
+            return new Date(latestTs);
+        }
+
+        // Đưa Date về dạng dd/mm/yyyy
+        function formatDateDDMMYYYY(date) {
+            if (!date) return "__/__/____";
+            const dd = String(date.getDate()).padStart(2, "0");
+            const mm = String(date.getMonth() + 1).padStart(2, "0");
+            const yyyy = date.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+
+        function getLatestPeriodLabel(data) {
+            const periodCol = periodColumnName;
+            let latestLabel = null;
+            let latestSort = -Infinity;
+
+            data.forEach((row) => {
+                const rawPeriod = row[periodCol];
+                if (rawPeriod === undefined || rawPeriod === null) return;
+
+                const { label, sortValue } = normalizePeriod(rawPeriod);
+                if (sortValue > latestSort) {
+                    latestSort = sortValue;
+                    latestLabel = label;
+                }
+                if (latestLabel === null && label != null) {
+                    latestLabel = label;
+                }
+            });
+
+            return latestLabel;
+        }
+
+        function buildChartDataForColumn(data, valueCol) {
+            const periodCol = periodColumnName;
+            const wsNameCol = getCellNameColumn();
+
+            const groupedData = {};
+            const periodMap   = new Map();
+
+            data.forEach(row => {
+                const wsName    = row[wsNameCol];
+                const rawPeriod = row[periodCol];
+                const rawVal = row[valueCol];
+                const scale  = getKpiScaleForColumn(valueCol);
+                const numeric = parseFloat(rawVal);
+
+                if (!wsName || rawPeriod === undefined || isNaN(numeric)) return;
+
+                const value = numeric * scale;
+
+                const wsStr   = String(wsName);
+                const wsLower = wsStr.toLowerCase();
+
+                if (!wsPassesTextFilters(wsLower)) return;
+                if (wsFilterValues && !wsFilterValues.has(wsStr)) return;
+
+                const { label, sortValue } = normalizePeriod(rawPeriod);
+                if (!periodMap.has(label) || sortValue < periodMap.get(label)) {
+                    periodMap.set(label, sortValue);
+                }
+
+                if (!groupedData[wsStr]) groupedData[wsStr] = {};
+                groupedData[wsStr][label] = value;
+            });
+
+            let labels = Array.from(periodMap.entries())
+                .sort((a, b) => a[1] - b[1])
+                .map(([lbl]) => lbl);
+
+            if (chartDaysWindow && labels.length > chartDaysWindow) {
+                labels = labels.slice(labels.length - chartDaysWindow);
+            }
+
+            const datasets = [];
+            const colors   = generateDistinctColors(Object.keys(groupedData).length);
+
+            Object.keys(groupedData).forEach((ws, index) => {
+                const wsData = groupedData[ws];
+
+                const values = labels.map(label =>
+                    wsData[label] !== undefined ? wsData[label] : null
+                );
+
+                datasets.push({
+                    label: ws,
+                    data: values,
+                    borderColor: colors[index],
+                    backgroundColor: colors[index] + '20',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                    pointRadius: 1.5,
+                    pointHoverRadius: 3
+                });
+            });
+
+            return { labels, datasets };
+        }
+
+        function generateDistinctColors(count) {
+            const colors = [
+                "#667eea",
+                "#764ba2",
+                "#f093fb",
+                "#4facfe",
+                "#43e97b",
+                "#fa709a",
+                "#fee140",
+                "#30cfd0",
+                "#a8edea",
+                "#fed6e3",
+                "#c471ed",
+                "#f64f59",
+                "#12c2e9",
+                "#f5af19",
+                "#fbc2eb",
+                "#a6c1ee",
+            ];
+            const result = [];
+            for (let i = 0; i < count; i++) {
+                result.push(colors[i % colors.length]);
+            }
+            return result;
+        }
+
+        function applyChartsPerRow() {
+            const select = document.getElementById("chartsPerRowSelect");
+            const container = document.getElementById("chartsContainer");
+            if (!select || !container) return;
+
+            const value = parseInt(select.value || "2", 10);
+            const perRow = Math.min(Math.max(value, 1), 3);
+            container.style.setProperty("--charts-per-row", perRow);
+        }
+
+        function handleImportedData(rows) {
+            originalRows = rows;
+            // copy mảng rows sang currentData
+            currentData = [...rows];
+            refreshKpiAndDateOptions(rows);
+            renderCharts();
+        }
+
+
+        function renderCharts() {
+            if (!currentData || numericColumns.length === 0) return;
+
+            const activeKpiCols = numericColumns.filter(col => selectedKpiColumns.has(col));
+
+            if (!activeKpiCols.length) {
+                const container = document.getElementById('chartsContainer');
+                container.innerHTML = '<p style="padding:8px; font-size:0.9em; color:#6b7280;">Không có KPI nào được chọn để vẽ biểu đồ.</p>';
+                Object.values(chartInstances).forEach(ch => ch.destroy());
+                chartInstances = {};
+                return;
+            }
+
+            const container = document.getElementById("chartsContainer");
+            applyChartsPerRow();
+
+            // Lưu lại kiểu chart đã chọn trước đó
+            const prevTypes = {};
+            document
+                .querySelectorAll(".chart-type-select")
+                .forEach((sel) => {
+                    prevTypes[sel.dataset.column] = sel.value;
+                });
+
+            Object.values(chartInstances).forEach((ch) => ch.destroy());
+            chartInstances = {};
+            container.innerHTML = "";
+
+            // Vẽ khung chart + combobox chọn kiểu
+            activeKpiCols.forEach((valueCol, index) => {
+                const chartId = `chart_${index}`;
+
+                // ✅ Default: line, riêng 2 KPI MAC SDU → stackedArea
+                let prevType = prevTypes[valueCol];
+                if (!prevType) {
+                    prevType = isMacSduKpi(valueCol) ? "stackedArea" : "line";
+                }
+
+                const titleText = getKpiTitleWithUnit(valueCol);
+
+                container.innerHTML += `
+                    <div class="chart-card">
+                        <h3>${titleText}</h3>
+                          <div class="chart-header-row" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                            <span id="period-label-${chartId}" style="font-size:0.8em; color:#6b7280;"></span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:0.85em; color:#555;">Kiểu chart:</span>
+                                <select class="chart-type-select" data-chart-id="${chartId}" data-column="${valueCol}">
+                                    <option value="line" ${prevType === "line" ? "selected" : ""}>Line</option>
+                                    <option value="bar" ${prevType === "bar" ? "selected" : ""}>Bar</option>
+                                    <option value="stackedArea" ${prevType === "stackedArea" ? "selected" : ""}>Stacked Area</option>
+                                    <option value="pie" ${prevType === "pie" ? "selected" : ""}>Pie</option>
+                                    <option value="doughnut" ${prevType === "doughnut" ? "selected" : ""}>Doughnut</option>
+                                    <option value="funnel" ${prevType === "funnel" ? "selected" : ""}>Funnel</option>
+
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="${chartId}"></canvas>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Build dữ liệu & vẽ chart
+            activeKpiCols.forEach((valueCol, index) => {
+                const chartId = `chart_${index}`;
+                const titleText = getKpiTitleWithUnit(valueCol);
+                let { labels, datasets } = buildChartDataForColumn(
+                    currentData,
+                    valueCol
+                );
+                const canvas = document.getElementById(chartId);
+                if (!canvas) return;
+                const ctx = canvas.getContext("2d");
+                const typeSelect = document.querySelector(
+                    `.chart-type-select[data-chart-id="${chartId}"]`
+                );
+                let chartType = typeSelect ? typeSelect.value : "line";
+
+                // ✅ Nếu chỉ có 1 period time → tự động hiển thị dạng Funnel (bar dọc)
+                if (
+                    labels &&
+                    labels.length === 1 &&
+                    (chartType === "line" ||
+                     chartType === "bar"  ||
+                     chartType === "stackedArea")
+                ) {
+                    chartType = "funnel";
+                    if (typeSelect) {
+                        typeSelect.value = "funnel";   // cập nhật luôn combobox cho đúng
+                    }
+                }
+
+                const periodLabelEl = document.getElementById(
+                    `period-label-${chartId}`
+                );
+                if (periodLabelEl) periodLabelEl.textContent = "";
+
+                if (chartType === "pie" || chartType === "doughnut") {
+                    const latestLabel = getLatestPeriodLabel(currentData);
+                    const periodCol = periodColumnName;
+                    const wsNameCol = getCellNameColumn();
+
+                    const totalByWS = {};
+
+                    currentData.forEach((row) => {
+                        const wsName = row[wsNameCol];
+                        const rawPeriod = row[periodCol];
+                        const rawVal = row[valueCol];
+                        const scale  = getKpiScaleForColumn(valueCol);
+                        const numeric = parseFloat(rawVal);
+
+                        if (
+                            !wsName ||
+                            rawPeriod === undefined ||
+                            rawPeriod === null ||
+                            isNaN(numeric)
+                        )
+                            return;
+                        const value = numeric * scale;
+                        const norm = normalizePeriod(rawPeriod);
+                        if (!norm || norm.label !== latestLabel) return;
+
+                        const wsStr = String(wsName);
+                        const wsLower = wsStr.toLowerCase();
+                        if (!wsPassesTextFilters(wsLower)) return;
+                        if (
+                            wsFilterValues &&
+                            wsFilterValues.size > 0 &&
+                            !wsFilterValues.has(wsStr)
+                        )
+                            return;
+
+                        totalByWS[wsStr] =
+                            (totalByWS[wsStr] || 0) + value;
+                    });
+
+                    labels = Object.keys(totalByWS);
+                    datasets = [
+                        {
+                            data: Object.values(totalByWS),
+                            backgroundColor: generateDistinctColors(
+                                labels.length
+                            ),
+                            borderWidth: 1,
+                        },
+                    ];
+
+                    if (periodLabelEl && latestLabel) {
+                        periodLabelEl.textContent = `Ngày: ${latestLabel}`;
+                    }
+                }
+
+                if (chartType === "funnel") {
+                    const latestLabel = getLatestPeriodLabel(currentData);
+                    const periodCol = periodColumnName;
+                    const wsNameCol = getCellNameColumn();
+
+                    const totalByWS = {};
+
+                    currentData.forEach((row) => {
+                        const wsName    = row[wsNameCol];
+                        const rawPeriod = row[periodCol];
+                        const rawVal    = row[valueCol];
+                        const scale     = getKpiScaleForColumn(valueCol);
+                        const numeric   = parseFloat(rawVal);
+
+                        if (!wsName || rawPeriod == null || isNaN(numeric)) return;
+
+                        const value = numeric * scale;
+                        const norm  = normalizePeriod(rawPeriod);
+                        if (!norm || norm.label !== latestLabel) return;
+
+                        const wsStr   = String(wsName);
+                        const wsLower = wsStr.toLowerCase();
+
+                        if (!wsPassesTextFilters(wsLower)) return;
+                        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr)) return;
+
+                        totalByWS[wsStr] = value;
+                    });
+
+                    // Sắp xếp theo funnelSortOrder (desc: lớn→nhỏ, asc: nhỏ→lớn)
+                    const order = funnelSortOrder === "asc" ? 1 : -1;
+                    const sorted = Object.entries(totalByWS)
+                        .sort((a, b) => order * (a[1] - b[1]));
+
+                    labels = sorted.map(([ws]) => ws);
+                    datasets = [
+                        {
+                            data: sorted.map(([, v]) => v),
+                            backgroundColor: generateDistinctColors(sorted.length),
+                            borderWidth: 1,
+                        }
+                    ];
+
+                    if (periodLabelEl && latestLabel) {
+                        periodLabelEl.textContent = `Ngày: ${latestLabel}`;
+                    }
+                }
+
+                let internalType = chartType;
+                if (chartType === 'stackedArea') {
+                    internalType = 'line';
+                }
+
+                if (chartType === 'funnel') {
+                    internalType = 'bar';
+                }
+
+                let chartDatasets = datasets;
+                if (chartType === 'stackedArea') {
+                    chartDatasets = datasets.map((ds, idx) => {
+                        let solidColor = ds.borderColor || '#667eea';
+
+                        return {
+                            ...ds,
+                            fill: true,
+                            backgroundColor: solidColor,
+                            borderWidth: 1,
+                            stack: 'stack_' + valueCol,
+                            borderColor: solidColor,
+                            pointRadius: 0,
+                            tension: 0.3
+                        };
+                    });
+                }
+
+                chartInstances[chartId] = new Chart(ctx, {
+                    type: internalType,
+                    data: {
+                        labels,
+                        datasets: chartDatasets,
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: "index",
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: chartType !== "funnel",   // funnel thì tắt legend
+                                position: "top",
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 12,
+                                    font: {
+                                        size: 11,
+                                    },
+                                },
+                            },
+                            tooltip: {
+                                backgroundColor:
+                                    "rgba(0, 0, 0, 0.85)",
+                                padding: 10,
+                                titleFont: {
+                                    size: 13,
+                                },
+                                bodyFont: {
+                                    size: 12,
+                                },
+                                callbacks: {
+                                    label: function (ctx) {
+                                        const chartTypeInternal =
+                                            ctx.chart.config.type;
+                                        const raw =
+                                            typeof ctx.parsed.y ===
+                                            "number"
+                                                ? ctx.parsed.y
+                                                : ctx.raw;
+                                        const value =
+                                            typeof raw === "number"
+                                                ? Math.round(
+                                                      raw * 1000
+                                                  ) / 1000
+                                                : raw;
+
+                                        if (
+                                            chartTypeInternal === "pie" ||
+                                            chartTypeInternal === "doughnut"
+                                        ) {
+                                            const dataArr =
+                                                ctx.dataset.data || [];
+                                            const total =
+                                                dataArr.reduce(
+                                                    (s, v) =>
+                                                        s +
+                                                        (typeof v ===
+                                                        "number"
+                                                            ? v
+                                                            : 0),
+                                                    0
+                                                );
+                                            const pct = total
+                                                ? Math.round(
+                                                      (value / total) *
+                                                          100000
+                                                  ) / 1000
+                                                : 0;
+                                            return `${ctx.label}: ${value} (${pct}%)`;
+                                        }
+
+                                        const label = ctx.dataset
+                                            .label
+                                            ? ctx.dataset.label + ": "
+                                            : "";
+                                        return label + value;
+                                    },
+                                },
+                            },
+                            datalabels: {
+                                display: function (ctx) {
+                                    const type =
+                                        ctx.chart.config.type;
+                                    return (
+                                        type === "pie" ||
+                                        type === "doughnut"
+                                    );
+                                },
+                                formatter: function (value, ctx) {
+                                    if (
+                                        typeof value !== "number" ||
+                                        isNaN(value)
+                                    )
+                                        return "";
+                                    const dataArr =
+                                        ctx.chart.data.datasets[
+                                            ctx.datasetIndex
+                                        ].data || [];
+                                    const total = dataArr.reduce(
+                                        (s, v) =>
+                                            s +
+                                            (typeof v === "number"
+                                                ? v
+                                                : 0),
+                                        0
+                                    );
+                                    if (!total) return "";
+                                    const pct =
+                                        Math.round(
+                                            (value / total) * 100000
+                                        ) / 1000;
+                                    return pct + "%";
+                                },
+                                color: "#ffffff",
+                                font: {
+                                    size: 10,
+                                    weight: "bold",
+                                },
+                                textStrokeColor: "#000",
+                                textStrokeWidth: 2,
+                                padding: 3,
+                                clamp: true,
+                                anchor: "center",
+                                align: "center",
+                            },
+                        },
+                        scales: {
+                            x: {
+                                // Hiện trục X cho line / bar / stackedArea / funnel
+                                display:
+                                    chartType === "line" ||
+                                    chartType === "bar" ||
+                                    chartType === "stackedArea" ||
+                                    chartType === "funnel",
+                                title: {
+                                    display:
+                                        chartType === "line" ||
+                                        chartType === "bar" ||
+                                        chartType === "stackedArea" ||
+                                        chartType === "funnel",
+                                    // ✅ Funnel: trục X là CELL_NAME, các chart khác: Period Time / Period Hour
+                                    text: getXAxisLabel(chartType),
+                                    font: {
+                                        size: 13,
+                                        weight: "bold",
+                                    },
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                },
+                            },
+                            y: {
+                                // Hiện trục Y cho line / bar / stackedArea / funnel
+                                display:
+                                    chartType === "line" ||
+                                    chartType === "bar" ||
+                                    chartType === "stackedArea" ||
+                                    chartType === "funnel",
+                                title: {
+                                    display:
+                                        chartType === "line" ||
+                                        chartType === "bar" ||
+                                        chartType === "stackedArea" ||
+                                        chartType === "funnel",
+                                    text: titleText,   // tên KPI, dùng chung
+                                    font: {
+                                        size: 13,
+                                        weight: "bold",
+                                    },
+                                },
+                                // Giữ behaviour cũ, chỉ bắt đầu từ 0 cho Funnel nếu anh muốn
+                                beginAtZero: chartType === "funnel" ? true : false,
+                                grace: "10%",
+                                stacked: chartType === "stackedArea"
+                            },
+                        },
+                    },
+                });
+            });
+
+            document
+                .querySelectorAll(".chart-type-select")
+                .forEach((sel) => {
+                    sel.onchange = () => {
+                        renderCharts();
+                    };
+                });
+
+            renderLatestKpiTable();
+            renderExcelStyleTable();
+        }
+
+        function buildExcelDateOptions() {
+            if (!currentData || !periodColumnName) return;
+
+            const input = document.getElementById("excelDateInput");
+            if (!input) return;
+
+            const periodCol = periodColumnName;
+            const labelMap = new Map();
+
+            currentData.forEach((row) => {
+                const rawPeriod = row[periodCol];
+                if (rawPeriod === undefined || rawPeriod === null) return;
+                const norm = normalizePeriod(rawPeriod);
+                if (!norm || !norm.label) return;
+
+                if (
+                    !labelMap.has(norm.label) ||
+                    norm.sortValue > labelMap.get(norm.label)
+                ) {
+                    labelMap.set(norm.label, norm.sortValue);
+                }
+            });
+
+            const labels = Array.from(labelMap.entries())
+                .sort((a, b) => a[1] - b[1])
+                .map(([label]) => label);
+
+            if (!labels.length) {
+                input.value = "";
+                excelSelectedDate = null;
+                return;
+            }
+
+            const latestLabel = labels[labels.length - 1];
+
+            excelSelectedDate = latestLabel;
+            input.value = latestLabel;
+
+            const latestBtn = document.getElementById("excelLatestBtn");
+            if (latestBtn) {
+                latestBtn.onclick = function () {
+                    excelSelectedDate = latestLabel;
+                    input.value = latestLabel;
+                    renderExcelStyleTable();
+                };
+            }
+
+            input.onchange = function () {
+                excelSelectedDate = this.value || null;
+                renderExcelStyleTable();
+            };
+        }
+
+        function renderExcelStyleTable() {
+            if (!currentData || numericColumns.length === 0) return;
+
+            const tableCard = document.getElementById("excelTableCard");
+            const tableDiv  = document.getElementById("excelTable");
+            const titleEl   = document.getElementById("excelTableTitle");
+            if (!tableCard || !tableDiv || !titleEl) return;
+
+            let targetLabel = excelSelectedDate || getLatestPeriodLabel(currentData);
+            if (!targetLabel) {
+                tableCard.style.display = "none";
+                return;
+            }
+
+            const activeKpiCols = numericColumns.filter(col => selectedKpiColumns.has(col));
+
+            if (!activeKpiCols.length) {
+                titleEl.textContent = `KPI Overview (Ngày: ${targetLabel}) – không có KPI nào được chọn`;
+                tableDiv.innerHTML  = "";
+                tableCard.style.display = "block";
+                return;
+            }
+
+            const periodCol = periodColumnName;
+            const wsNameCol = getCellNameColumn();   // 👉 KPI Overview lấy đúng CELL_NAME
+            const sheetName =
+                document.getElementById("sheetSelect")?.value || "";
+
+            const wsSet = new Set();
+
+            currentData.forEach((row) => {
+                const wsName    = row[wsNameCol];
+                const rawPeriod = row[periodCol];
+                if (!wsName || rawPeriod === undefined || rawPeriod === null)
+                    return;
+
+                const norm = normalizePeriod(rawPeriod);
+                if (!norm || norm.label !== targetLabel) return;
+
+                const wsStr   = String(wsName);
+                const wsLower = wsStr.toLowerCase();
+
+                if (!wsPassesTextFilters(wsLower)) return;
+                if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr))
+                    return;
+
+                wsSet.add(wsStr);
+            });
+
+            const wsList = Array.from(wsSet).sort();
+
+            if (wsList.length === 0) {
+                titleEl.textContent = `KPI Overview (Ngày: ${targetLabel}) – không có dữ liệu khớp bộ lọc`;
+                tableDiv.innerHTML  = "";
+                tableCard.style.display = "block";
+                return;
+            }
+
+            const wsSetForLookup = new Set(wsList);
+            const valueByKpiWs = {};
+
+            currentData.forEach((row) => {
+                const wsName    = row[wsNameCol];
+                const rawPeriod = row[periodCol];
+                if (!wsName || rawPeriod === undefined || rawPeriod === null)
+                    return;
+
+                const norm = normalizePeriod(rawPeriod);
+                if (!norm || norm.label !== targetLabel) return;
+
+                const wsStr = String(wsName);
+                if (!wsSetForLookup.has(wsStr)) return;
+
+                activeKpiCols.forEach((kpiCol) => {
+                    const rawVal = row[kpiCol];
+                    const num    = parseFloat(rawVal);
+                    if (isNaN(num)) return;
+
+                    const scale  = getKpiScaleForColumn(kpiCol);
+                    const scaled = num * scale;
+
+                    if (!valueByKpiWs[kpiCol]) valueByKpiWs[kpiCol] = {};
+                    valueByKpiWs[kpiCol][wsStr] = scaled;
+                });
+            });
+
+            titleEl.textContent = `KPI Overview (Ngày: ${targetLabel})`;
+
+            const colSpan = 3 + wsList.length;
+            let html = `<table>
+                <thead>
+                    <tr>
+                        <th colspan="${colSpan}" style="background:#1f2937; color:#fff; padding:6px 8px; text-align:center; font-weight:700;">
+                            ${sheetName || "KPI Daily Report"}
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="${colSpan}" style="background:#fde68a; color:#111827; padding:4px 8px; text-align:right; font-weight:600;">
+                            Ngày: ${targetLabel}
+                        </th>
+                    </tr>
+                    <tr>
+                        <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1; white-space:nowrap;">KPI Name</th>
+                        <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1;">KPI ID</th>
+                        <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1;">Unit</th>`;
+
+            wsList.forEach((ws) => {
+                html += `<th style="background:#9bbb59; color:#111827; padding:6px 8px; border:1px solid #cbd5e1; text-align:center;">${ws}</th>`;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            activeKpiCols.forEach((kpiCol) => {
+                const rowValues = valueByKpiWs[kpiCol] || {};
+                const meta      = findKpiMetaForColumn(kpiCol) || {};
+                const kpiId     = meta.id   || "";
+                const unitLabel = getDisplayUnit(meta);
+                const kpiName   = meta.name || kpiCol;
+
+                html += `<tr>
+                    <td style="padding:6px 16px; border:1px solid #e5e7eb; background:#d9e1f2; font-weight:600; white-space:nowrap;">${kpiName}</td>
+                    <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${kpiId}</td>
+                    <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${unitLabel}</td>`;
+
+                wsList.forEach((ws) => {
+                    const v = rowValues[ws];
+                    let display = "";
+                    if (typeof v === "number" && !isNaN(v)) {
+                        display = Math.round(v * 1000) / 1000;
+                    }
+                    html += `<td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center;">${display}</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+
+            tableDiv.innerHTML = `<div style="min-width:100%; overflow-x:auto;">${html}</div>`;
+            tableCard.style.display = "block";
+
+            applyStickyKpiColumns();
+        }
+
+        function applyStickyKpiColumns() {
+            const wrapper = document.getElementById('excelTable');
+            if (!wrapper) return;
+
+            const table = wrapper.querySelector('table');
+            if (!table || !table.tHead) return;
+
+            requestAnimationFrame(() => {
+                const headerRows = Array.from(table.tHead.rows);
+                if (!headerRows.length) return;
+
+                const headerRow = headerRows[headerRows.length - 1];
+                const stickyCount = 3;
+
+                const tableRect = table.getBoundingClientRect();
+                const colLeft = [];
+
+                for (let i = 0; i < stickyCount; i++) {
+                    const cell = headerRow.cells[i];
+                    if (!cell) continue;
+                    const rect = cell.getBoundingClientRect();
+                    colLeft[i] = rect.left - tableRect.left;
+                }
+
+                const oldSticky = table.querySelectorAll('.sticky-col');
+                oldSticky.forEach(c => {
+                    c.classList.remove('sticky-col');
+                    c.style.left = '';
+                    c.style.position = '';
+                });
+
+                const rows = Array.from(table.rows);
+                rows.forEach(row => {
+                    for (let i = 0; i < stickyCount; i++) {
+                        const cell = row.cells[i];
+                        if (!cell) continue;
+
+                        cell.classList.add('sticky-col');
+                        cell.style.position = 'sticky';
+                        cell.style.left = (colLeft[i] || 0) + 'px';
+
+                        if (!cell.style.backgroundColor) {
+                            if (row.parentNode.tagName === 'THEAD') {
+                                cell.style.backgroundColor = '#203864';
+                                cell.style.color = '#fff';
+                            } else {
+                                cell.style.backgroundColor = '#d9e1f2';
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        function renderWorstCellTable() {
+            const worstCard    = document.getElementById("worstCellCard");
+            const worstTableEl = document.getElementById("worstCellTable");
+            const worstTitleEl = document.getElementById("worstCellTitle");
+
+            const nonCard      = document.getElementById("nonTrafficCard");
+            const nonTableEl   = document.getElementById("nonTrafficTable");
+            const nonTitleEl   = document.getElementById("nonTrafficTitle");
+
+            if (!worstCard || !worstTableEl || !worstTitleEl) return;
+
+            let rows = null;
+
+            if (typeof mergedDataPerSheet !== "undefined" &&
+                mergedDataPerSheet &&
+                mergedDataPerSheet["WorstCell"]) {
+                rows = mergedDataPerSheet["WorstCell"];
+            }
+            else if (workbook && workbook.Sheets["WorstCell"]) {
+                const sheet = workbook.Sheets["WorstCell"];
+                rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+            }
+
+            if (!rows || !rows.length) {
+                worstCard.style.display = "none";
+                if (nonCard) nonCard.style.display = "none";
+                return;
+            }
+
+            const columns = Object.keys(rows[0]);
+
+// Loại bỏ các cột rác Excel tự sinh (_EMPTY, __EMPTY, __EMPTY_1, ...)
+const ignorePatterns = ["_empty", "__empty"];
+const cleanColumns = columns.filter(col => {
+    const lower = String(col).toLowerCase();
+    return !ignorePatterns.some(p => lower.includes(p));
+});
+
+            let periodCol = null;
+            for (const col of columns) {
+                const lower = String(col).toLowerCase();
+                if (
+                    lower.includes("period") ||
+                    lower.includes("time") ||
+                    lower.includes("date")
+                ) {
+                    periodCol = col;
+                    break;
+                }
+            }
+
+let nrbtsCol  = null;
+let nrCellCol = null;
+let availCol  = null;
+let macDlCol  = null; // MAC SDU data vol trans DL DTCH
+let macUlCol  = null; // MAC SDU data vol rcvd UL DTCH
+
+cleanColumns.forEach(col => {
+    const lower = String(col).toLowerCase();
+
+    if (!nrbtsCol && lower.includes("nrbts")) nrbtsCol = col;
+    if (!nrCellCol && (lower.includes("nrcel") || lower.includes("nrcell")))
+        nrCellCol = col;
+    if (!availCol && lower.includes("cell avail")) availCol = col;
+
+    if (!macDlCol && lower.startsWith("mac sdu data vol trans dl dtch")) {
+        macDlCol = col;
+    }
+    if (!macUlCol && lower.startsWith("mac sdu data vol rcvd ul dtch")) {
+        macUlCol = col;
+    }
+});
+
+
+            const highlightedKeys = new Set();
+
+            if (workbook && workbook.Sheets && workbook.Sheets["WorstCell"]) {
+                const sheet = workbook.Sheets["WorstCell"];
+                const ref = sheet["!ref"];
+                if (ref) {
+                    const range = XLSX.utils.decode_range(ref);
+                    const headerRow = range.s.r;
+
+                    let nrbtsIdx = null;
+                    let nrCellIdx = null;
+
+                    for (let C = range.s.c; C <= range.e.c; C++) {
+                        const addr = XLSX.utils.encode_cell({ r: headerRow, c: C });
+                        const cell = sheet[addr];
+                        if (!cell || cell.v == null) continue;
+                        const headerText = String(cell.v).trim();
+                        if (headerText === nrbtsCol)  nrbtsIdx = C;
+                        if (headerText === nrCellCol) nrCellIdx = C;
+                    }
+
+                    for (let R = headerRow + 1; R <= range.e.r; R++) {
+                        let hasColor = false;
+
+                        for (let C = range.s.c; C <= range.e.c; C++) {
+                            const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                            const cell = sheet[addr];
+                            if (!cell || !cell.s || !cell.s.fill) continue;
+
+                            const fill = cell.s.fill;
+                            const fg = fill.fgColor || {};
+                            const bg = fill.bgColor || {};
+
+                            const hasFg =
+                                (fg.rgb && fg.rgb !== "00000000" && fg.rgb !== "FFFFFFFF") ||
+                                fg.theme != null ||
+                                fg.indexed != null;
+                            const hasBg =
+                                (bg.rgb && bg.rgb !== "00000000" && bg.rgb !== "FFFFFFFF") ||
+                                bg.theme != null ||
+                                bg.indexed != null;
+
+                            if (hasFg || hasBg) {
+                                hasColor = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasColor) continue;
+
+                        const nrbtsVal = (nrbtsIdx != null
+                            ? (sheet[XLSX.utils.encode_cell({ r: R, c: nrbtsIdx })] || {}).v
+                            : "") || "";
+                        const nrcelVal = (nrCellIdx != null
+                            ? (sheet[XLSX.utils.encode_cell({ r: R, c: nrCellIdx })] || {}).v
+                            : "") || "";
+
+                        const key = `${String(nrbtsVal).trim()}||${String(nrcelVal).trim()}`;
+                        highlightedKeys.add(key);
+                    }
+                }
+            }
+
+            function makeRowKey(row) {
+                const nrbtsVal = nrbtsCol ? (row[nrbtsCol] || "") : "";
+                const nrcelVal = nrCellCol ? (row[nrCellCol] || "") : "";
+                return `${String(nrbtsVal).trim()}||${String(nrcelVal).trim()}`;
+            }
+
+            function isNumericLike(v) {
+                if (v === null || v === undefined) return false;
+                const s = String(v).trim().replace(/\s+/g, "");
+                return /^-?\d+(\.\d+)?$/.test(s);
+            }
+
+            function formatNumberSmart(v) {
+                const num = parseFloat(String(v).trim().replace(/\s+/g, ""));
+                if (isNaN(num)) return v ?? "";
+                const rounded = Math.round(num * 1000) / 1000;
+                return Number.isInteger(rounded)
+                    ? String(rounded)
+                    : rounded.toFixed(3);
+            }
+
+            let latestLabel = null;
+            let latestSort  = -Infinity;
+
+            if (periodCol) {
+                rows.forEach(r => {
+                    const raw = r[periodCol];
+                    if (!raw) return;
+                    const norm = normalizePeriod(raw);
+                    if (!norm) return;
+                    if (norm.sortValue > latestSort) {
+                        latestSort  = norm.sortValue;
+                        latestLabel = norm.label;
+                    }
+                });
+            }
+
+            let latestRows = rows;
+            if (periodCol && latestLabel) {
+                latestRows = rows.filter(r => {
+                    const raw = r[periodCol];
+                    if (!raw) return false;
+                    const norm = normalizePeriod(raw);
+                    return norm && norm.label === latestLabel;
+                });
+            }
+
+            if (!latestRows.length) {
+                worstCard.style.display = "none";
+                if (nonCard) nonCard.style.display = "none";
+                return;
+            }
+
+const trafficRows    = [];
+const nonTrafficRows = [];
+
+// check MAC SDU = 0
+function isZeroMac(val) {
+    if (val === null || val === undefined || val === "") return false;
+    const num = parseFloat(String(val).replace(/\s+/g, "").replace(",", "."));
+    return !Number.isNaN(num) && num === 0;
+}
+
+latestRows.forEach(row => {
+    const avail = availCol ? row[availCol] : null;
+
+    // 1️⃣ Cell avail = 0 -> Non-Traffic
+    if (availCol && Number(avail) === 0) {
+        nonTrafficRows.push(row);
+        return;
+    }
+
+    // 2️⃣ 2 KPI MAC SDU DL/UL = 0 -> Non-Traffic
+    let moveByMac = false;
+    if (macDlCol || macUlCol) {
+        const dlVal = macDlCol ? row[macDlCol] : null;
+        const ulVal = macUlCol ? row[macUlCol] : null;
+
+        if (macDlCol && macUlCol) {
+            // cả DL & UL = 0
+            if (isZeroMac(dlVal) && isZeroMac(ulVal)) moveByMac = true;
+        } else if (macDlCol) {
+            if (isZeroMac(dlVal)) moveByMac = true;
+        } else if (macUlCol) {
+            if (isZeroMac(ulVal)) moveByMac = true;
+        }
+    }
+
+    if (moveByMac) {
+        nonTrafficRows.push(row);
+        return;
+    }
+
+const hasData = cleanColumns.some(col => {
+    if (col === periodCol || col === nrbtsCol || col === nrCellCol || col === availCol) return false;
+    const v = row[col];
+    return v !== null && v !== "" && !Number.isNaN(parseFloat(v));
+});
+
+    if (!hasData) nonTrafficRows.push(row);
+    else trafficRows.push(row);
+});
+
+// Remove duplicate theo NRBTS + NRCEL
+function deduplicateRows(rowsArr) {
+    const seen = new Set();
+    const result = [];
+    rowsArr.forEach(row => {
+        const key = makeRowKey(row); // đã định nghĩa ở trên
+        if (!key) {
+            result.push(row);
+            return;
+        }
+        if (seen.has(key)) return;
+        seen.add(key);
+        result.push(row);
+    });
+    return result;
+}
+
+const trafficRowsDedup    = deduplicateRows(trafficRows);
+const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
+
+function toNumber(val) {
+    if (val === null || val === undefined) return null;
+    const num = parseFloat(String(val).replace(/\s+/g, ""));
+    return isNaN(num) ? null : num;
+}
+
+            function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
+                if (!rowsArr.length) {
+                    titleEl.textContent = baseTitle + " (không có dữ liệu)";
+                    tableEl.innerHTML = "";
+                    return;
+                }
+
+const otherCols = cleanColumns.filter(col => {
+    const lower = String(col).toLowerCase();
+    if (col === periodCol) return false;
+    if (col === nrbtsCol) return false;
+    if (col === nrCellCol) return false;
+    if (col === availCol)  return false;
+    if (lower.includes("mrbts")) return false;
+    return true;
+});
+
+
+                const orderedCols = ["__PO", "__province"];
+                if (nrbtsCol)  orderedCols.push(nrbtsCol);
+                if (nrCellCol) orderedCols.push(nrCellCol);
+                if (availCol)  orderedCols.push(availCol);
+                orderedCols.push(...otherCols);
+
+                const kpiAccessName = "NSA call access";
+                const kpiDropName   = "NSA Active ERAB drop UserR";
+                const kpiAvailName  = "Cell avail R";
+                const kpiSnChangeName = "SN Init Change Intra-freq SR src gNB";
+
+                function findColKeyByName(displayName) {
+                    const target = displayName.toLowerCase();
+                    return orderedCols.find(colKey =>
+                        colKey !== "__province" &&
+                        String(colKey).toLowerCase() === target
+                    );
+                }
+
+                const kpiAccessColKey = findColKeyByName(kpiAccessName);
+                const kpiDropColKey   = findColKeyByName(kpiDropName);
+                const kpiAvailColKey  = findColKeyByName(kpiAvailName);
+                const kpiSnChangeColKey = findColKeyByName(kpiSnChangeName);
+
+                const sortedRows = [...rowsArr].sort((a, b) => {
+                    const aCell = nrCellCol ? String(a[nrCellCol] ?? "") : "";
+                    const bCell = nrCellCol ? String(b[nrCellCol] ?? "") : "";
+                    const provA = aCell.slice(-3);
+                    const provB = bCell.slice(-3);
+                    return provA.localeCompare(provB);
+                });
+
+                let html = "<table><thead><tr>";
+                orderedCols.forEach((colKey, idx) => {
+                    const isFirst4 = idx < 4;
+
+                    let title = colKey;
+
+                    if (colKey === "__PO")        title = "PO";
+                    if (colKey === "__province")  title = "Province";
+
+                    const thStyle =
+                        "background:#203864; color:#fff; padding:6px 8px; " +
+                        "border:1px solid #cbd5e1; text-align:center;" +
+                        (isFirst4 ? "white-space:nowrap;" : "");
+                    html += `<th style="${thStyle}">${title}</th>`;
+                });
+                html += "</tr></thead><tbody>";
+
+                sortedRows.forEach(row => {
+                    const rowKey = makeRowKey(row);
+                    const isHighlighted = highlightedKeys.has(rowKey);
+                    const trStyle = isHighlighted ? ' style="background:#fef3c7;"' : "";
+
+                    html += `<tr${trStyle}>`;
+
+                    orderedCols.forEach((colKey, idx) => {
+                        const isFirst4 = idx < 4;
+                        let value;
+
+                        if (colKey === "__province") {
+                            const cellVal = nrCellCol ? row[nrCellCol] : "";
+                            const str = cellVal == null ? "" : String(cellVal).trim();
+                            value = str.length >= 3 ? str.slice(-3) : str;
+                        } else if (colKey === "__PO") {
+                            // PO lấy từ file Tiến độ đo kiểm (CQT-SSV) theo NRBTS name
+                            const siteName = nrbtsCol ? row[nrbtsCol] : "";
+                            value = getPoFromProgress(siteName);
+                        } else {
+                            value = row[colKey];
+                        }
+
+                        let display = value == null ? "" : value;
+
+                        if (idx >= 4 && isNumericLike(display)) {
+                            display = formatNumberSmart(display);
+                        }
+
+                        let condStyle = "";
+
+                        if (kpiAccessColKey && colKey === kpiAccessColKey) {
+                            const num = toNumber(value);
+                            if (num !== null && num < 95) {
+                                condStyle =
+                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                            }
+                        }
+
+                        if (kpiDropColKey && colKey === kpiDropColKey) {
+                            const num = toNumber(value);
+                            if (num !== null && num > 3) {
+                                condStyle =
+                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                            }
+                        }
+
+                        if (kpiAvailColKey && colKey === kpiAvailColKey) {
+                            const num = toNumber(value);
+                            if (num !== null && num === 0) {
+                                condStyle =
+                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                            }
+                        }
+
+                        if (kpiSnChangeColKey && colKey === kpiSnChangeColKey) {
+                            const num = toNumber(value);
+                            if (num !== null && num < 70) {
+                                condStyle =
+                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                            }
+                        }
+
+                        const baseCell =
+                            "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+                        const extraCell = isFirst4
+                            ? " background:#d9e1f2; font-weight:600; white-space:nowrap; text-align:left;"
+                            : "";
+
+                        const finalStyle = baseCell + extraCell + condStyle;
+
+                        html += `<td style="${finalStyle}">${display}</td>`;
+                    });
+
+                    html += "</tr>";
+                });
+
+                html += "</tbody></table>";
+                tableEl.innerHTML = html;
+                titleEl.textContent = baseTitle;
+            }
+
+const worstTitleText = latestLabel ? `Worst Cell (${latestLabel})` : "Worst Cell";
+worstCard.style.display = "block";
+buildTable(trafficRowsDedup, worstTitleEl, worstTableEl, worstTitleText);
+
+if (nonCard && nonTableEl && nonTitleEl) {
+    if (nonTrafficRowsDedup.length) {
+        nonCard.style.display = "block";
+        const nonTitleText = "Cell Non-Traffic";
+        buildTable(nonTrafficRowsDedup, nonTitleEl, nonTableEl, nonTitleText);
+    } else {
+        nonCard.style.display = "none";
+    }
+}
+
+        }
+
+        function renderLatestKpiTable() {
+            if (!currentData || numericColumns.length === 0) return;
+
+            const tableCard = document.getElementById("latestTableCard");
+            const tableDiv  = document.getElementById("latestTable");
+            const titleEl   = document.getElementById("latestTableTitle");
+            if (!tableCard || !tableDiv || !titleEl) return;
+
+            const latestLabel = getLatestPeriodLabel(currentData);
+            if (!latestLabel) {
+                tableCard.style.display = "none";
+                return;
+            }
+
+            const activeKpiCols = numericColumns.filter(col => selectedKpiColumns.has(col));
+
+            if (!activeKpiCols.length) {
+                titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có KPI nào được chọn`;
+                tableDiv.innerHTML  = "";
+                tableCard.style.display = "block";
+                return;
+            }
+
+            const periodCol = periodColumnName;
+            const wsNameCol = getCellNameColumn();   // 👉 Bảng “KPI thời điểm gần nhất” cũng theo CELL_NAME
+
+            const byWs = {};
+
+            currentData.forEach((row) => {
+                const wsName    = row[wsNameCol];
+                const rawPeriod = row[periodCol];
+                if (!wsName || rawPeriod === undefined || rawPeriod === null) return;
+
+                const norm = normalizePeriod(rawPeriod);
+                if (!norm || norm.label !== latestLabel) return;
+
+                const wsStr   = String(wsName);
+                const wsLower = wsStr.toLowerCase();
+
+                if (!wsPassesTextFilters(wsLower)) return;
+                if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr))
+                    return;
+
+                if (!byWs[wsStr]) byWs[wsStr] = {};
+
+                activeKpiCols.forEach((col) => {
+                    const v   = row[col];
+                    const num = parseFloat(v);
+                    if (!isNaN(num)) {
+                        const scale = getKpiScaleForColumn(col);
+                        byWs[wsStr][col] = num * scale;
+                    }
+                });
+            });
+
+            const wsList = Object.keys(byWs).sort();
+            if (wsList.length === 0) {
+                titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có dữ liệu khớp bộ lọc`;
+                tableDiv.innerHTML  = "";
+                tableCard.style.display = "block";
+                return;
+            }
+
+            titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
+
+            let html = "<table><thead><tr>";
+            html += '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">WS_NAME / CELL_NAME</th>';
+            activeKpiCols.forEach((col) => {
+                html += `<th style="background:#4b5563; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">${col}</th>`;
+            });
+            html += "</tr></thead><tbody>";
+
+            wsList.forEach((ws) => {
+                html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">${ws}</td>`;
+                activeKpiCols.forEach((col) => {
+                    const v = byWs[ws][col];
+                    let display = "";
+                    if (typeof v === "number" && !isNaN(v)) {
+                        display = Math.round(v * 1000) / 1000;
+                    }
+                    html += `<td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center;">${display}</td>`;
+                });
+                html += "</tr>";
+            });
+
+            html += "</tbody></table>";
+
+            tableDiv.innerHTML = html;
+            tableCard.style.display = "block";
+        }
+
+        async function handleEmailSubmit(e) {
+            e.preventDefault();
+
+            const to = document.getElementById("emailTo").value.trim();
+            const subject = document
+                .getElementById("emailSubject")
+                .value.trim();
+            const message = document
+                .getElementById("emailMessage")
+                .value.trim();
+            const statusEl = document.getElementById("emailStatus");
+            const submitBtn = e.target.querySelector(
+                'button[type="submit"]'
+            );
+
+            statusEl.textContent = "⏳ Đang gửi email...";
+            statusEl.className = "email-status";
+            submitBtn.disabled = true;
+
+            try {
+                const res = await fetch("/api/send-mail", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ to, subject, message }),
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || "Gửi mail thất bại");
+                }
+
+                statusEl.textContent = "✅ Gửi email thành công!";
+                statusEl.className = "email-status success";
+            } catch (err) {
+                statusEl.textContent = "❌ Lỗi: " + err.message;
+                statusEl.className = "email-status error";
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        const emailForm = document.getElementById("emailForm");
+        if (emailForm) {
+            emailForm.addEventListener("submit", handleEmailSubmit);
+        }
+        const exportEmlChartsBtn = document.getElementById("exportEmlChartsBtn");
+        
+        if (exportEmlChartsBtn) {
+            exportEmlChartsBtn.addEventListener(
+                "click",
+                handleExportEmlWithCharts
+            );
+        }
+
+                // ====== DEFAULT SUBJECT & EMAIL LIST ======
+        const DEFAULT_EMAIL_SUBJECT =
+            "[NET_ ____] Báo cáo KPI D/a NSN ___ khu vực Miền Nam";
+
+        const DEFAULT_EMAIL_TO = "huylt@vnpt-technology.vn";
+
+        // Gán default cho Danh sách email nếu đang trống
+        const emailToEl = document.getElementById("emailTo");
+        if (emailToEl && !emailToEl.value.trim()) {
+            emailToEl.value = DEFAULT_EMAIL_TO;
+        }
+
+        // Gán default cho Tiêu đề email nếu đang trống
+        const emailSubjectEl = document.getElementById("emailSubject");
+        if (emailSubjectEl && !emailSubjectEl.value.trim()) {
+            emailSubjectEl.value = DEFAULT_EMAIL_SUBJECT;
+        }
+
+        // Đánh dấu khi user tự chỉnh sửa nội dung mở đầu email
+        const emailMessageEl = document.getElementById("emailMessage");
+        if (emailMessageEl) {
+            emailMessageEl.addEventListener("input", () => {
+                emailIntroTouched = true;
+            });
+        }
+
+
+// Tự động fill nội dung email: chỉ load template (có placeholder), KHÔNG thay bằng số liệu
+function fillDefaultEmailText() {
+    const textarea = document.getElementById("emailMessage");
+    if (!textarea) return;
+
+    // Nếu user đã gõ sửa trong phiên này thì không đè nữa
+    if (emailIntroTouched) return;
+
+    // 1. Lấy template từ localStorage (nếu có)
+    let template = "";
+    try {
+        const saved = localStorage.getItem("emailConfig");
+        if (saved) {
+            const cfg = JSON.parse(saved);
+            template = (cfg && cfg.message) || "";
+        }
+    } catch (e) {
+        template = "";
+    }
+
+    // 2. Nếu chưa có gì lưu thì dùng template mặc định CÓ placeholder
+    if (!template.trim()) {
+        template = [
+            "Kính gửi các Anh/Chị,",
+            "",
+            "- Nokia/VNPT Technology báo cáo KPI cho các trạm dự án 5G Phase 02 (POx) khu vực Miền Nam (cập nhật đến hết ngày (ngày gần nhất)).",
+            "- (POx) đã hoàn thành phát sóng được (Số trạm onair)/(Tổng số trạm POx) trạm.",
+            "- Kế hoạch tiếp theo: Xử lý KPI kém, duy trì ổn định và cải thiện KPI."
+        ].join("\n");
+    }
+
+    // 3. Chỉ set template vào textbox, giữ nguyên placeholder
+    textarea.value = template;
+}
+
+// ==== ÁP CẤU HÌNH BIỂU ĐỒ TỪ LẦN TRƯỚC ====
+
+// Đọc config (nếu có) một lần
+let savedChartConfig = null;
+try {
+    const rawCfg = localStorage.getItem("chartConfig");
+    savedChartConfig = rawCfg ? JSON.parse(rawCfg) : null;
+} catch (e) {
+    savedChartConfig = null;
+}
+
+const chartsPerRowSelect = document.getElementById("chartsPerRowSelect");
+if (chartsPerRowSelect) {
+    // set theo config cũ nếu có
+    if (savedChartConfig && savedChartConfig.chartsPerRow) {
+        chartsPerRowSelect.value = savedChartConfig.chartsPerRow;
+    }
+
+    chartsPerRowSelect.addEventListener("change", () => {
+        applyChartsPerRow();
+        saveChartConfig();
+    });
+
+    // áp layout ngay
+    applyChartsPerRow();
+}
+
+const daysWindowSelect = document.getElementById("daysWindowSelect");
+if (daysWindowSelect) {
+    function applyDaysWindowFromSelect() {
+        const raw = daysWindowSelect.value;
+
+        if (raw === "ALL") {
+            // Toàn bộ: không cắt bớt labels theo số ngày
+            chartDaysWindow = null;
+        } else {
+            const v = parseInt(raw, 10);
+            chartDaysWindow = isNaN(v) ? 14 : v; // fallback 14 ngày nếu lỗi
+        }
+
+        renderCharts();
+        saveChartConfig();
+    }
+
+    // set theo config cũ nếu có
+    if (savedChartConfig && savedChartConfig.daysWindow) {
+        daysWindowSelect.value = savedChartConfig.daysWindow;
+    }
+
+    // áp lần đầu
+    applyDaysWindowFromSelect();
+
+    // cập nhật khi user đổi combobox
+    daysWindowSelect.addEventListener("change", applyDaysWindowFromSelect);
+}
+
+window.addEventListener("resize", () => {
+    applyStickyKpiColumns();
+});
+
+const funnelSortSelect = document.getElementById("funnelSortSelect");
+if (funnelSortSelect) {
+    // set theo config cũ nếu có
+    if (savedChartConfig && savedChartConfig.funnelSort) {
+        funnelSortSelect.value = savedChartConfig.funnelSort;
+        funnelSortOrder = savedChartConfig.funnelSort || "desc";
+    }
+
+    funnelSortSelect.addEventListener("change", function () {
+        funnelSortOrder = this.value || "desc";   // "asc" hoặc "desc"
+        renderCharts();                           // vẽ lại tất cả chart
+        saveChartConfig();
+    });
+}
+
+        // ====== TẠO FILE OUTLOOK (.MSG) TỪ CÁC SECTION ĐANG CHỌN ======
+
+        function escapeHtml(str) {
+            return String(str || "").replace(/[&<>"']/g, function (ch) {
+                switch (ch) {
+                    case "&":
+                        return "&amp;";
+                    case "<":
+                        return "&lt;";
+                    case ">":
+                        return "&gt;";
+                    case '"':
+                        return "&quot;";
+                    case "'":
+                        return "&#39;";
+                    default:
+                        return ch;
+                }
+            });
+        }
+
+        function getSelectedEmailSectionsHtml() {
+            const checkboxes = document.querySelectorAll(".email-section-checkbox:checked");
+            if (!checkboxes.length) return "";
+
+            const parts = [];
+
+            checkboxes.forEach((cb) => {
+                const key = cb.value;
+                let el = null;
+
+                if (key === "excel") {
+                    el = document.getElementById("excelTableCard");
+                } else if (key === "charts") {
+                    el = document.getElementById("chartsContainer");
+                } else if (key === "worst") {
+                    el = document.getElementById("worstCellCard");
+                } else if (key === "nonTraffic") {
+                    el = document.getElementById("nonTrafficCard");
+                } else if (key === "latest") {
+                    el = document.getElementById("latestTableCard");
+                }
+
+                if (el) {
+                    const style = window.getComputedStyle(el);
+                    if (style.display !== "none") {
+                        parts.push(el.outerHTML);
+                    }
+                }
+            });
+
+            if (!parts.length) return "";
+
+            return parts.join(
+                '\n<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />\n'
+            );
+        }
+
+        function exportOutlookMsg() {
+            const statusEl = document.getElementById("emailStatus");
+            if (statusEl) {
+                statusEl.textContent = "";
+                statusEl.className = "email-status";
+            }
+
+            const toInput = document.getElementById("emailTo");
+            const subjectInput = document.getElementById("emailSubject");
+            const messageInput = document.getElementById("emailMessage");
+
+            const to = (toInput?.value || "").replace(/\r?\n/g, " ").trim();
+            let subject = (subjectInput?.value || "").replace(/\r?\n/g, " ").trim();
+            if (!subject) subject = "KPI Report";
+
+            const messageText = messageInput?.value || "";
+            const messageHtml = escapeHtml(messageText).replace(/\r?\n/g, "<br>");
+
+            const sectionsHtml = getSelectedEmailSectionsHtml();
+
+            const bodyHtml =
+                "<!DOCTYPE html>" +
+                '<html><head><meta charset="UTF-8"></head><body ' +
+                'style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:13px;color:#111827;">' +
+                "<p>" +
+                messageHtml +
+                "</p>" +
+                (sectionsHtml
+                    ? '\n<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />\n' +
+                      sectionsHtml
+                    : "") +
+                "</body></html>";
+
+            // EML/MSG đơn giản theo chuẩn RFC822 – Outlook vẫn mở được
+            const headerLines = [];
+            if (to) {
+                headerLines.push("To: " + to);
+            }
+            headerLines.push("Subject: " + subject);
+            headerLines.push("MIME-Version: 1.0");
+            headerLines.push('Content-Type: text/html; charset="UTF-8"');
+
+            const emlContent = headerLines.join("\r\n") + "\r\n\r\n" + bodyHtml;
+
+            const blob = new Blob([emlContent], { type: "message/rfc822" });
+
+            const safeFileName =
+                (subject || "kpi_report").replace(/[^a-zA-Z0-9-_]+/g, "_").slice(0, 80) ||
+                "kpi_report";
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = safeFileName + ".eml"; // dùng đuôi .msg để mở thẳng bằng Outlook
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+            if (statusEl) {
+                statusEl.textContent =
+                    "✅ Đã tạo file Outlook (.msg). Hãy mở file này bằng Outlook để gửi.";
+                statusEl.classList.add("success");
+            }
+        }
+
+        // Gắn event cho nút xuất .msg sau khi DOM sẵn sàng
+        window.addEventListener("DOMContentLoaded", () => {
+            const exportBtn = document.getElementById("exportMsgBtn");
+            if (exportBtn) {
+                exportBtn.addEventListener("click", exportOutlookMsg);
+            }
+        });
+
+        function base64ToUint8Array(base64) {
+            const raw = atob(base64);
+            const arr = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+            return arr;
+        }
+
+        // ==== LẤY TOÀN BỘ CHART (CANVAS) → PNG (BASE64) + TIÊU ĐỀ ====
+
+        function buildEmlWithCharts(subject, messageHtml, charts) {
+            const boundary = "BOUNDARY_" + Date.now();
+
+            let eml = "";
+            eml += "Subject: " + subject + "\r\n";
+            eml += "MIME-Version: 1.0\r\n";
+            eml += `Content-Type: multipart/related; boundary="${boundary}"\r\n\r\n`;
+
+            // PHẦN 1 – HTML
+            eml += `--${boundary}\r\n`;
+            eml += "Content-Type: text/html; charset=UTF-8\r\n\r\n";
+
+            // HTML body có nhúng chart
+            let html = "<html><body>";
+            html += messageHtml + "<br><br>";
+
+            charts.forEach((c) => {
+                html += `<div><img src="cid:${c.id}" style="max-width:100%;"></div><br>`;
+            });
+
+            html += "</body></html>";
+
+            eml += html + "\r\n\r\n";
+
+            // PHẦN 2 – Embedded images
+            charts.forEach((c) => {
+                const imgBytes = base64ToUint8Array(c.base64);
+
+                eml += `--${boundary}\r\n`;
+                eml += "Content-Type: image/png\r\n";
+                eml += `Content-Transfer-Encoding: base64\r\n`;
+                eml += `Content-ID: <${c.id}>\r\n\r\n`;
+                eml += c.base64 + "\r\n\r\n";
+            });
+
+            eml += `--${boundary}--`;
+
+            return eml;
+        }
+
+        function exportEmailWithCharts() {
+            const subject = document.getElementById("emailSubject").value || "KPI Report";
+            const messageHtml = document.getElementById("emailMessage").value.replace(/\n/g, "<br>");
+
+            const charts = getAllChartPNGs();
+            console.log("Charts exported:", charts);
+
+            const emlContent = buildEmlWithCharts(subject, messageHtml, charts);
+
+            const blob = new Blob([emlContent], { type: "message/rfc822" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = subject.replace(/[^a-zA-Z0-9_-]/g, "_") + ".eml";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        // ==== HỖ TRỢ ESCAPE HTML ĐƠN GIẢN ====
+        function escapeHtml(str) {
+            return String(str || "").replace(/[&<>"']/g, function (ch) {
+                switch (ch) {
+                    case "&": return "&amp;";
+                    case "<": return "&lt;";
+                    case ">": return "&gt;";
+                    case '"': return "&quot;";
+                    case "'": return "&#39;";
+                    default: return ch;
+                }
+            });
+        }
+
+        // ==== SNAPSHOT CHART NGUYÊN CARD (HTML → PNG) ====
+        // ==== SNAPSHOT CHART NGUYÊN CARD (HTML → PNG, CÓ SẴN BORDER TRONG ẢNH) ====
+        async function getAllChartPNGs() {
+            const cards = document.querySelectorAll("#chartsContainer .chart-card");
+            const results = [];
+            let idx = 0;
+
+            for (const card of cards) {
+                const canvas = card.querySelector("canvas");
+                if (!canvas) continue;
+
+                // 1) Lấy các phần sẽ tạm ẩn / tạm đổi style
+                const headerRow = card.querySelector(".chart-header-row");
+                const typeWrapper = card.querySelector(".chart-type-select")
+                    ? card.querySelector(".chart-type-select").closest("div")
+                    : null;
+
+                const prevHeaderVis = headerRow ? headerRow.style.visibility : "";
+                const prevTypeVis   = typeWrapper ? typeWrapper.style.visibility : "";
+                const prevShadow    = card.style.boxShadow;
+                const prevOverflow  = card.style.overflow;
+                const prevBg        = card.style.backgroundColor;
+                const prevBorder    = card.style.border;
+                const prevRadius    = card.style.borderRadius;
+
+                // 2) Ẩn “Kiểu chart” (dropdown)
+                if (typeWrapper) typeWrapper.style.visibility = "hidden";
+                // nếu muốn ẩn luôn cả hàng header thì mở dòng bên dưới:
+                // if (headerRow) headerRow.style.visibility = "hidden";
+
+                // 3) Tắt bóng, nền xám; set nền trắng + THÊM BORDER 2PX ĐEN
+                card.style.boxShadow = "none";
+                card.style.overflow = "visible";
+                card.style.backgroundColor = "#ffffff";
+                card.style.border = "2px solid #000000";      // <<< border sẽ nằm TRONG ảnh
+                card.style.borderRadius = "12px";
+
+                // 4) Chụp card
+                const snap = await html2canvas(card, {
+                    scale: 1,                 // hoặc 1.2 nếu muốn nét hơn
+                    backgroundColor: "#ffffff"
+                });
+
+                const dataUrl = snap.toDataURL("image/png");
+                const base64  = dataUrl.split(",")[1];
+
+                // 5) Khôi phục lại style
+                if (typeWrapper) typeWrapper.style.visibility = prevTypeVis;
+                if (headerRow)   headerRow.style.visibility   = prevHeaderVis;
+                card.style.boxShadow       = prevShadow;
+                card.style.overflow        = prevOverflow;
+                card.style.backgroundColor = prevBg;
+                card.style.border          = prevBorder;
+                card.style.borderRadius    = prevRadius;
+
+                const h3 = card.querySelector("h3");
+                const title = h3 ? h3.textContent.trim() : "Chart " + (idx + 1);
+
+                results.push({
+                    cid: "chart" + idx,
+                    base64,
+                    title
+                });
+
+                idx++;
+            }
+
+            return results;
+        }
+
+        // ==== BUILD NỘI DUNG EML DẠNG multipart/related CÓ INLINE IMAGE ====
+        function buildEmlWithCharts(to, subject, bodyHtml, charts) {
+            const boundary = "BOUNDARY_" + Date.now();
+
+            let eml = "";
+            if (to) {
+                eml += "To: " + to + "\r\n";
+            }
+            eml += "Subject: " + subject + "\r\n";
+            eml += "MIME-Version: 1.0\r\n";
+            eml += `Content-Type: multipart/related; boundary="${boundary}"\r\n\r\n`;
+
+            // PHẦN 1 – HTML chính
+            eml += `--${boundary}\r\n`;
+            eml += 'Content-Type: text/html; charset="UTF-8"\r\n\r\n';
+            eml += bodyHtml + "\r\n\r\n";
+
+            // PHẦN 2 – Các ảnh PNG được encode base64
+            charts.forEach((c) => {
+                eml += `--${boundary}\r\n`;
+                eml += "Content-Type: image/png\r\n";
+                eml += "Content-Transfer-Encoding: base64\r\n";
+                eml += `Content-ID: <${c.cid}>\r\n\r\n`;
+                eml += c.base64 + "\r\n\r\n";
+            });
+
+            eml += `--${boundary}--`;
+
+            return eml;
+        }
+
+function getSectionHtmlByKey(key) {
+    let el = null;
+
+    if (key === "excel") {
+        el = document.getElementById("excelTableCard");
+    } else if (key === "progress") {
+        // card Tiến độ đo kiểm ở trên cùng
+        el = document.getElementById("progressCard");
+    } else if (key === "worst") {
+        el = document.getElementById("worstCellCard");
+    } else if (key === "nonTraffic") {
+        el = document.getElementById("nonTrafficCard");
+    } else if (key === "latest") {
+        el = document.getElementById("latestTableCard");
+    }
+
+    if (el) {
+        const style = window.getComputedStyle(el);
+        if (style.display !== "none") {
+            return el.outerHTML;
+        }
+    }
+    return "";
+}
+
+
+async function captureSectionCardAsPng(key) {
+    let target = null;
+    let titleText = "";
+
+    if (key === "excel") {
+        // ✅ CHỈ CHỤP CHÍNH XÁC THẺ <table> BÊN TRONG KPI OVERVIEW
+        const wrapper = document.getElementById("excelTable");
+        const tableEl = wrapper ? wrapper.querySelector("table") : null;
+
+        // nếu có table thì chụp table, không thì fallback về wrapper
+        target = tableEl || wrapper;
+
+        const t = document.getElementById("excelTableTitle");
+        titleText = t ? t.textContent.trim() : "KPI Overview";
+
+    } else if (key === "progress") {
+        // ✅ CHỈ CHỤP TABLE TIẾN ĐỘ ĐO KIỂM → BORDER ÔM SÁT BẢNG
+        const wrapper = document.getElementById("progressTable");
+        const tableEl = wrapper ? wrapper.querySelector("table") : null;
+
+        // nếu có table thì chụp table, không thì fallback về wrapper
+        target = tableEl || wrapper;
+
+        const t = document.querySelector("#progressCard h3");
+        titleText = t ? t.textContent.trim() : "Tiến Độ Đo Kiểm";
+
+    } else if (key === "worst") {
+        target = document.getElementById("worstCellTable");
+        const t = document.getElementById("worstCellTitle");
+        titleText = t ? t.textContent.trim() : "Worst Cell";
+
+    } else if (key === "nonTraffic") {
+        target = document.getElementById("nonTrafficTable");
+        const t = document.getElementById("nonTrafficTitle");
+        titleText = t ? t.textContent.trim() : "Cell Non-Traffic";
+
+    } else if (key === "latest") {
+        target = document.getElementById("latestTable");
+        const t = document.getElementById("latestTableTitle");
+        titleText = t ? t.textContent.trim() : "KPI thời điểm gần nhất";
+    }
+
+    if (!target) return null;
+
+    // Nếu bảng chưa render / không có kích thước thì bỏ qua
+    if (!target.offsetWidth || !target.offsetHeight) {
+        return null;
+    }
+
+    // Lưu style cũ
+    const prevBorder   = target.style.border;
+    const prevBg       = target.style.backgroundColor;
+    const prevRadius   = target.style.borderRadius;
+    const prevShadow   = target.style.boxShadow;
+    const prevOverflow = target.style.overflow;
+
+    // ✅ Border + nền trắng ngay trên chính cái TABLE → PNG ôm đúng bảng
+    target.style.border          = "2px solid #000000";
+    target.style.backgroundColor = "#ffffff";
+    target.style.borderRadius    = "12px";
+    target.style.boxShadow       = "none";
+    target.style.overflow        = "hidden";
+
+    const canvas = await html2canvas(target, {
+        scale: 1,
+        backgroundColor: "#ffffff",
+    });
+
+    // Khôi phục style cũ
+    target.style.border          = prevBorder;
+    target.style.backgroundColor = prevBg;
+    target.style.borderRadius    = prevRadius;
+    target.style.boxShadow       = prevShadow;
+    target.style.overflow        = prevOverflow;
+
+    const dataUrl = canvas.toDataURL("image/png");
+    const base64  = dataUrl.split(",")[1];
+    const cid     = "tbl_" + key;
+
+    return {
+        cid,
+        base64,
+        title: titleText || key,
+    };
+}
+
+        function buildEmailIntroBlock(messageHtml) {
+            // Bây giờ không tự chèn mẫu nữa,
+            // mà dùng đúng nội dung đã gõ trong textbox (đã escape + <br>)
+            return messageHtml || "";
+        }
+
+        // ==== XỬ LÝ KHI BẤM NÚT "Xuất Outlook (.eml) kèm chart" ====
+
+// cho cả TIÊU ĐỀ và NỘI DUNG, nhưng KHÔNG thay trong textbox.
+async function handleExportEmlWithCharts() {
+    const statusEl = document.getElementById("emailStatus");
+    if (statusEl) {
+        statusEl.textContent = "";
+        statusEl.className = "email-status";
+    }
+
+    const to = (document.getElementById("emailTo")?.value || "").trim();
+
+    // Tiêu đề gốc (có thể chứa placeholder)
+    const subjectRaw =
+        (document.getElementById("emailSubject")?.value || "").trim() ||
+        "KPI Report";
+
+    // ==== 1. Lấy template gốc trong textbox (vẫn còn placeholder) ====
+    const messageRaw = document.getElementById("emailMessage")?.value || "";
+
+    // ==== 2. Tính giá trị động cho placeholder ====
+    let latestStr = "";
+    let latestDateObj = null;
+    if (typeof getLatestDateFromCurrentData === "function") {
+        latestDateObj = getLatestDateFromCurrentData();
+        if (latestDateObj) {
+            latestStr = formatDateDDMMYYYY(latestDateObj);
+        }
+    }
+
+    const poFilterEl = document.getElementById("progressPOFilter");
+    const selectedPo = poFilterEl ? poFilterEl.value : "ALL";
+
+    let label = "";
+    let total = 0;
+    let onair = 0;
+
+    if (Array.isArray(progressFullData) && progressFullData.length) {
+        if (!selectedPo || selectedPo === "ALL") {
+            // Tất cả PO
+            label = "Dự án";
+            progressFullData.forEach((g) => {
+                total += g.total || 0;
+                onair += g.onair || 0;
+            });
+        } else {
+            // 1 PO cụ thể
+            const filtered = progressFullData.filter((g) => g.po === selectedPo);
+            if (filtered.length) {
+                label = selectedPo;
+                filtered.forEach((g) => {
+                    total += g.total || 0;
+                    onair += g.onair || 0;
+                });
+            }
+        }
+    }
+
+    const finalDate  = latestStr || "(ngày gần nhất)";
+    const finalLabel = (label || selectedPo || "").trim() || "(POx)";
+    const finalOnair = total > 0 ? String(onair) : "(Số trạm onair)";
+    const finalTotal = total > 0 ? String(total) : "(Tổng số trạm POx)";
+
+    // ==== 3a. Thay placeholder cho TIÊU ĐỀ (chỉ khi xuất .eml) ====
+    let subjectProcessed = subjectRaw
+        .replace(/\(ngày gần nhất\)/g, finalDate)
+        .replace(/\(POx\)/g, finalLabel)
+        .replace(/\(Số trạm onair\)/g, finalOnair)
+        .replace(/\(Tổng số trạm POx\)/g, finalTotal);
+
+    // ==== 3b. Thay placeholder CHO NỘI DUNG SẼ ĐƯA VÀO EML ====
+    let messageProcessed = messageRaw || "";
+    messageProcessed = messageProcessed
+        .replace(/\(ngày gần nhất\)/g, finalDate)
+        .replace(/\(POx\)/g, finalLabel)
+        .replace(/\(Số trạm onair\)/g, finalOnair)
+        .replace(/\(Tổng số trạm POx\)/g, finalTotal);
+
+    // Convert sang HTML (textbox vẫn giữ template gốc)
+    const messageHtml = escapeHtml(messageProcessed).replace(/\r?\n/g, "<br>");
+
+    // ==== 4. Xử lý phần section/bảng/chart giữ nguyên như cũ ====
+    const checked = new Set(
+        Array.from(
+            document.querySelectorAll(".email-section-checkbox:checked")
+        ).map((cb) => cb.value)
+    );
+
+    const includeCharts = checked.has("charts");
+    const tablesAsImages =
+        document.getElementById("emailTablesAsImages")?.checked || false;
+
+    let charts = [];
+    if (includeCharts) {
+        charts = await getAllChartPNGs();
+        if (!charts.length && statusEl) {
+            statusEl.textContent = "⚠️ Không tìm thấy chart nào để xuất.";
+            statusEl.classList.add("error");
+        }
+    }
+
+    let allImages = [...charts];
+
+    let bodyHtml =
+        '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>' +
+        '<body style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:13px;color:#111827;">';
+
+    // phần mở đầu email
+    bodyHtml += "<p>" + messageHtml + "</p>";
+
+    // 2. Tiến độ đo kiểm
+    if (checked.has("progress")) {
+        if (tablesAsImages) {
+            const img = await captureSectionCardAsPng("progress");
+            if (img) {
+                allImages.push(img);
+                const titleSafe = escapeHtml(img.title || "Tiến Độ Đo Kiểm");
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+            }
+        } else {
+            const htmlProgress = getSectionHtmlByKey("progress");
+            if (htmlProgress) {
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    htmlProgress;
+            }
+        }
+    }
+
+    // 1. KPI Overview
+    if (checked.has("excel")) {
+        if (tablesAsImages) {
+            const img = await captureSectionCardAsPng("excel");
+            if (img) {
+                allImages.push(img);
+                const titleSafe = escapeHtml(img.title || "KPI Overview");
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+            }
+        } else {
+            const htmlExcel = getSectionHtmlByKey("excel");
+            if (htmlExcel) {
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    htmlExcel;
+            }
+        }
+    }
+
+    // 2. Biểu đồ KPI
+    if (includeCharts && charts.length) {
+        bodyHtml +=
+            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+            '<h3 style="margin:0 0 8px 0;">Biểu đồ KPI</h3>';
+
+        bodyHtml += '<div style="text-align:left;">';
+
+        charts.forEach((c, idx) => {
+            if (idx % 2 === 0) {
+                bodyHtml +=
+                    '<div style="white-space:nowrap; margin-bottom:10px;">';
+            }
+
+            bodyHtml += `
+                <img src="cid:${c.cid}"
+                    style="
+                        display:inline-block;
+                        vertical-align:top;
+                        width:520px;
+                        height:auto;
+                    ">
+            `;
+
+            if (idx % 2 === 0 && idx + 1 < charts.length) {
+                bodyHtml += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+            }
+
+            if (idx % 2 === 1 || idx === charts.length - 1) {
+                bodyHtml += "</div>";
+            }
+        });
+
+        bodyHtml += "</div>";
+    }
+
+    // 3. Worst Cell
+    if (checked.has("worst")) {
+        if (tablesAsImages) {
+            const img = await captureSectionCardAsPng("worst");
+            if (img) {
+                allImages.push(img);
+                const titleSafe = escapeHtml(img.title || "Worst Cell");
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+            }
+        } else {
+            const htmlWorst = getSectionHtmlByKey("worst");
+            if (htmlWorst) {
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    htmlWorst;
+            }
+        }
+    }
+
+    // 4. Cell Non-Traffic
+    if (checked.has("nonTraffic")) {
+        if (tablesAsImages) {
+            const img = await captureSectionCardAsPng("nonTraffic");
+            if (img) {
+                allImages.push(img);
+                const titleSafe = escapeHtml(img.title || "Cell Non-Traffic");
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+            }
+        } else {
+            const htmlNon = getSectionHtmlByKey("nonTraffic");
+            if (htmlNon) {
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    htmlNon;
+            }
+        }
+    }
+
+    bodyHtml += "</body></html>";
+
+    // ==== 5. Build multipart/related EML với allImages (chart + bảng PNG) ====
+    const emlContent = buildEmlWithCharts(to, subjectProcessed, bodyHtml, allImages);
+
+    const blob = new Blob([emlContent], { type: "message/rfc822" });
+
+    // ==== 6. Tên file .eml: "KPI Viewer and Report-yyyy-mm-dd" ====
+    let fileDatePart = "";
+    const d = latestDateObj || new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    fileDatePart = `${yyyy}-${mm}-${dd}`;
+
+    const safeName = `KPI Viewer and Report-${fileDatePart}`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = safeName + ".eml";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    if (statusEl) {
+        statusEl.textContent = "✅ Đã tạo file .eml";
+        statusEl.classList.add("success");
+    }
+}
+
+
+let progressFullData = [];
+let progressSitePoMap = {}; // map Site Name (CQT-SSV) -> PO
+
+function normalizeSiteKey(name) {
+    return String(name || "")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, " ");
+}
+
+// Lấy PO từ file Tiến độ đo kiểm dựa vào Site Name
+function getPoFromProgress(siteName) {
+    if (!siteName) return "";
+    const key = normalizeSiteKey(siteName);
+    return progressSitePoMap[key] || "";
+}
+
+function initProgressUpload() {
+    const input = document.getElementById("progressFileInput");
+    const statusEl = document.getElementById("progressStatus");
+    const tableContainer = document.getElementById("progressTable");
+    const poFilter = document.getElementById("progressPOFilter");
+
+    if (!input || !statusEl || !tableContainer) return;
+
+    input.addEventListener("change", function (e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        statusEl.textContent = "Đang đọc file: " + file.name + "...";
+
+        const reader = new FileReader();
+        reader.onload = function (evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const wb = XLSX.read(data, { type: "array" });
+
+                // Lấy sheet CQT-SSV
+                const sheetName = "CQT-SSV";
+                const ws =
+                    wb.Sheets[sheetName] ||
+                    wb.Sheets[wb.SheetNames[0]];
+
+                if (!ws) {
+                    statusEl.textContent =
+                        'Không tìm thấy sheet "CQT-SSV" trong file Excel.';
+                    tableContainer.innerHTML = "";
+                    return;
+                }
+
+                const allRows = XLSX.utils.sheet_to_json(ws, {
+                    header: 1,
+                    defval: "",
+                });
+
+                if (allRows.length < 4) {
+                    statusEl.textContent =
+                        "Sheet CQT-SSV không đủ dòng dữ liệu.";
+                    tableContainer.innerHTML = "";
+                    return;
+                }
+
+                // Row 2: header thật
+                const headerRow = allRows[1];
+                // Dữ liệu từ row 4 trở đi
+                const dataRows = allRows.slice(3);
+
+                const headers = headerRow.map((h) =>
+                    String(h || "").trim()
+                );
+                const headersLower = headers.map((h) =>
+                    h.toLowerCase()
+                );
+
+// ==== XÁC ĐỊNH CÁC CỘT CẦN DÙNG ====
+const idxPO = headersLower.indexOf("po");
+const idxProvince = headersLower.indexOf("province");
+const idxSiteName = headersLower.indexOf("site name"); // để map với NRBTS
+
+const idxOnair = headersLower.findIndex((h) =>
+    h.includes("onair")
+);
+const idxCqtDate = headersLower.findIndex((h) =>
+    h.includes("ngày đo cqt")
+);
+const idxSsvDate = headersLower.findIndex((h) =>
+    h.includes("ngày đo ssv/cluster")
+);
+const idxAtpDate = headersLower.findIndex((h) =>
+    h.includes("ngày gửi report atp")
+);
+
+if (idxPO === -1 || idxProvince === -1) {
+    statusEl.textContent =
+        'Không tìm thấy cột "PO" / "Province" trong sheet CQT-SSV.';
+    tableContainer.innerHTML = "";
+    return;
+}
+
+// ==== BUILD MAP Site Name -> PO CHO WORST CELL / NON-TRAFFIC ====
+progressSitePoMap = {};
+if (idxSiteName !== -1) {
+    dataRows.forEach((row) => {
+        const po = String(row[idxPO] || "").trim();
+        const siteName = String(row[idxSiteName] || "").trim();
+        if (!po || !siteName) return;
+
+        const key = normalizeSiteKey(siteName);
+        if (!progressSitePoMap[key]) {
+            progressSitePoMap[key] = po;
+        }
+    });
+}
+
+
+
+                // ==== GOM NHÓM THEO PO + PROVINCE ====
+                const groups = {};
+
+                dataRows.forEach((row) => {
+                    const po = String(row[idxPO] || "").trim();
+                    const province = String(row[idxProvince] || "").trim();
+                    if (!po && !province) return;
+
+                    const key = po + "||" + province;
+                    if (!groups[key]) {
+                        groups[key] = {
+                            po,
+                            province,
+                            total: 0,
+                            onair: 0,
+                            cqtOk: 0,
+                            ssvOk: 0,
+                            atpReport: 0,
+                        };
+                    }
+
+                    const g = groups[key];
+                    g.total++;
+
+                    // On-Air: có giá trị bất kỳ
+                    if (idxOnair !== -1) {
+                        const v = String(row[idxOnair] || "").trim();
+                        if (v !== "") g.onair++;
+                    }
+
+                    // CQT: có "Ngày đo CQT"
+                    if (idxCqtDate !== -1) {
+                        const v = String(row[idxCqtDate] || "").trim();
+                        if (v !== "") g.cqtOk++;
+                    }
+
+                    // SSV: có "Ngày đo SSV/Cluster"
+                    if (idxSsvDate !== -1) {
+                        const v = String(row[idxSsvDate] || "").trim();
+                        if (v !== "") g.ssvOk++;
+                    }
+
+                    // ATP report: có "Ngày gửi report ATP vung phu song"
+                    if (idxAtpDate !== -1) {
+                        const v = String(row[idxAtpDate] || "").trim();
+                        if (v !== "") g.atpReport++;
+                    }
+                });
+
+                const groupList = Object.values(groups).sort((a, b) => {
+                    if (a.po === b.po) {
+                        return a.province.localeCompare(b.province);
+                    }
+                    return a.po.localeCompare(b.po);
+                });
+
+                // Lưu toàn bộ cho combobox filter
+                progressFullData = groupList;
+
+                // ==== FILL COMBOBOX PO ====
+                if (poFilter) {
+                    poFilter.innerHTML =
+                        '<option value="ALL">Tất cả PO</option>';
+                    const uniquePO = [...new Set(groupList.map((g) => g.po))];
+                    uniquePO.forEach((po) => {
+                        const opt = document.createElement("option");
+                        opt.value = po;
+                        opt.textContent = po;
+                        poFilter.appendChild(opt);
+                    });
+                    poFilter.style.display = "inline-block";
+                }
+
+                // Render bảng lần đầu (tất cả PO)
+                renderProgressTable(groupList);
+
+                // Sau khi đã có progressSitePoMap -> render lại Worst Cell / Non-Traffic
+                if (typeof renderWorstCellTable === "function") {
+                    renderWorstCellTable();
+                }
+
+                // Cập nhật lại nội dung email mở đầu theo dữ liệu Tiến độ
+                if (typeof fillDefaultEmailText === "function") {
+                    fillDefaultEmailText();
+                }
+
+
+                statusEl.textContent =
+                    "Đã đọc " +
+                    dataRows.length +
+                    " dòng từ sheet CQT-SSV trong file " +
+                    file.name +
+                    ".";
+            } catch (err) {
+                console.error(err);
+                statusEl.textContent = "Lỗi khi đọc file: " + err.message;
+                tableContainer.innerHTML = "";
+            }
+        };
+
+        reader.onerror = function () {
+            statusEl.textContent = "Không đọc được file.";
+            tableContainer.innerHTML = "";
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+    // Gán sự kiện upload cho phần Tiến Độ Đo Kiểm
+    initProgressUpload();
+
+function renderProgressTable(data) {
+    const tableContainer = document.getElementById("progressTable");
+    if (!tableContainer) return;
+
+    let totalStations = 0;
+    let totalOnair = 0;
+    let totalCqtOk = 0;
+    let totalSsvOk = 0;
+    let totalAtpOk = 0;
+
+    // helper format %
+    function formatPct(val) {
+        return val === "0.00%" ? "-" : val;
+    }
+
+    let html = `
+    <table class="progress-table">
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>PO</th>
+                <th>Tỉnh</th>
+                <th>Số trạm</th>
+
+                <th>On-Air</th>
+                <th>Tiến độ On-Air (%)</th>
+                <th>CQT</th>
+                <th>Tiến độ CQT (%)</th>
+                <th>SSV</th>
+                <th>Tiến độ SSV (%)</th>
+                <th>ATP report</th>
+                <th>Tiến độ ATP report</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.forEach((g, idx) => {
+        totalStations += g.total;
+        totalOnair += g.onair;
+        totalCqtOk += g.cqtOk;
+        totalSsvOk += g.ssvOk;
+        totalAtpOk += g.atpReport;
+
+        const onairPct =
+            g.total > 0
+                ? formatPct(((g.onair / g.total) * 100).toFixed(2) + "%")
+                : "-";
+        const cqtPct =
+            g.total > 0
+                ? formatPct(((g.cqtOk / g.total) * 100).toFixed(2) + "%")
+                : "-";
+        const ssvPct =
+            g.total > 0
+                ? formatPct(((g.ssvOk / g.total) * 100).toFixed(2) + "%")
+                : "-";
+        const atpPct =
+            g.total > 0
+                ? formatPct(((g.atpReport / g.total) * 100).toFixed(2) + "%")
+                : "-";
+
+        html += `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${g.po}</td>
+            <td>${g.province}</td>
+            <td>${g.total}</td>
+
+            <td>${g.onair}</td>
+            <td>${onairPct}</td>
+            <td>${g.cqtOk}</td>
+            <td>${cqtPct}</td>
+            <td>${g.ssvOk}</td>
+            <td>${ssvPct}</td>
+            <td>${g.atpReport}</td>
+            <td>${atpPct}</td>
+        </tr>`;
+    });
+
+    const totalOnairPct =
+        totalStations > 0
+            ? ((totalOnair / totalStations) * 100).toFixed(2) + "%"
+            : "-";
+    const totalCqtPct =
+        totalStations > 0
+            ? ((totalCqtOk / totalStations) * 100).toFixed(2) + "%"
+            : "-";
+    const totalSsvPct =
+        totalStations > 0
+            ? ((totalSsvOk / totalStations) * 100).toFixed(2) + "%"
+            : "-";
+    const totalAtpPct =
+        totalStations > 0
+            ? ((totalAtpOk / totalStations) * 100).toFixed(2) + "%"
+            : "-";
+
+    html += `
+        <tr class="progress-summary-row">
+            <td>Tổng cộng</td>
+            <td></td>
+            <td></td>
+            <td>${totalStations}</td>
+
+            <td>${totalOnair}</td>
+            <td>${totalOnairPct === "0.00%" ? "-" : totalOnairPct}</td>
+            <td>${totalCqtOk}</td>
+            <td>${totalCqtPct === "0.00%" ? "-" : totalCqtPct}</td>
+            <td>${totalSsvOk}</td>
+            <td>${totalSsvPct === "0.00%" ? "-" : totalSsvPct}</td>
+            <td>${totalAtpOk}</td>
+            <td>${totalAtpPct === "0.00%" ? "-" : totalAtpPct}</td>
+        </tr>
+    </tbody></table>
+    `;
+
+    tableContainer.innerHTML = html;
+
+    // nếu đang dùng sticky 4 cột đầu
+    if (typeof applyProgressStickyColumns === "function") {
+        applyProgressStickyColumns();
+    }
+}
+
+    function applyProgressStickyColumns() {
+    const table = document.querySelector("#progressTable table");
+    if (!table || !table.tHead) return;
+
+    const stickyCount = 4; // STT, PO, Tỉnh, Số trạm
+
+    const headerRows = Array.from(table.tHead.rows);
+    if (!headerRows.length) return;
+
+    const headerRow = headerRows[headerRows.length - 1];
+
+    const tableRect = table.getBoundingClientRect();
+    const colLeft = [];
+
+    for (let i = 0; i < stickyCount; i++) {
+        const cell = headerRow.cells[i];
+        if (!cell) continue;
+        const rect = cell.getBoundingClientRect();
+        colLeft[i] = rect.left - tableRect.left;
+    }
+
+    // reset sticky cũ
+    const oldSticky = table.querySelectorAll(".sticky-col");
+    oldSticky.forEach((c) => {
+        c.classList.remove("sticky-col");
+        c.style.left = "";
+        c.style.position = "";
+    });
+
+    // gán sticky cho 4 cột đầu
+    const rows = Array.from(table.rows);
+    rows.forEach((row) => {
+        for (let i = 0; i < stickyCount; i++) {
+            const cell = row.cells[i];
+            if (!cell) continue;
+
+            cell.classList.add("sticky-col");
+            cell.style.position = "sticky";
+            cell.style.left = (colLeft[i] || 0) + "px";
+        }
+    });
+}
+
+// Lọc bảng Tiến độ đo kiểm theo PO được chọn
+const poFilterEl = document.getElementById("progressPOFilter");
+if (poFilterEl) {
+    poFilterEl.addEventListener("change", function () {
+        const val = this.value;
+
+        // Nếu chọn "Tất cả PO" thì dùng toàn bộ dữ liệu
+        const filtered =
+            val === "ALL"
+                ? progressFullData
+                : progressFullData.filter((g) => g.po === val);
+
+        renderProgressTable(filtered);
+
+        // Sau khi đổi PO, cập nhật lại nội dung email mở đầu
+        if (typeof fillDefaultEmailText === "function") {
+            fillDefaultEmailText();
+        }
+    });
+}
+
+/* ==========================================================
+    1. SAVE & LOAD CONFIG (Biểu đồ)
+   ========================================================== */
+
+// --- SAVE ---
+function saveChartConfig() {
+    const config = {
+        sheet: document.getElementById("sheetSelect").value,
+        chartsPerRow: document.getElementById("chartsPerRowSelect").value,
+        daysWindow: document.getElementById("daysWindowSelect").value,
+        funnelSort: document.getElementById("funnelSortSelect").value
+    };
+    localStorage.setItem("chartConfig", JSON.stringify(config));
+}
+
+// --- LOAD ---
+function loadChartConfig() {
+    const saved = localStorage.getItem("chartConfig");
+    if (!saved) return;
+
+    const cfg = JSON.parse(saved);
+
+    if (cfg.sheet) document.getElementById("sheetSelect").value = cfg.sheet;
+    if (cfg.chartsPerRow) document.getElementById("chartsPerRowSelect").value = cfg.chartsPerRow;
+    if (cfg.daysWindow) document.getElementById("daysWindowSelect").value = cfg.daysWindow;
+    if (cfg.funnelSort) document.getElementById("funnelSortSelect").value = cfg.funnelSort;
+}
+
+// Gọi save khi user thay đổi config
+["sheetSelect","chartsPerRowSelect","daysWindowSelect","funnelSortSelect"]
+.forEach(id => {
+    document.getElementById(id).addEventListener("change", saveChartConfig);
+});
+
+
+/* ==========================================================
+    2. SAVE & LOAD EMAIL FIELDS
+   ========================================================== */
+
+// --- SAVE ---
+function saveEmailConfig() {
+    const cfg = {
+        to: document.getElementById("emailTo").value,
+        subject: document.getElementById("emailSubject").value,
+        message: document.getElementById("emailMessage").value
+    };
+    localStorage.setItem("emailConfig", JSON.stringify(cfg));
+}
+
+// --- LOAD ---
+function loadEmailConfig() {
+    const saved = localStorage.getItem("emailConfig");
+    if (!saved) return;
+
+    const cfg = JSON.parse(saved);
+
+    if (cfg.to) document.getElementById("emailTo").value = cfg.to;
+    if (cfg.subject) document.getElementById("emailSubject").value = cfg.subject;
+    if (cfg.message) document.getElementById("emailMessage").value = cfg.message;
+}
+
+// Gọi auto-save khi người dùng gõ
+["emailTo","emailSubject","emailMessage"].forEach(id => {
+    document.getElementById(id).addEventListener("input", saveEmailConfig);
+});
+
+
+/* ==========================================================
+    3. TỰ ĐỘNG CHÈN LẠI BIẾN ĐỘNG POx / SỐ TRẠM / NGÀY
+   ========================================================== */
+
+/* ==========================================================
+    3. TỰ ĐỘNG CHÈN LẠI BIẾN ĐỘNG POx / SỐ TRẠM / NGÀY
+   ========================================================== */
+function updateDynamicEmailFields(
+    latestDate,
+    selectedPO,
+    onairCount,
+    totalCount,
+    baseText
+) {
+    const textarea = document.getElementById("emailMessage");
+    if (!textarea) return;
+
+    // Lấy template gốc: ưu tiên baseText, nếu không thì lấy từ textarea
+    let msg =
+        typeof baseText === "string" && baseText.length
+            ? baseText
+            : textarea.value || "";
+
+    // Thay các placeholder bằng giá trị hiện tại
+    msg = msg
+        .replace(/\(ngày gần nhất\)/g, latestDate || "(ngày gần nhất)")
+        .replace(/\(POx\)/g, selectedPO || "(POx)")
+        .replace(/\(Số trạm onair\)/g, onairCount || "(Số trạm onair)")
+        .replace(/\(Tổng số trạm POx\)/g, totalCount || "(Tổng số trạm POx)");
+
+    // Hiển thị lên textarea
+    textarea.value = msg;
+}
+
+
+/* ==========================================================
+    4. Gọi load config khi trang mở lại
+   ========================================================== */
+
+window.addEventListener("DOMContentLoaded", () => {
+    loadChartConfig();
+    loadEmailConfig();
+});
+
+
+    </script>
+</body>
+</html>
