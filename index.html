@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.8.5</h1>
+            <h1>📊 KPI Viewer and Report v1.3.8.6</h1>
         </div>
 
         <!-- Upload -->
@@ -700,7 +700,7 @@
     id="odGroupBar"
     style="
         margin-top:8px;
-        display:flex;
+        display:none;   /* CHỈ hiện sau khi login */
         gap:8px;
         align-items:center;
         flex-wrap:wrap;
@@ -711,6 +711,15 @@
     <span id="odStatus" style="color:#4b5563;">
         Chưa đăng nhập
     </span>
+
+    <!-- Thư mục OneDrive -->
+    <label>
+        Thư mục OneDrive:
+        <select
+            id="odFolderSelect"
+            style="margin-left:4px; padding:4px 8px; min-width:180px;"
+        ></select>
+    </label>
 
     <!-- Nhóm file trên OneDrive -->
     <label>
@@ -1337,7 +1346,12 @@ const graphKpiConfig = {
 // Biến dùng chung
 let msalInstance = null;
 let oneDriveAccount = null;
+// Map thư mục OneDrive -> danh sách file (metadata)
+let oneDriveFolderFileMap = {}; // { folderName: [{ itemId, name, downloadUrl, lastModified }] }
+let oneDriveCurrentFolderName = "";
+// Map nhóm file trong thư mục đang chọn
 let oneDriveGroupMap = {}; // { groupName: [{ itemId, name, downloadUrl, lastModified }] }
+
 
 // Khởi tạo UI OneDrive: gắn event cho các nút / select
 function initOneDriveGraphUI() {
@@ -1359,7 +1373,7 @@ function initOneDriveGraphUI() {
     const loginBtn    = document.getElementById("odLoginBtn");
     const loadGroupBtn = document.getElementById("odLoadGroupBtn");
     const statusSpan  = document.getElementById("odStatus");
-    const statusRow   = document.getElementById("odStatusRow");
+    const statusRow   = document.getElementById("odGroupBar"); // dùng đúng id
 
     // Cập nhật trạng thái ban đầu
     if (statusSpan) {
@@ -1396,7 +1410,7 @@ function initOneDriveGraphUI() {
 // Đăng nhập OneDrive (popup)
 async function handleOneDriveLogin() {
     const statusSpan = document.getElementById("odStatus");
-    const statusRow  = document.getElementById("odStatusRow");
+    const statusRow  = document.getElementById("odGroupBar");
 
     try {
         if (!msalInstance) {
@@ -1478,9 +1492,116 @@ async function graphGetJson(endpoint) {
 }
 
 // Lấy danh sách file trong thư mục KPI Scheduler, build group theo prefix
+// ================= OneDrive: Folder + Nhóm file giống local =================
+
+// Build lại combobox Thư mục OneDrive & Nhóm file OneDrive dựa trên oneDriveFolderFileMap
+function odPopulateFolderSelectOptions() {
+    const folderSelect = document.getElementById("odFolderSelect");
+    const groupSelect  = document.getElementById("odGroupSelect");
+
+    if (!folderSelect || !groupSelect) return;
+
+    const folderNames = Object.keys(oneDriveFolderFileMap);
+
+    if (!folderNames.length) {
+        // Không có file Excel nào trong thư mục KPI
+        folderSelect.parentElement.style.display = "none";
+        groupSelect.innerHTML = "";
+        oneDriveGroupMap = {};
+        return;
+    }
+
+    const hasOnlyRoot =
+        folderNames.length === 1 && folderNames[0] === "(ROOT)";
+
+    // Luôn hiển thị thanh trạng thái; chỉ ẩn/hiện combobox Thư mục
+    if (hasOnlyRoot) {
+        // Chỉ có ROOT → ẩn combobox Thư mục, chỉ hiện Nhóm file
+        folderSelect.parentElement.style.display = "none";
+
+        oneDriveCurrentFolderName = "(ROOT)";
+        odBuildGroupMapForCurrentFolder("(ROOT)");
+        return;
+    }
+
+    // Có folder con → hiện combobox Thư mục + thêm lựa chọn "Tất cả"
+    folderSelect.parentElement.style.display = "inline-block";
+
+    folderSelect.innerHTML = "";
+
+    // ➕ Option "Tất cả"
+    const allOpt = document.createElement("option");
+    allOpt.value = ALL_FOLDERS_VALUE;
+    allOpt.textContent = "Tất cả";
+    folderSelect.appendChild(allOpt);
+
+    // Các folder còn lại
+    folderNames.sort().forEach((folder) => {
+        const opt = document.createElement("option");
+        opt.value = folder;
+        opt.textContent = folder;
+        folderSelect.appendChild(opt);
+    });
+
+    // Mặc định chọn "Tất cả"
+    oneDriveCurrentFolderName = ALL_FOLDERS_VALUE;
+    folderSelect.value = ALL_FOLDERS_VALUE;
+    odBuildGroupMapForCurrentFolder(ALL_FOLDERS_VALUE);
+}
+
+// Build oneDriveGroupMap (nhóm file) theo folder đang chọn
+function odBuildGroupMapForCurrentFolder(folderName) {
+    const folderSelect = document.getElementById("odFolderSelect");
+    const groupSelect  = document.getElementById("odGroupSelect");
+    if (!groupSelect) return;
+
+    let effectiveFolder =
+        folderName ||
+        (folderSelect && folderSelect.value) ||
+        oneDriveCurrentFolderName ||
+        "(ROOT)";
+
+    oneDriveCurrentFolderName = effectiveFolder;
+
+    let filesInFolder = [];
+
+    if (effectiveFolder === ALL_FOLDERS_VALUE) {
+        // Gộp tất cả folder (kể cả ROOT)
+        Object.values(oneDriveFolderFileMap).forEach((list) => {
+            filesInFolder = filesInFolder.concat(list);
+        });
+    } else {
+        filesInFolder = oneDriveFolderFileMap[effectiveFolder] || [];
+    }
+
+    oneDriveGroupMap = {};
+
+    filesInFolder.forEach((item) => {
+        const gName = getGroupNameFromFile(item); // dùng cùng logic group như local
+        if (!oneDriveGroupMap[gName]) oneDriveGroupMap[gName] = [];
+        oneDriveGroupMap[gName].push(item);
+    });
+
+    const groupNames = Object.keys(oneDriveGroupMap).sort();
+
+    groupSelect.innerHTML = "";
+    groupNames.forEach((g) => {
+        const opt = document.createElement("option");
+        opt.value = g;
+        opt.textContent = `${g} (${oneDriveGroupMap[g].length} file)`;
+        groupSelect.appendChild(opt);
+    });
+
+    if (groupNames.length) {
+        groupSelect.value = groupNames[0];
+    }
+}
+
+// Đọc danh sách file KPI từ OneDrive và build map folder -> file
 async function odLoadKpiGroupsFromOneDrive() {
-    const loading = document.getElementById("loading");
-    const groupSelect = document.getElementById("odGroupSelect");
+    const loading      = document.getElementById("loading");
+    const folderSelect = document.getElementById("odFolderSelect");
+    const groupSelect  = document.getElementById("odGroupSelect");
 
     if (loading) {
         loading.textContent = "⏳ Đang tải danh sách file từ OneDrive...";
@@ -1509,44 +1630,75 @@ async function odLoadKpiGroupsFromOneDrive() {
         const data = await graphGetJson(endpoint);
         const items = (data && data.value) || [];
 
-        // Reset group map
+        // Reset map
+        oneDriveFolderFileMap = {};
         oneDriveGroupMap = {};
+        oneDriveCurrentFolderName = "";
 
-        // Gom theo group name (prefix trước dấu "-")
-        items
-            .filter((it) => !it.folder) // chỉ lấy file
-            .forEach((it) => {
-                const name = it.name || "";
-                const idxDash = name.indexOf("-");
-                const gName = idxDash > 0 ? name.substring(0, idxDash) : name;
+        // Hàm check file Excel
+        const isExcel = (name) => {
+            return /\.(xlsx|xls)$/i.test(name || "");
+        };
 
-                if (!oneDriveGroupMap[gName]) oneDriveGroupMap[gName] = [];
-                oneDriveGroupMap[gName].push({
+        const rootFiles  = [];
+        const subFolders = [];
+
+        // Phân loại: file Excel ở ROOT + các folder con
+        items.forEach((it) => {
+            if (it.folder) {
+                // Thư mục con
+                subFolders.push({
+                    id: it.id,
+                    name: it.name || "(no-name)"
+                });
+            } else if (isExcel(it.name)) {
+                rootFiles.push({
                     itemId: it.id,
                     name: it.name,
                     downloadUrl: it["@microsoft.graph.downloadUrl"],
                     lastModified: it.lastModifiedDateTime || ""
                 });
-            });
+            }
+        });
 
-        const groupNames = Object.keys(oneDriveGroupMap).sort();
-
-        if (groupSelect) {
-            groupSelect.innerHTML = "";
-            groupNames.forEach((g) => {
-                const opt = document.createElement("option");
-                opt.value = g;
-                opt.textContent = `${g} (${oneDriveGroupMap[g].length} file)`;
-                groupSelect.appendChild(opt);
-            });
+        if (rootFiles.length) {
+            oneDriveFolderFileMap["(ROOT)"] = rootFiles;
         }
 
-        if (!groupNames.length) {
+        // Lấy file Excel trong từng thư mục con
+        for (const f of subFolders) {
+            const childData = await graphGetJson(
+                `/me/drive/items/${encodeURIComponent(f.id)}/children`
+            );
+            const childItems = (childData && childData.value) || [];
+
+            const excelInFolder = childItems
+                .filter((it) => !it.folder && isExcel(it.name))
+                .map((it) => ({
+                    itemId: it.id,
+                    name: it.name,
+                    downloadUrl: it["@microsoft.graph.downloadUrl"],
+                    lastModified: it.lastModifiedDateTime || ""
+                }));
+
+            if (excelInFolder.length) {
+                oneDriveFolderFileMap[f.name] = excelInFolder;
+            }
+        }
+
+        const allFolders = Object.keys(oneDriveFolderFileMap);
+
+        if (!allFolders.length) {
+            if (groupSelect) groupSelect.innerHTML = "";
             alert("Thư mục KPI trên OneDrive không có file Excel nào.");
+            return;
         }
+
+        // Build lại combobox Thư mục + Nhóm file OneDrive
+        odPopulateFolderSelectOptions();
     } catch (err) {
         console.error("Lỗi tải danh sách file KPI từ OneDrive:", err);
-        alert("Không đọc được danh sách file từ OneDrive.\n" + err.message);
+        alert("Không đọc được danh sách file từ OneDrive.\\n" + err.message);
     } finally {
         if (loading) {
             loading.textContent = "⏳ Đang xử lý file...";
@@ -1636,9 +1788,18 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // --- OneDrive: Folder + Group (giống local) ---
+    const odFolderSelect = document.getElementById("odFolderSelect");
+    if (odFolderSelect) {
+        odFolderSelect.addEventListener("change", () => {
+            odBuildGroupMapForCurrentFolder(odFolderSelect.value);
+        });
+    }
+
     // --- OneDrive (Graph API) ---
     initOneDriveGraphUI();
 });
+
 
 
         // ✅ Hàm xử lý khi chọn "📂 Chọn thư mục Excel"
