@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.8.8</h1>
+            <h1>📊 KPI Viewer and Report v1.3.8.9</h1>
         </div>
 
         <!-- Upload -->
@@ -708,8 +708,17 @@
         font-size:0.9em;
     "
 >
-    <!-- Trạng thái đăng nhập -->
-    <span id="odStatus" style="color:#4b5563;">
+
+    <!-- ⭐ Trạng thái đăng nhập — nằm 1 hàng riêng -->
+    <span
+        id="odStatus"
+        style="
+            color:#4b5563;
+            width:100%;
+            display:block;
+            margin-bottom:4px;
+        "
+    >
         Chưa đăng nhập
     </span>
 
@@ -722,7 +731,7 @@
         ></select>
     </label>
 
-    <!-- Nhóm file trên OneDrive -->
+    <!-- Nhóm file OneDrive -->
     <label>
         Nhóm file:
         <select
@@ -731,7 +740,7 @@
         ></select>
     </label>
 
-    <!-- Nút đọc nhóm đã chọn -->
+    <!-- Nút đọc nhóm -->
     <button
         type="button"
         id="odLoadGroupBtn"
@@ -748,7 +757,6 @@
         📥 Đọc nhóm từ OneDrive
     </button>
 </div>
-
     <div class="file-info" id="fileInfo"></div>
 
     <!-- ✅ Combobox chọn folder + nhóm file trong folder -->
