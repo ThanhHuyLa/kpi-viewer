@@ -743,7 +743,47 @@
     >
         Chưa đăng nhập
     </span>
-
+    <!-- Đường dẫn KPI folder trên OneDrive (cho phép nhập tay) -->
+    <label
+        style="
+            font-size:0.9em;
+            width:100%;
+            display:flex;
+            flex-wrap:wrap;
+            align-items:center;
+            gap:4px;
+            margin-bottom:4px;
+        "
+    >
+        Đường dẫn KPI:
+        <input
+            type="text"
+            id="kpiFolderInput"
+            placeholder="/KPI Scheduler"
+            style="
+                flex:1 1 260px;
+                padding:4px 8px;
+                border-radius:6px;
+                border:1px solid #d1d5db;
+            "
+        />
+        <button
+            type="button"
+            id="kpiFolderUpdateBtn"
+            style="
+                padding:4px 10px;
+                border-radius:6px;
+                border:1px solid #059669;
+                background:#059669;
+                color:#fff;
+                font-size:0.85em;
+                cursor:pointer;
+                white-space:nowrap;
+            "
+        >
+            Cập nhật
+        </button>
+    </label>
     <!-- Thư mục OneDrive -->
     <label>
         Thư mục:
@@ -1399,10 +1439,17 @@ function initOneDriveGraphUI() {
         oneDriveAccount = accounts[0];
     }
 
-    const loginBtn    = document.getElementById("odLoginBtn");
-    const loadGroupBtn = document.getElementById("odLoadGroupBtn");
-    const statusSpan  = document.getElementById("odStatus");
-    const statusRow   = document.getElementById("odGroupBar"); // dùng đúng id
+    const loginBtn           = document.getElementById("odLoginBtn");
+    const loadGroupBtn       = document.getElementById("odLoadGroupBtn");
+    const statusSpan         = document.getElementById("odStatus");
+    const statusRow          = document.getElementById("odGroupBar"); // dùng đúng id
+    const kpiFolderInput     = document.getElementById("kpiFolderInput");
+    const kpiFolderUpdateBtn = document.getElementById("kpiFolderUpdateBtn");
+
+    // Gán sẵn đường dẫn đang cấu hình vào textbox
+    if (kpiFolderInput) {
+        kpiFolderInput.value = graphKpiConfig.kpiFolderPath || "/";
+    }
 
     // Cập nhật trạng thái ban đầu
     if (statusSpan) {
@@ -1432,6 +1479,56 @@ function initOneDriveGraphUI() {
         loadGroupBtn.addEventListener("click", async () => {
             await odLoadSelectedGroupFromOneDrive();
         });
+    }
+
+    // Khi bấm “Cập nhật” → đổi kpiFolderPath + load lại combobox
+    if (kpiFolderUpdateBtn) {
+        kpiFolderUpdateBtn.addEventListener("click", async () => {
+            await updateKpiFolderPathAndReload();
+        });
+    }
+
+    // Nhấn Enter trong textbox cũng như bấm nút Cập nhật
+    if (kpiFolderInput) {
+        kpiFolderInput.addEventListener("keydown", async (evt) => {
+            if (evt.key === "Enter") {
+                evt.preventDefault();
+                await updateKpiFolderPathAndReload();
+            }
+        });
+    }
+}
+
+async function updateKpiFolderPathAndReload() {
+    const input = document.getElementById("kpiFolderInput");
+    const statusSpan = document.getElementById("odStatus");
+
+    if (!input) return;
+
+    const newPath = input.value.trim();
+
+    if (!newPath) {
+        alert("Vui lòng nhập đường dẫn thư mục, ví dụ: /KPI Scheduler");
+        return;
+    }
+
+    // Cập nhật cấu hình
+    graphKpiConfig.kpiFolderPath = newPath;
+
+    // Cập nhật text trạng thái (nếu đã đăng nhập)
+    if (statusSpan && oneDriveAccount) {
+        statusSpan.textContent =
+            "Đã đăng nhập: " +
+            (oneDriveAccount.username || oneDriveAccount.name || "") +
+            " – Thư mục: " +
+            (graphKpiConfig.kpiFolderPath || "/");
+    }
+
+    // Nếu đã đăng nhập OneDrive → load lại danh sách nhóm theo path mới
+    if (oneDriveAccount) {
+        await odLoadKpiGroupsFromOneDrive();
+    } else {
+        alert("Đã cập nhật đường dẫn, hãy đăng nhập OneDrive để đọc danh sách file.");
     }
 }
 
