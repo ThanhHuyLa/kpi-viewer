@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.8.13</h1>
+            <h1>📊 KPI Viewer and Report v1.3.8.9</h1>
         </div>
 
         <!-- Upload -->
@@ -694,6 +694,28 @@
         🔑 Đăng nhập OneDrive
     </button>
 </div>
+
+<!-- Textbox nhập đường dẫn thư mục KPI trên OneDrive -->
+<div style="margin-top:10px;">
+    <label>
+        🗂️ Đường dẫn thư mục KPI:
+        <input 
+            type="text" 
+            id="kpiFolderInput"
+            placeholder="/KPI Scheduler"
+            style="width:300px; padding:6px 10px; border-radius:8px; border:1px solid #ccc;"
+        />
+    </label>
+
+    <button 
+        type="button"
+        onclick="updateKpiFolderPath()"
+        style="margin-left:8px; padding:6px 12px; border-radius:8px; background:#4f46e5; color:white; border:none; cursor:pointer;"
+    >
+        Cập nhật
+    </button>
+</div>
+
 
     </div>
     <!-- ✅ Thanh trạng thái + combobox nhóm file OneDrive -->
@@ -1345,9 +1367,9 @@ const loginRequest = {
 };
 
 // Đường dẫn thư mục KPI trong OneDrive (tương đối so với root)
-// Ví dụ chuẩn với link anh gửi: "/personal/anhnqt_rnovnpt_onmicrosoft_com/Documents/KPI Scheduler"
+// Ví dụ chuẩn với link anh gửi: "/Documents/KPI Scheduler"
 const graphKpiConfig = {
-    kpiFolderPath: "/Huy LT/My files"
+    kpiFolderPath: "/KPI Scheduler"
 };
 
 // Biến dùng chung
@@ -5780,24 +5802,21 @@ window.addEventListener("DOMContentLoaded", () => {
     loadChartConfig();
     loadEmailConfig();
 });
+function updateKpiFolderPath() {
+    const newPath = document.getElementById("kpiFolderInput").value.trim();
+
+    if (!newPath) {
+        alert("Vui lòng nhập đường dẫn hợp lệ (ví dụ: /KPI Scheduler)");
+        return;
+    }
+
+    // cập nhật đường dẫn vào cấu hình
+    graphKpiConfig.kpiFolderPath = newPath;
+
+    alert("Đã cập nhật đường dẫn OneDrive:\n" + newPath);
+}
 
 
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
