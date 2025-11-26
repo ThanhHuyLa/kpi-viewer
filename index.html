@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.8.4</h1>
+            <h1>📊 KPI Viewer and Report v1.3.8.5</h1>
         </div>
 
         <!-- Upload -->
@@ -654,46 +654,91 @@
         <div class="upload-icon">📁</div>
         <h3>Tải file Excel KPI</h3>
 
-        <div class="upload-sub-actions">
-            <!-- 1. Chọn file Excel trên máy -->
-            <label class="upload-sub-btn">
-                📄 Chọn file Excel
-                <input
-                    type="file"
-                    id="fileInputFiles"
-                    class="file-input"
-                    accept=".xlsx,.xls"
-                    multiple
-                    onchange="handleFileFromFiles(event)"
-                />
-            </label>
+<div class="upload-sub-actions">
+    <!-- 1. Chọn file Excel trên máy -->
+    <label class="upload-sub-btn">
+        📄 Chọn file Excel
+        <input
+            type="file"
+            id="fileInputFiles"
+            class="file-input"
+            accept=".xlsx,.xls"
+            multiple
+            onchange="handleFileFromFiles(event)"
+        />
+    </label>
 
-            <span class="upload-sub-separator">hoặc</span>
+    <span class="upload-sub-separator">hoặc</span>
 
-            <!-- 2. Chọn thư mục Excel trên máy -->
-            <label class="upload-sub-btn">
-                📂 Chọn thư mục Excel
-                <input
-                    type="file"
-                    id="fileInputFolder"
-                    class="file-input"
-                    webkitdirectory
-                    directory
-                    onchange="handleFileFromFolder(event)"
-                />
-            </label>
+    <!-- 2. Chọn thư mục Excel trên máy -->
+    <label class="upload-sub-btn">
+        📂 Chọn thư mục Excel
+        <input
+            type="file"
+            id="fileInputFolder"
+            class="file-input"
+            webkitdirectory
+            directory
+            onchange="handleFileFromFolder(event)"
+        />
+    </label>
 
-            <span class="upload-sub-separator">hoặc</span>
+    <span class="upload-sub-separator">hoặc</span>
 
-            <!-- 3. Mở thư mục KPI trên OneDrive (cách 2) -->
-            <button
-                type="button"
-                class="upload-sub-btn"
-                id="odLoginBtn"
-            >
-                🔑 Đăng nhập OneDrive
-            </button>
-        </div>
+    <!-- 3. Đăng nhập OneDrive -->
+    <button
+        type="button"
+        class="upload-sub-btn"
+        id="odLoginBtn"
+    >
+        🔑 Đăng nhập OneDrive
+    </button>
+</div>
+
+<!-- ✅ Thanh trạng thái + combobox nhóm file OneDrive -->
+<div
+    id="odGroupBar"
+    style="
+        margin-top:8px;
+        display:flex;
+        gap:8px;
+        align-items:center;
+        flex-wrap:wrap;
+        font-size:0.9em;
+    "
+>
+    <!-- Trạng thái đăng nhập -->
+    <span id="odStatus" style="color:#4b5563;">
+        Chưa đăng nhập
+    </span>
+
+    <!-- Nhóm file trên OneDrive -->
+    <label>
+        Nhóm file OneDrive:
+        <select
+            id="odGroupSelect"
+            style="margin-left:4px; padding:4px 8px; min-width:220px;"
+        ></select>
+    </label>
+
+    <!-- Nút đọc nhóm đã chọn -->
+    <button
+        type="button"
+        id="odLoadGroupBtn"
+        style="
+            padding:4px 10px;
+            border-radius:6px;
+            border:1px solid #2563eb;
+            background:#2563eb;
+            color:#fff;
+            font-size:0.9em;
+            cursor:pointer;
+        "
+    >
+        📥 Đọc nhóm từ OneDrive
+    </button>
+</div>
+
     </div>
 
     <div class="file-info" id="fileInfo"></div>
@@ -1297,7 +1342,9 @@ let oneDriveGroupMap = {}; // { groupName: [{ itemId, name, downloadUrl, lastMod
 // Khởi tạo UI OneDrive: gắn event cho các nút / select
 function initOneDriveGraphUI() {
     if (typeof msal === "undefined") {
-        console.warn("MSAL library chưa được load – kiểm tra <script src='...msal-browser.min.js'>");
+        console.warn(
+            "MSAL library chưa được load – kiểm tra <script src='...msal-browser.min.js'>"
+        );
         return;
     }
 
@@ -1309,17 +1356,26 @@ function initOneDriveGraphUI() {
         oneDriveAccount = accounts[0];
     }
 
-    const loginBtn = document.getElementById("odLoginBtn");
+    const loginBtn    = document.getElementById("odLoginBtn");
     const loadGroupBtn = document.getElementById("odLoadGroupBtn");
-    const statusSpan = document.getElementById("odStatus");
+    const statusSpan  = document.getElementById("odStatus");
+    const statusRow   = document.getElementById("odStatusRow");
 
+    // Cập nhật trạng thái ban đầu
     if (statusSpan) {
         if (oneDriveAccount) {
-            statusSpan.textContent = "Đã đăng nhập: " + (oneDriveAccount.username || oneDriveAccount.name || "");
+            if (statusRow) statusRow.style.display = "flex";
+            statusSpan.textContent =
+                "Đã đăng nhập: " +
+                (oneDriveAccount.username || oneDriveAccount.name || "") +
+                " – Thư mục: " +
+                (graphKpiConfig.kpiFolderPath || "/");
+
             // Nếu đã có session đăng nhập → load luôn danh sách nhóm
             odLoadKpiGroupsFromOneDrive();
         } else {
             statusSpan.textContent = "Chưa đăng nhập";
+            if (statusRow) statusRow.style.display = "none";
         }
     }
 
@@ -1337,8 +1393,11 @@ function initOneDriveGraphUI() {
 }
 
 // Đăng nhập OneDrive (popup)
+// Đăng nhập OneDrive (popup)
 async function handleOneDriveLogin() {
     const statusSpan = document.getElementById("odStatus");
+    const statusRow  = document.getElementById("odStatusRow");
+
     try {
         if (!msalInstance) {
             msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -1346,8 +1405,14 @@ async function handleOneDriveLogin() {
 
         const loginResp = await msalInstance.loginPopup(loginRequest);
         oneDriveAccount = loginResp.account;
+
+        if (statusRow) statusRow.style.display = "flex";
         if (statusSpan) {
-            statusSpan.textContent = "Đã đăng nhập: " + (oneDriveAccount.username || oneDriveAccount.name || "");
+            statusSpan.textContent =
+                "Đã đăng nhập: " +
+                (oneDriveAccount.username || oneDriveAccount.name || "") +
+                " – Thư mục: " +
+                (graphKpiConfig.kpiFolderPath || "/");
         }
 
         // Sau khi login xong → load danh sách nhóm file trong thư mục KPI Scheduler
@@ -1357,7 +1422,11 @@ async function handleOneDriveLogin() {
         if (statusSpan) {
             statusSpan.textContent = "Đăng nhập thất bại";
         }
-        alert("Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" + err.message);
+        if (statusRow) statusRow.style.display = "flex"; // vẫn hiện để thấy lỗi
+        alert(
+            "Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" +
+                err.message
+        );
     }
 }
 
