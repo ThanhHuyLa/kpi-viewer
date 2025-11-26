@@ -1420,22 +1420,32 @@ async function odLoadKpiGroupsFromOneDrive() {
 
     try {
         const rawPath = graphKpiConfig.kpiFolderPath || "/";
-        // Encode từng segment, giữ dấu "/"
-        const encodedPath = rawPath
-            .split("/")
-            .filter(Boolean)
-            .map(encodeURIComponent)
-            .join("/");
+        let endpoint;
 
-        const endpoint = `/me/drive/root:/${encodedPath}:/children`;
+        // 🔹 Nếu đọc ROOT OneDrive
+        if (!rawPath || rawPath === "/") {
+            // /me/drive/root/children  (đúng chuẩn Graph)
+            endpoint = "/me/drive/root/children";
+        } else {
+            // 🔹 Nếu đọc 1 thư mục con: /Folder1/Folder2
+            const encodedPath = rawPath
+                .split("/")
+                .filter(Boolean)
+                .map(encodeURIComponent)
+                .join("/");
+
+            endpoint = `/me/drive/root:/${encodedPath}:/children`;
+        }
+
         const data = await graphGetJson(endpoint);
         const items = (data && data.value) || [];
 
         // Reset group map
         oneDriveGroupMap = {};
 
+        // Gom theo group name (prefix trước dấu "-")
         items
-            .filter((it) => !it.folder) // chỉ lấy file, bỏ folder
+            .filter((it) => !it.folder) // chỉ lấy file
             .forEach((it) => {
                 const name = it.name || "";
                 const idxDash = name.indexOf("-");
@@ -1463,7 +1473,7 @@ async function odLoadKpiGroupsFromOneDrive() {
         }
 
         if (!groupNames.length) {
-            alert("Thư mục KPI Scheduler trên OneDrive không có file Excel nào.");
+            alert("Thư mục KPI trên OneDrive không có file Excel nào.");
         }
     } catch (err) {
         console.error("Lỗi tải danh sách file KPI từ OneDrive:", err);
