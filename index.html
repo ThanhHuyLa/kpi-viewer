@@ -648,6 +648,12 @@
         </div>
 
         <!-- Upload -->
+<!-- Upload -->
+<div class="upload-section">
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📁</div>
+        <h3>Tải file Excel KPI</h3>
+
         <div class="upload-sub-actions">
             <!-- 1. Chọn file Excel trên máy -->
             <label class="upload-sub-btn">
@@ -683,112 +689,61 @@
             <button
                 type="button"
                 class="upload-sub-btn"
-                onclick="openOneDriveKpiFolder()"
+                id="odLoginBtn"
             >
-                ☁️ Mở thư mục OneDrive KPI
+                🔑 Đăng nhập OneDrive
             </button>
         </div>
+    </div>
+
+    <div class="file-info" id="fileInfo"></div>
+
+    <!-- ✅ Combobox chọn folder + nhóm file trong folder -->
+    <div
+        id="folderFileSelectors"
+        style="
+            margin-top:8px;
+            display:none;
+            gap:8px;
+            align-items:center;
+            flex-wrap:wrap;
+        "
+    >
+        <label style="font-size:0.9em;">
+            Thư mục:
+            <select id="folderSelect" style="margin-left:4px; padding:4px 8px;"></select>
+        </label>
+
+        <label style="font-size:0.9em;">
+            Nhóm file:
+            <select
+                id="fileGroupSelect"
+                style="margin-left:4px; padding:4px 8px; min-width:220px;"
+            ></select>
+        </label>
+
+        <button
+            type="button"
+            id="loadGroupBtn"
+            style="
+                padding:4px 10px;
+                border-radius:6px;
+                border:1px solid #2563eb;
+                background:#2563eb;
+                color:#fff;
+                font-size:0.9em;
+                cursor:pointer;
+            "
+        >
+            Chọn nhóm file
+        </button>
+    </div>
+
+    <div class="loading" id="loading">⏳ Đang xử lý file...</div>
+</div>
 
 
-            <div class="file-info" id="fileInfo"></div>
-            <!-- ✅ Combobox chọn folder + nhóm file trong folder -->
-            <div
-                id="folderFileSelectors"
-                style="
-                    margin-top:8px;
-                    display:none;
-                    gap:8px;
-                    align-items:center;
-                    flex-wrap:wrap;
-                "
-            >
-                <label style="font-size:0.9em;">
-                    Thư mục:
-                    <select id="folderSelect" style="margin-left:4px; padding:4px 8px;"></select>
-                </label>
-
-                <label style="font-size:0.9em;">
-                    Nhóm file:
-                    <select
-                        id="fileGroupSelect"
-                        style="margin-left:4px; padding:4px 8px; min-width:180px;"
-                    ></select>
-                </label>
-
-                <button
-                    type="button"
-                    class="upload-sub-btn"
-                    onclick="handleGroupSelection()"
-                >
-                    Chọn nhóm file
-                </button>
-            </div>
-
-            <!-- 🔗 Đọc trực tiếp file từ OneDrive (Graph API) -->
-            <div
-                id="oneDriveSelectors"
-                style="
-                    margin-top:8px;
-                    display:flex;
-                    gap:8px;
-                    align-items:center;
-                    flex-wrap:wrap;
-                "
-            >
-                <span style="font-size:0.9em; font-weight:600;">OneDrive:</span>
-
-                <button
-                    type="button"
-                    id="odLoginBtn"
-                    style="
-                        padding:4px 10px;
-                        border-radius:6px;
-                        border:1px solid #059669;
-                        background:#059669;
-                        color:#fff;
-                        font-size:0.85em;
-                        cursor:pointer;
-                    "
-                >
-                    🔑 Đăng nhập OneDrive
-                </button>
-
-                <span
-                    id="odStatus"
-                    style="font-size:0.8em; color:#6b7280; min-width:140px;"
-                >
-                    Chưa đăng nhập
-                </span>
-
-                <label style="font-size:0.9em;">
-                    Nhóm file:
-                    <select
-                        id="odGroupSelect"
-                        style="margin-left:4px; padding:4px 8px; min-width:220px;"
-                    ></select>
-                </label>
-
-                <button
-                    type="button"
-                    id="odLoadGroupBtn"
-                    style="
-                        padding:4px 10px;
-                        border-radius:6px;
-                        border:1px solid #2563eb;
-                        background:#2563eb;
-                        color:#fff;
-                        font-size:0.9em;
-                        cursor:pointer;
-                    "
-                >
-                    Đọc nhóm từ OneDrive
-                </button>
-            </div>
-
-            <div class="loading" id="loading">⏳ Đang xử lý file...</div>
-
-            <div class="loading" id="loading">⏳ Đang xử lý file...</div>
-        </div>
+<!-- TIẾN ĐỘ ĐO KIỂM (IMPORT FILE EXCEL) giữ nguyên phía dưới -->
 
         <!-- TIẾN ĐỘ ĐO KIỂM (IMPORT FILE EXCEL) -->
         <div class="data-table" id="progressCard" style="margin-top: 16px;">
