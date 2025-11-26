@@ -691,7 +691,6 @@
 
 
             <div class="file-info" id="fileInfo"></div>
-
             <!-- ✅ Combobox chọn folder + nhóm file trong folder -->
             <div
                 id="folderFileSelectors"
@@ -703,7 +702,29 @@
                     flex-wrap:wrap;
                 "
             >
-                        <!-- 🔗 Đọc trực tiếp file từ OneDrive (Graph API) -->
+                <label style="font-size:0.9em;">
+                    Thư mục:
+                    <select id="folderSelect" style="margin-left:4px; padding:4px 8px;"></select>
+                </label>
+
+                <label style="font-size:0.9em;">
+                    Nhóm file:
+                    <select
+                        id="fileGroupSelect"
+                        style="margin-left:4px; padding:4px 8px; min-width:180px;"
+                    ></select>
+                </label>
+
+                <button
+                    type="button"
+                    class="upload-sub-btn"
+                    onclick="handleGroupSelection()"
+                >
+                    Chọn nhóm file
+                </button>
+            </div>
+
+            <!-- 🔗 Đọc trực tiếp file từ OneDrive (Graph API) -->
             <div
                 id="oneDriveSelectors"
                 style="
@@ -764,32 +785,8 @@
                 </button>
             </div>
 
-                <label style="font-size:0.9em;">
-                    Thư mục:
-                    <select id="folderSelect" style="margin-left:4px; padding:4px 8px;"></select>
-                </label>
+            <div class="loading" id="loading">⏳ Đang xử lý file...</div>
 
-                <label style="font-size:0.9em;">
-                    Nhóm file:
-                    <select id="fileGroupSelect" style="margin-left:4px; padding:4px 8px; min-width:220px;"></select>
-                </label>
-
-                <button
-                    type="button"
-                    id="loadGroupBtn"
-                    style="
-                        padding:4px 10px;
-                        border-radius:6px;
-                        border:1px solid #2563eb;
-                        background:#2563eb;
-                        color:#fff;
-                        font-size:0.9em;
-                        cursor:pointer;
-                    "
-                >
-                    Chọn nhóm file
-                </button>
-            </div>
             <div class="loading" id="loading">⏳ Đang xử lý file...</div>
         </div>
 
