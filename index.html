@@ -10,6 +10,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- MSAL cho đăng nhập OneDrive (Microsoft Graph) -->
+    <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+
 
 
 
@@ -645,39 +648,47 @@
         </div>
 
         <!-- Upload -->
-        <div class="upload-section">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📁</div>
-                <h3>Tải file Excel KPI</h3>
+        <div class="upload-sub-actions">
+            <!-- 1. Chọn file Excel trên máy -->
+            <label class="upload-sub-btn">
+                📄 Chọn file Excel
+                <input
+                    type="file"
+                    id="fileInputFiles"
+                    class="file-input"
+                    accept=".xlsx,.xls"
+                    multiple
+                    onchange="handleFileFromFiles(event)"
+                />
+            </label>
 
-                <div class="upload-sub-actions">
-                    <label class="upload-sub-btn">
-                        📄 Chọn file Excel
-                        <input
-                            type="file"
-                            id="fileInputFiles"
-                            class="file-input"
-                            accept=".xlsx,.xls"
-                            multiple
-                            onchange="handleFileFromFiles(event)"
-                        />
-                    </label>
+            <span class="upload-sub-separator">hoặc</span>
 
-                    <span class="upload-sub-separator">hoặc</span>
+            <!-- 2. Chọn thư mục Excel trên máy -->
+            <label class="upload-sub-btn">
+                📂 Chọn thư mục Excel
+                <input
+                    type="file"
+                    id="fileInputFolder"
+                    class="file-input"
+                    webkitdirectory
+                    directory
+                    onchange="handleFileFromFolder(event)"
+                />
+            </label>
 
-                    <label class="upload-sub-btn">
-                        📂 Chọn thư mục Excel
-                        <input
-                            type="file"
-                            id="fileInputFolder"
-                            class="file-input"
-                            webkitdirectory
-                            directory
-                            onchange="handleFileFromFolder(event)"
-                        />
-                    </label>
-                </div>
-            </div>
+            <span class="upload-sub-separator">hoặc</span>
+
+            <!-- 3. Mở thư mục KPI trên OneDrive (cách 2) -->
+            <button
+                type="button"
+                class="upload-sub-btn"
+                onclick="openOneDriveKpiFolder()"
+            >
+                ☁️ Mở thư mục OneDrive KPI
+            </button>
+        </div>
+
 
             <div class="file-info" id="fileInfo"></div>
 
@@ -692,6 +703,67 @@
                     flex-wrap:wrap;
                 "
             >
+                        <!-- 🔗 Đọc trực tiếp file từ OneDrive (Graph API) -->
+            <div
+                id="oneDriveSelectors"
+                style="
+                    margin-top:8px;
+                    display:flex;
+                    gap:8px;
+                    align-items:center;
+                    flex-wrap:wrap;
+                "
+            >
+                <span style="font-size:0.9em; font-weight:600;">OneDrive:</span>
+
+                <button
+                    type="button"
+                    id="odLoginBtn"
+                    style="
+                        padding:4px 10px;
+                        border-radius:6px;
+                        border:1px solid #059669;
+                        background:#059669;
+                        color:#fff;
+                        font-size:0.85em;
+                        cursor:pointer;
+                    "
+                >
+                    🔑 Đăng nhập OneDrive
+                </button>
+
+                <span
+                    id="odStatus"
+                    style="font-size:0.8em; color:#6b7280; min-width:140px;"
+                >
+                    Chưa đăng nhập
+                </span>
+
+                <label style="font-size:0.9em;">
+                    Nhóm file:
+                    <select
+                        id="odGroupSelect"
+                        style="margin-left:4px; padding:4px 8px; min-width:220px;"
+                    ></select>
+                </label>
+
+                <button
+                    type="button"
+                    id="odLoadGroupBtn"
+                    style="
+                        padding:4px 10px;
+                        border-radius:6px;
+                        border:1px solid #2563eb;
+                        background:#2563eb;
+                        color:#fff;
+                        font-size:0.9em;
+                        cursor:pointer;
+                    "
+                >
+                    Đọc nhóm từ OneDrive
+                </button>
+            </div>
+
                 <label style="font-size:0.9em;">
                     Thư mục:
                     <select id="folderSelect" style="margin-left:4px; padding:4px 8px;"></select>
@@ -981,6 +1053,16 @@
         let emailIntroTouched = false;
         let chartConfigAppliedOnce = false;   // áp sheet từ cấu hình cũ đúng 1 lần
 
+        // ===== LINK THƯ MỤC KPI TRÊN ONEDRIVE (CÁCH 2) =====
+        const ONEDRIVE_KPI_URL = "https://rnovnpt-my.sharepoint.com/personal/anhnqt_rnovnpt_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fanhnqt%5Frnovnpt%5Fonmicrosoft%5Fcom%2FDocuments%2FKPI%20Scheduler&ga=1";
+
+        // Mở thư mục KPI trên OneDrive trong tab mới
+        function openOneDriveKpiFolder() {
+            // Nếu sau này đổi link, chỉ cần sửa ONEDRIVE_KPI_URL ở trên
+            window.open(ONEDRIVE_KPI_URL, "_blank");
+        }
+
+
         // BẢNG NGƯỠNG KPI
         let kpiThresholdMap = null;
         let worstCellThresholdMap = null;   // sheet "WorstCell Threshold"
@@ -1229,33 +1311,300 @@ function buildGroupMapForCurrentFolder(folderName) {
             // Gọi lại logic gộp nhiều file có sẵn
             processMultipleFiles(files);
         }
+// ========== OneDrive Graph API – đọc trực tiếp file (KPI Scheduler) ==========
 
-        // Gắn event cho 2 combobox + nút
-        window.addEventListener("DOMContentLoaded", () => {
-            const folderSelect = document.getElementById("folderSelect");
-            const groupSelect = document.getElementById("fileGroupSelect");
-            const loadBtn = document.getElementById("loadGroupBtn");
+// 1. Cấu hình ứng dụng Azure AD (anh TỰ THAY clientId / tenantId cho đúng)
+const msalConfig = {
+    auth: {
+        clientId: "42a096ad-08ac-47c8-813f-69937e941682", // TODO: thay bằng Application (client) ID từ Azure portal
+        authority: "https://login.microsoftonline.com/59368d93-4334-44cb-86ac-acd0bde56fcd", // TODO: thay bằng Directory (tenant) ID
+        redirectUri: window.location.origin
+    }
+};
 
-            if (folderSelect) {
-                folderSelect.addEventListener("change", () => {
-                    // Truyền đúng folder đang chọn vào hàm
-                    buildGroupMapForCurrentFolder(folderSelect.value);
-                });
-            }
+// Phạm vi chỉ cần để đọc file trong OneDrive
+const loginRequest = {
+    scopes: ["Files.Read.All"]
+};
 
-            if (groupSelect) {
-                // nếu muốn auto load khi đổi nhóm thì bỏ comment 2 dòng dưới
-                // groupSelect.addEventListener("change", () => {
-                //     loadSelectedGroupFiles();
-                // });
-            }
+// Đường dẫn thư mục KPI trong OneDrive (tương đối so với root)
+// Ví dụ chuẩn với link anh gửi: "/Documents/KPI Scheduler"
+const graphKpiConfig = {
+    kpiFolderPath: "/Documents/KPI Scheduler"
+};
 
-            if (loadBtn) {
-                loadBtn.addEventListener("click", () => {
-                    loadSelectedGroupFiles();
-                });
-            }
+// Biến dùng chung
+let msalInstance = null;
+let oneDriveAccount = null;
+let oneDriveGroupMap = {}; // { groupName: [{ itemId, name, downloadUrl, lastModified }] }
+
+// Khởi tạo UI OneDrive: gắn event cho các nút / select
+function initOneDriveGraphUI() {
+    if (typeof msal === "undefined") {
+        console.warn("MSAL library chưa được load – kiểm tra <script src='...msal-browser.min.js'>");
+        return;
+    }
+
+    msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    // Nếu đã có account từ session trước thì lấy lại
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts && accounts.length > 0) {
+        oneDriveAccount = accounts[0];
+    }
+
+    const loginBtn = document.getElementById("odLoginBtn");
+    const loadGroupBtn = document.getElementById("odLoadGroupBtn");
+    const statusSpan = document.getElementById("odStatus");
+
+    if (statusSpan) {
+        if (oneDriveAccount) {
+            statusSpan.textContent = "Đã đăng nhập: " + (oneDriveAccount.username || oneDriveAccount.name || "");
+            // Nếu đã có session đăng nhập → load luôn danh sách nhóm
+            odLoadKpiGroupsFromOneDrive();
+        } else {
+            statusSpan.textContent = "Chưa đăng nhập";
+        }
+    }
+
+    if (loginBtn) {
+        loginBtn.addEventListener("click", async () => {
+            await handleOneDriveLogin();
         });
+    }
+
+    if (loadGroupBtn) {
+        loadGroupBtn.addEventListener("click", async () => {
+            await odLoadSelectedGroupFromOneDrive();
+        });
+    }
+}
+
+// Đăng nhập OneDrive (popup)
+async function handleOneDriveLogin() {
+    const statusSpan = document.getElementById("odStatus");
+    try {
+        if (!msalInstance) {
+            msalInstance = new msal.PublicClientApplication(msalConfig);
+        }
+
+        const loginResp = await msalInstance.loginPopup(loginRequest);
+        oneDriveAccount = loginResp.account;
+        if (statusSpan) {
+            statusSpan.textContent = "Đã đăng nhập: " + (oneDriveAccount.username || oneDriveAccount.name || "");
+        }
+
+        // Sau khi login xong → load danh sách nhóm file trong thư mục KPI Scheduler
+        await odLoadKpiGroupsFromOneDrive();
+    } catch (err) {
+        console.error("Lỗi đăng nhập OneDrive:", err);
+        if (statusSpan) {
+            statusSpan.textContent = "Đăng nhập thất bại";
+        }
+        alert("Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" + err.message);
+    }
+}
+
+// Lấy access token để gọi Graph
+async function getGraphAccessToken() {
+    if (!msalInstance) {
+        msalInstance = new msal.PublicClientApplication(msalConfig);
+    }
+
+    const account = oneDriveAccount || (msalInstance.getAllAccounts()[0] || null);
+    if (!account) {
+        // Chưa login → bật popup
+        const loginResp = await msalInstance.loginPopup(loginRequest);
+        oneDriveAccount = loginResp.account;
+    }
+
+    const request = {
+        ...loginRequest,
+        account: oneDriveAccount || msalInstance.getAllAccounts()[0]
+    };
+
+    try {
+        const tokenResp = await msalInstance.acquireTokenSilent(request);
+        return tokenResp.accessToken;
+    } catch (silentErr) {
+        console.warn("Silent token thất bại, fallback loginPopup:", silentErr);
+        const tokenResp = await msalInstance.acquireTokenPopup(request);
+        return tokenResp.accessToken;
+    }
+}
+
+// Helper gọi Graph API trả về JSON
+async function graphGetJson(endpoint) {
+    const token = await getGraphAccessToken();
+    const url = "https://graph.microsoft.com/v1.0" + endpoint;
+
+    const res = await fetch(url, {
+        headers: {
+            Authorization: "Bearer " + token
+        }
+    });
+
+    if (!res.ok) {
+        const txt = await res.text();
+        throw new Error("Graph API lỗi " + res.status + ": " + txt);
+    }
+
+    return res.json();
+}
+
+// Lấy danh sách file trong thư mục KPI Scheduler, build group theo prefix
+async function odLoadKpiGroupsFromOneDrive() {
+    const loading = document.getElementById("loading");
+    const groupSelect = document.getElementById("odGroupSelect");
+
+    if (loading) {
+        loading.textContent = "⏳ Đang tải danh sách file từ OneDrive...";
+        loading.classList.add("show");
+    }
+
+    try {
+        const rawPath = graphKpiConfig.kpiFolderPath || "/";
+        // Encode từng segment, giữ dấu "/"
+        const encodedPath = rawPath
+            .split("/")
+            .filter(Boolean)
+            .map(encodeURIComponent)
+            .join("/");
+
+        const endpoint = `/me/drive/root:/${encodedPath}:/children`;
+        const data = await graphGetJson(endpoint);
+        const items = (data && data.value) || [];
+
+        // Reset group map
+        oneDriveGroupMap = {};
+
+        items
+            .filter((it) => !it.folder) // chỉ lấy file, bỏ folder
+            .forEach((it) => {
+                const name = it.name || "";
+                const idxDash = name.indexOf("-");
+                const gName = idxDash > 0 ? name.substring(0, idxDash) : name;
+
+                if (!oneDriveGroupMap[gName]) oneDriveGroupMap[gName] = [];
+                oneDriveGroupMap[gName].push({
+                    itemId: it.id,
+                    name: it.name,
+                    downloadUrl: it["@microsoft.graph.downloadUrl"],
+                    lastModified: it.lastModifiedDateTime || ""
+                });
+            });
+
+        const groupNames = Object.keys(oneDriveGroupMap).sort();
+
+        if (groupSelect) {
+            groupSelect.innerHTML = "";
+            groupNames.forEach((g) => {
+                const opt = document.createElement("option");
+                opt.value = g;
+                opt.textContent = `${g} (${oneDriveGroupMap[g].length} file)`;
+                groupSelect.appendChild(opt);
+            });
+        }
+
+        if (!groupNames.length) {
+            alert("Thư mục KPI Scheduler trên OneDrive không có file Excel nào.");
+        }
+    } catch (err) {
+        console.error("Lỗi tải danh sách file KPI từ OneDrive:", err);
+        alert("Không đọc được danh sách file từ OneDrive.\n" + err.message);
+    } finally {
+        if (loading) {
+            loading.textContent = "⏳ Đang xử lý file...";
+            loading.classList.remove("show");
+        }
+    }
+}
+
+// Tải các file trong nhóm đã chọn từ OneDrive → chuyển thành File[] → processMultipleFiles
+async function odLoadSelectedGroupFromOneDrive() {
+    const groupSelect = document.getElementById("odGroupSelect");
+    if (!groupSelect) {
+        alert("Không tìm thấy combobox Nhóm file OneDrive.");
+        return;
+    }
+
+    const gName = groupSelect.value;
+    const list = oneDriveGroupMap[gName] || [];
+    if (!list.length) {
+        alert("Nhóm file OneDrive đang chọn không có file.");
+        return;
+    }
+
+    const loading = document.getElementById("loading");
+    if (loading) {
+        loading.textContent = "⏳ Đang tải file nhóm '" + gName + "' từ OneDrive...";
+        loading.classList.add("show");
+    }
+
+    try {
+        // Có thể sort theo lastModified (mới nhất trước)
+        const sorted = [...list].sort((a, b) =>
+            (b.lastModified || "").localeCompare(a.lastModified || "")
+        );
+
+        const fileObjs = [];
+
+        for (const item of sorted) {
+            if (!item.downloadUrl) continue;
+
+            const res = await fetch(item.downloadUrl);
+            if (!res.ok) {
+                console.warn("Không tải được file:", item.name, res.status);
+                continue;
+            }
+
+            const blob = await res.blob();
+            const file = new File([blob], item.name, {
+                type: blob.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            });
+            fileObjs.push(file);
+        }
+
+        if (!fileObjs.length) {
+            alert("Không tải được file nào trong nhóm này.");
+            return;
+        }
+
+        // Dùng lại logic gộp nhiều file đang có
+        processMultipleFiles(fileObjs);
+    } catch (err) {
+        console.error("Lỗi tải file từ OneDrive:", err);
+        alert("Lỗi khi tải file nhóm từ OneDrive.\n" + err.message);
+    } finally {
+        if (loading) {
+            loading.textContent = "⏳ Đang xử lý file...";
+            loading.classList.remove("show");
+        }
+    }
+}
+
+// Gắn event cho combobox local + khởi tạo OneDrive
+window.addEventListener("DOMContentLoaded", () => {
+    // --- Folder/Group LOCAL (chọn thư mục trên máy) ---
+    const folderSelect = document.getElementById("folderSelect");
+    const loadBtn = document.getElementById("loadGroupBtn");
+
+    if (folderSelect) {
+        folderSelect.addEventListener("change", () => {
+            buildGroupMapForCurrentFolder(folderSelect.value);
+        });
+    }
+
+    if (loadBtn) {
+        loadBtn.addEventListener("click", () => {
+            loadSelectedGroupFiles();
+        });
+    }
+
+    // --- OneDrive (Graph API) ---
+    initOneDriveGraphUI();
+});
+
 
         // ✅ Hàm xử lý khi chọn "📂 Chọn thư mục Excel"
         function handleFileFromFolder(e) {
