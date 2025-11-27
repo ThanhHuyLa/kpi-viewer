@@ -353,6 +353,15 @@
     z-index: 5;
 }
 
+#kpiThresholdPanel select,
+#kpiThresholdPanel input[type="number"] {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;   /* BO TRÒN */
+    font-size: 0.9em;
+    background: #fff;
+}
+
 
         tr:hover {
             background: #f3f4ff;
@@ -492,9 +501,12 @@
         #excelTable table th:nth-child(2),
         #excelTable table td:nth-child(2),
         #excelTable table th:nth-child(3),
-        #excelTable table td:nth-child(3) {
+        #excelTable table td:nth-child(3),
+        #excelTable table th:nth-child(4),
+        #excelTable table td:nth-child(4) {
             white-space: nowrap;
         }
+
 
         .excel-latest-btn {
             border: none;
@@ -644,7 +656,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.2</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.3</h1>
         </div>
 
         <!-- Upload -->
@@ -2862,14 +2874,22 @@ function buildThresholdCustomUi() {
     // Đổ danh sách KPI
     kpiSelect.innerHTML = "";
     activeKpiCols.forEach((col) => {
-        const meta = findKpiMetaForColumn(col) || {};
-        const text = meta.name ? `${meta.name} (${col})` : col;
+        const meta      = findKpiMetaForColumn(col) || {};
+        const unitLabel = getDisplayUnit(meta);
+        const kpiName   = meta.name || col;
+
+        let text = kpiName;
+        if (unitLabel) {
+            // ví dụ: "NSA call access ([%])"
+            text += ` (${unitLabel})`;
+        }
 
         const opt = document.createElement("option");
         opt.value = col;
         opt.textContent = text;
         kpiSelect.appendChild(opt);
     });
+
 
     // Đồng bộ ô Operator & Threshold theo map hiện tại (mặc định từ file KPI Threshhold)
 async function syncInputsFromThreshold() {
@@ -2903,8 +2923,36 @@ async function syncInputsFromThreshold() {
         const op     = (opSelect.value || "").trim();
         const valStr = valueInput.value;
 
-        if (!col || !op || !valStr) {
-            alert("Vui lòng chọn KPI, Operator và nhập Threshold.");
+        // Nếu chưa chọn KPI thì báo lỗi nhẹ
+        if (!col) {
+            alert("Vui lòng chọn KPI.");
+            return;
+        }
+
+        // Nếu chọn "--" thì cho phép xoá NGƯỠNG TÙY CHỈNH (threshold có thể để trống)
+        if (op === "") {
+            // Xóa ngưỡng tùy chỉnh cho KPI này (nếu có),
+            // quay về dùng ngưỡng mặc định trong file KPI Threshhold
+            if (customThresholdMap && customThresholdMap[col]) {
+                delete customThresholdMap[col];
+                localStorage.setItem(
+                    "customThresholdMap",
+                    JSON.stringify(customThresholdMap)
+                );
+            }
+
+            // Cập nhật lại bảng & chart
+            renderExcelStyleTable();
+            if (typeof renderLatestKpiTable === "function") {
+                renderLatestKpiTable();
+            }
+            renderCharts();
+            return;
+        }
+
+        // Các trường hợp còn lại → yêu cầu phải có số
+        if (!valStr) {
+            alert("Vui lòng nhập Threshold.");
             return;
         }
 
@@ -2918,7 +2966,7 @@ async function syncInputsFromThreshold() {
             await ensureKpiThresholdsLoaded();
         }
 
-        // Ghi đè ngưỡng trong map
+        // Ghi đè ngưỡng trong map (tạo/custom)
         setCustomThresholdForKpiColumn(col, op, num);
 
         // Cập nhật lại bảng theo ngưỡng mới
@@ -2926,6 +2974,7 @@ async function syncInputsFromThreshold() {
         if (typeof renderLatestKpiTable === "function") {
             renderLatestKpiTable();
         }
+        renderCharts();
     };
 
     // Khởi tạo lần đầu theo KPI đầu tiên
@@ -4012,8 +4061,7 @@ if (showTargetLine) {
             });
 
             titleEl.textContent = `KPI Overview (Ngày: ${targetLabel})`;
-
-            const colSpan = 3 + wsList.length;
+            const colSpan = 4 + wsList.length;
             let html = `<table>
                 <thead>
                     <tr>
@@ -4029,7 +4077,8 @@ if (showTargetLine) {
                     <tr>
                         <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1; white-space:nowrap;">KPI Name</th>
                         <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1;">KPI ID</th>
-                        <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1;">Unit</th>`;
+                        <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1;">Unit</th>
+                        <th style="background:#203864; color:#fff; padding:6px 8px; border:1px solid #cbd5e1;">Target</th>`;
 
             wsList.forEach((ws) => {
                 html += `<th style="background:#9bbb59; color:#111827; padding:6px 8px; border:1px solid #cbd5e1; text-align:center;">${ws}</th>`;
@@ -4044,54 +4093,71 @@ if (showTargetLine) {
                 const unitLabel = getDisplayUnit(meta);
                 const kpiName   = meta.name || kpiCol;
 
+                // Lấy ngưỡng và đảo chiều để hiển thị Target
+                const thr = getThresholdForKpiColumn(kpiCol);
+                let targetDisplay = "";
+
+                if (thr && thr.op && typeof thr.value === "number") {
+                    const reversedOp =
+                        thr.op === "<"  ? ">"  :
+                        thr.op === "<=" ? ">=" :
+                        thr.op === ">"  ? "<"  :
+                        thr.op === ">=" ? "<=" :
+                        (thr.op === "=" || thr.op === "==") ? "=" : "";
+
+                    targetDisplay = reversedOp ? `${reversedOp} ${thr.value}` : "";
+                }
+
                 html += `<tr>
                     <td style="padding:6px 16px; border:1px solid #e5e7eb; background:#d9e1f2; font-weight:600; white-space:nowrap;">${kpiName}</td>
                     <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${kpiId}</td>
-                    <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${unitLabel}</td>`;
+                    <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${unitLabel}</td>
+                    <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center; font-weight:600;">${targetDisplay}</td>`;
 
-    wsList.forEach((ws) => {
-        const v = rowValues[ws];
-        let display = "";
-        let condStyle = "";
+                wsList.forEach((ws) => {
+                    const v = rowValues[ws];
+                    let display = "";
+                    let condStyle = "";
 
-        if (typeof v === "number" && !isNaN(v)) {
-            // Giá trị hiển thị
-            display = Math.round(v * 1000) / 1000;
+                    if (typeof v === "number" && !isNaN(v)) {
+                        // Giá trị hiển thị
+                        display = Math.round(v * 1000) / 1000;
 
-            // ==== Áp dụng ngưỡng từ KPI Threshhold.xlsx sheet "KPI Threshold" ====
-            if (kpiThresholdMap) {
-                const thr = getThresholdForKpiColumn(kpiCol);
-                if (thr) {
-                    const num = v;              // v đã được scale theo unit
-                    const t   = thr.value;
-                    const op  = thr.op;
-                    let isBad = false;
+                        // ==== Áp dụng ngưỡng từ KPI Threshhold.xlsx sheet "KPI Threshold" ====
+                        if (kpiThresholdMap) {
+                            const thr = getThresholdForKpiColumn(kpiCol);
+                            if (thr) {
+                                const num = v;              // v đã được scale theo unit
+                                const t   = thr.value;
+                                const op  = thr.op;
+                                let isBad = false;
 
-                    if (op === "<") {
-                        isBad = num < t;
-                    } else if (op === ">") {
-                        isBad = num > t;
-                    } else if (op === "<=") {
-                        isBad = num <= t;
-                    } else if (op === ">=") {
-                        isBad = num >= t;
-                    } else if (op === "=" || op === "==") {
-                        isBad = num === t;
+                                if (op === "<") {
+                                    isBad = num < t;
+                                } else if (op === ">") {
+                                    isBad = num > t;
+                                } else if (op === "<=") {
+                                    isBad = num <= t;
+                                } else if (op === ">=") {
+                                    isBad = num >= t;
+                                } else if (op === "=" || op === "==") {
+                                    isBad = num === t;
+                                }
+
+                                // Nếu vi phạm điều kiện ⇒ tô đỏ
+                                if (isBad) {
+                                    condStyle =
+                                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                                }
+                            }
+                        }
                     }
 
-                    // Nếu vi phạm điều kiện ⇒ tô đỏ
-                    if (isBad) {
-                        condStyle =
-                            "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                    }
-                }
-            }
-        }
+                    const baseCell =
+                        "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+                    html += `<td style="${baseCell}${condStyle}">${display}</td>`;
+                });
 
-        const baseCell =
-            "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
-        html += `<td style="${baseCell}${condStyle}">${display}</td>`;
-    });
                 html += `</tr>`;
             });
 
@@ -4101,6 +4167,8 @@ if (showTargetLine) {
             tableCard.style.display = "block";
 
             applyStickyKpiColumns();
+
+
         }
 
         function applyStickyKpiColumns() {
@@ -4115,7 +4183,7 @@ if (showTargetLine) {
                 if (!headerRows.length) return;
 
                 const headerRow = headerRows[headerRows.length - 1];
-                const stickyCount = 3;
+                const stickyCount = 4;
 
                 const tableRect = table.getBoundingClientRect();
                 const colLeft = [];
