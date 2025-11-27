@@ -656,7 +656,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.3</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.5</h1>
         </div>
 
         <!-- Upload -->
@@ -1014,6 +1014,16 @@
     >
         Áp dụng
     </button>
+    
+    <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85em;">
+        <input
+            type="checkbox"
+            id="thresholdGlobalToggle"
+            style="accent-color:#4f46e5;"
+        />
+        <span>Kích hoạt tùy chỉnh</span>
+    </label>
+
 </div>
 
     </div>
@@ -1176,6 +1186,7 @@
         let emailIntroTouched = false;
         let chartConfigAppliedOnce = false;   // áp sheet từ cấu hình cũ đúng 1 lần
         let chartTargetVisible = {}; // NEW: lưu trạng thái checkbox "Target" theo từng KPI
+        let globalThresholdEnabled = false; // Checkbox tổng: Target column + highlight + target line
 
         // ===== LINK THƯ MỤC KPI TRÊN ONEDRIVE (CÁCH 2) =====
         const ONEDRIVE_KPI_URL = "https://rnovnpt-my.sharepoint.com/personal/anhnqt_rnovnpt_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fanhnqt%5Frnovnpt%5Fonmicrosoft%5Fcom%2FDocuments%2FKPI%20Scheduler&ga=1";
@@ -2853,6 +2864,7 @@ function buildThresholdCustomUi() {
     const opSelect   = document.getElementById("thresholdOpSelect");
     const valueInput = document.getElementById("thresholdValueInput");
     const applyBtn   = document.getElementById("thresholdApplyBtn");
+    const globalToggle = document.getElementById("thresholdGlobalToggle");
 
     if (!panel || !kpiSelect || !opSelect || !valueInput || !applyBtn) return;
 
@@ -2870,6 +2882,19 @@ function buildThresholdCustomUi() {
     }
 
     panel.style.display = "block";
+
+        // Khởi tạo trạng thái checkbox tổng từ localStorage (nếu có)
+    if (globalToggle) {
+        try {
+            const saved = localStorage.getItem("globalThresholdEnabled");
+            if (saved !== null) {
+                globalThresholdEnabled = saved === "1";
+            }
+        } catch (e) {
+            console.warn("Cannot load globalThresholdEnabled", e);
+        }
+        globalToggle.checked = globalThresholdEnabled;
+    }
 
     // Đổ danh sách KPI
     kpiSelect.innerHTML = "";
@@ -2976,7 +3001,40 @@ async function syncInputsFromThreshold() {
         }
         renderCharts();
     };
+    // ===== Checkbox tổng: Kích hoạt tùy chỉnh =====
+    if (globalToggle) {
+        globalToggle.onchange = () => {
+            // 1) Cập nhật biến trạng thái
+            globalThresholdEnabled = globalToggle.checked;
 
+            // 2) Lưu lại để lần sau mở file vẫn giữ trạng thái
+            try {
+                localStorage.setItem(
+                    "globalThresholdEnabled",
+                    globalThresholdEnabled ? "1" : "0"
+                );
+            } catch (e) {
+                console.warn("Cannot save globalThresholdEnabled", e);
+            }
+
+            // 3) Đồng bộ state Target cho TẤT CẢ KPI đang active
+            //    - nếu bật: tất cả chart đều Target = ON
+            //    - nếu tắt: tất cả chart đều Target = OFF
+            chartTargetVisible = {};
+            if (globalThresholdEnabled) {
+                activeKpiCols.forEach((col) => {
+                    chartTargetVisible[col] = true;
+                });
+            }
+
+            // 4) Vẽ lại bảng + chart cho khớp
+            renderExcelStyleTable();
+            if (typeof renderLatestKpiTable === "function") {
+                renderLatestKpiTable();
+            }
+            renderCharts();
+        };
+    }
     // Khởi tạo lần đầu theo KPI đầu tiên
     syncInputsFromThreshold();
 }
@@ -3668,14 +3726,19 @@ if (chartType === "stackedArea") {
     });
 }
 
-// NEW: thêm dataset line target nếu có ngưỡng & checkbox bật
 const hasThrForChart =
     thrForChart &&
     typeof thrForChart.value === "number" &&
     !isNaN(thrForChart.value);
 
+// Chỉ vẽ target line khi:
+// - Có ngưỡng
+// - Checkbox tổng đang bật
+// - Checkbox Target riêng cho KPI này đang bật
+// - Loại chart phù hợp
 const showTargetLine =
     hasThrForChart &&
+    globalThresholdEnabled &&
     chartTargetVisible[valueCol] &&
     (chartType === "line" ||
         chartType === "bar" ||
@@ -3687,21 +3750,21 @@ if (showTargetLine) {
 
     chartDatasets = [
         ...chartDatasets,
-            {
-                label: "Target",
-                data: targetData,
-                type: "line",
-                borderWidth: 5,        // ⭐ ĐỘ DÀY TĂNG LÊN
-                borderColor: "#ff0000", // ⭐ ĐỎ ĐẬM – rất dễ thấy (có thể đổi)
-                borderDash: [8, 5],     // ⭐ Nét đứt to – rõ ràng
-                pointRadius: 0,
-                tension: 0,             // ⭐ Đường thẳng, không bo cong
-                fill: false,
-                yAxisID: "y",
-            },
-
+        {
+            label: "Target",
+            data: targetData,
+            type: "line",
+            borderWidth: 5,        // Độ dày target line
+            borderColor: "#ff0000",
+            borderDash: [8, 5],
+            pointRadius: 0,
+            tension: 0,
+            fill: false,
+            yAxisID: "y",
+        },
     ];
 }
+
 
                 chartInstances[chartId] = new Chart(ctx, {
                     type: internalType,
@@ -4115,48 +4178,49 @@ if (showTargetLine) {
                     <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center; font-weight:600;">${targetDisplay}</td>`;
 
                 wsList.forEach((ws) => {
-                    const v = rowValues[ws];
-                    let display = "";
-                    let condStyle = "";
+    const v = rowValues[ws];
+    let display = "";
+    if (typeof v === "number" && !isNaN(v)) {
+        display = Math.round(v * 1000) / 1000;
+    }
 
-                    if (typeof v === "number" && !isNaN(v)) {
-                        // Giá trị hiển thị
-                        display = Math.round(v * 1000) / 1000;
+    // === Highlight theo ngưỡng chỉ khi checkbox tổng đang bật ===
+    let condStyle = "";
+    if (
+        globalThresholdEnabled &&             // 🔴 gắn với checkbox tổng
+        typeof v === "number" &&
+        !isNaN(v) &&
+        kpiThresholdMap
+    ) {
+        const thr = getThresholdForKpiColumn(kpiCol);
+        if (thr) {
+            const num = v;
+            const t   = thr.value;
+            const op  = thr.op;
+            let isBad = false;
 
-                        // ==== Áp dụng ngưỡng từ KPI Threshhold.xlsx sheet "KPI Threshold" ====
-                        if (kpiThresholdMap) {
-                            const thr = getThresholdForKpiColumn(kpiCol);
-                            if (thr) {
-                                const num = v;              // v đã được scale theo unit
-                                const t   = thr.value;
-                                const op  = thr.op;
-                                let isBad = false;
+            if (op === "<") {
+                isBad = num < t;
+            } else if (op === ">") {
+                isBad = num > t;
+            } else if (op === "<=") {
+                isBad = num <= t;
+            } else if (op === ">=") {
+                isBad = num >= t;
+            } else if (op === "=" || op === "==") {
+                isBad = num === t;
+            }
 
-                                if (op === "<") {
-                                    isBad = num < t;
-                                } else if (op === ">") {
-                                    isBad = num > t;
-                                } else if (op === "<=") {
-                                    isBad = num <= t;
-                                } else if (op === ">=") {
-                                    isBad = num >= t;
-                                } else if (op === "=" || op === "==") {
-                                    isBad = num === t;
-                                }
+            if (isBad) {
+                condStyle =
+                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
+            }
+        }
+    }
 
-                                // Nếu vi phạm điều kiện ⇒ tô đỏ
-                                if (isBad) {
-                                    condStyle =
-                                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                                }
-                            }
-                        }
-                    }
+    html += `<td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center; ${condStyle}">${display}</td>`;
+});
 
-                    const baseCell =
-                        "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
-                    html += `<td style="${baseCell}${condStyle}">${display}</td>`;
-                });
 
                 html += `</tr>`;
             });
@@ -4167,6 +4231,7 @@ if (showTargetLine) {
             tableCard.style.display = "block";
 
             applyStickyKpiColumns();
+            applyKpiOverviewTargetVisibility();
 
 
         }
@@ -4183,7 +4248,7 @@ if (showTargetLine) {
                 if (!headerRows.length) return;
 
                 const headerRow = headerRows[headerRows.length - 1];
-                const stickyCount = 4;
+                const stickyCount = globalThresholdEnabled ? 4 : 3;
 
                 const tableRect = table.getBoundingClientRect();
                 const colLeft = [];
@@ -4220,6 +4285,36 @@ if (showTargetLine) {
                                 cell.style.backgroundColor = '#d9e1f2';
                             }
                         }
+                    }
+                });
+            });
+        }
+        function applyKpiOverviewTargetVisibility() {
+            const wrapper = document.getElementById("excelTable");
+            if (!wrapper) return;
+
+            const table = wrapper.querySelector("table");
+            if (!table) return;
+
+            const showTarget = globalThresholdEnabled;
+
+            // Header: chỉ hàng cuối cùng mới có cột Target
+            if (table.tHead) {
+                const headerRows = Array.from(table.tHead.rows);
+                headerRows.forEach((row) => {
+                    if (row.cells.length > 3) {
+                        const cell = row.cells[3]; // cột Target
+                        if (cell) cell.style.display = showTarget ? "" : "none";
+                    }
+                });
+            }
+
+            // Body: mỗi row có cột [0: KPI Name, 1: KPI ID, 2: Unit, 3: Target, ...]
+            Array.from(table.tBodies || []).forEach((tbody) => {
+                Array.from(tbody.rows).forEach((row) => {
+                    if (row.cells.length > 3) {
+                        const cell = row.cells[3];
+                        if (cell) cell.style.display = showTarget ? "" : "none";
                     }
                 });
             });
@@ -6279,6 +6374,39 @@ function updateKpiFolderPath() {
 
     alert("Đã cập nhật đường dẫn OneDrive:\n" + newPath);
 }
+const globalToggle = document.getElementById("thresholdGlobalToggle");
+if (globalToggle) {
+    // đồng bộ trạng thái biến với checkbox tổng
+    globalToggle.checked = globalThresholdEnabled;
+
+    globalToggle.addEventListener("change", () => {
+        globalThresholdEnabled = globalToggle.checked;
+
+        // 🔁 Đồng bộ trạng thái Target line của TẤT CẢ chart
+        //    - Bật "Kích hoạt tùy chỉnh"  -> bật Target cho mọi KPI (có ngưỡng)
+        //    - Tắt "Kích hoạt tùy chỉnh" -> tắt Target cho mọi KPI
+        if (typeof window.chartTargetVisible === "undefined") {
+            window.chartTargetVisible = {};
+        }
+        if (Array.isArray(numericColumns)) {
+            numericColumns.forEach((col) => {
+                window.chartTargetVisible[col] = globalThresholdEnabled;
+            });
+        }
+
+        // vẽ lại KPI Overview (Target + highlight)
+        if (typeof renderExcelStyleTable === "function") {
+            renderExcelStyleTable();
+        }
+
+        // vẽ lại tất cả chart để ẩn/hiện line target + checkbox Target
+        if (typeof renderCharts === "function") {
+            renderCharts();
+        }
+    });
+}
+
+
 
 
     </script>
