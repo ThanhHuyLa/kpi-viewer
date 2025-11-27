@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.8.9</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.0</h1>
         </div>
 
         <!-- Upload -->
@@ -3628,6 +3628,15 @@ if (chartType === "funnel") {
             const tableDiv  = document.getElementById("excelTable");
             const titleEl   = document.getElementById("excelTableTitle");
             if (!tableCard || !tableDiv || !titleEl) return;
+    
+            // Nếu chưa load KPI Threshhold thì trigger load & render lại sau khi xong
+            if (kpiThresholdMap === null) {
+                ensureKpiThresholdsLoaded().then(() => {
+                    if (tableCard && tableCard.style.display !== "none") {
+                        renderExcelStyleTable();
+                    }
+                });
+            }
 
             let targetLabel = excelSelectedDate || getLatestPeriodLabel(currentData);
             if (!targetLabel) {
@@ -3745,15 +3754,49 @@ if (chartType === "funnel") {
                     <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${kpiId}</td>
                     <td style="padding:6px 8px; border:1px solid #e5e7eb; background:#d9e1f2; text-align:center;">${unitLabel}</td>`;
 
-                wsList.forEach((ws) => {
-                    const v = rowValues[ws];
-                    let display = "";
-                    if (typeof v === "number" && !isNaN(v)) {
-                        display = Math.round(v * 1000) / 1000;
-                    }
-                    html += `<td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center;">${display}</td>`;
-                });
+    wsList.forEach((ws) => {
+        const v = rowValues[ws];
+        let display = "";
+        let condStyle = "";
 
+        if (typeof v === "number" && !isNaN(v)) {
+            // Giá trị hiển thị
+            display = Math.round(v * 1000) / 1000;
+
+            // ==== Áp dụng ngưỡng từ KPI Threshhold.xlsx sheet "KPI Threshold" ====
+            if (kpiThresholdMap) {
+                const thr = getThresholdForKpiColumn(kpiCol);
+                if (thr) {
+                    const num = v;              // v đã được scale theo unit
+                    const t   = thr.value;
+                    const op  = thr.op;
+                    let isBad = false;
+
+                    if (op === "<") {
+                        isBad = num < t;
+                    } else if (op === ">") {
+                        isBad = num > t;
+                    } else if (op === "<=") {
+                        isBad = num <= t;
+                    } else if (op === ">=") {
+                        isBad = num >= t;
+                    } else if (op === "=" || op === "==") {
+                        isBad = num === t;
+                    }
+
+                    // Nếu vi phạm điều kiện ⇒ tô đỏ
+                    if (isBad) {
+                        condStyle =
+                            "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                    }
+                }
+            }
+        }
+
+        const baseCell =
+            "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+        html += `<td style="${baseCell}${condStyle}">${display}</td>`;
+    });
                 html += `</tr>`;
             });
 
