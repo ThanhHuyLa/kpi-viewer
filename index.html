@@ -656,7 +656,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.6</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.7</h1>
         </div>
 
         <!-- Upload -->
@@ -2374,18 +2374,23 @@ function getThresholdForKpiColumn(kpiCol) {
     const meta = findKpiMetaForColumn(kpiCol) || {};
     const keysToTry = [];
 
-    if (meta.id) keysToTry.push(String(meta.id).trim());
+    if (meta.id)   keysToTry.push(String(meta.id).trim());
     if (meta.name) keysToTry.push(String(meta.name).trim());
     keysToTry.push(String(kpiCol).trim());
 
-    // 1. Ưu tiên custom threshold
+    // 1. Ưu tiên custom threshold (kể cả trường hợp TẮT NGƯỠNG)
     for (const key of keysToTry) {
-        if (customThresholdMap[key]) {
-            return customThresholdMap[key];
+        if (Object.prototype.hasOwnProperty.call(customThresholdMap, key)) {
+            const entry = customThresholdMap[key];
+
+            // entry = null hoặc entry.disabled => tắt hoàn toàn ngưỡng cho KPI này
+            if (!entry || entry.disabled) return null;
+
+            return entry; // { op, value }
         }
     }
 
-    // 2. Nếu không có, dùng file KPI Threshold
+    // 2. Nếu không có custom → dùng file KPI Threshold (load 1 lần)
     if (kpiThresholdMap) {
         for (const key of keysToTry) {
             if (kpiThresholdMap[key]) {
@@ -2399,18 +2404,47 @@ function getThresholdForKpiColumn(kpiCol) {
 
 
 function setCustomThresholdForKpiColumn(kpiCol, op, value) {
-    if (!kpiCol || !op || value == null || isNaN(value)) return;
+    if (!kpiCol) return;
 
-    const entry = { op, value };
     const key = String(kpiCol).trim();
+
+    // Trường hợp TẮT NGƯỠNG (op = "")
+    if (!op) {
+        customThresholdMap[key] = { disabled: true };
+
+        try {
+            localStorage.setItem(
+                "customThresholdMap",
+                JSON.stringify(customThresholdMap)
+            );
+        } catch (e) {
+            console.warn("Cannot save customThresholdMap", e);
+        }
+
+        // Không ghi đè vào kpiThresholdMap để giữ nguyên default trong file,
+        // nhưng do getThresholdForKpiColumn ưu tiên custom nên KPI này sẽ KHÔNG dùng ngưỡng nữa.
+        return;
+    }
+
+    // Các trường hợp còn lại: phải có value số
+    if (value == null || isNaN(value)) return;
+
+    const entry = { op, value: Number(value) };
 
     // Lưu vào custom map
     customThresholdMap[key] = entry;
 
     // Lưu vĩnh viễn vào localStorage
-    localStorage.setItem("customThresholdMap", JSON.stringify(customThresholdMap));
+    try {
+        localStorage.setItem(
+            "customThresholdMap",
+            JSON.stringify(customThresholdMap)
+        );
+    } catch (e) {
+        console.warn("Cannot save customThresholdMap", e);
+    }
 
-    // Ghi đè trên map tổng hợp
+    // Ghi đè trên map tổng hợp để bảng/chart dùng ngay
     if (!kpiThresholdMap) kpiThresholdMap = {};
     kpiThresholdMap[key] = entry;
 
@@ -2926,27 +2960,37 @@ function buildThresholdCustomUi() {
     });
 
 
-    // Đồng bộ ô Operator & Threshold theo map hiện tại (mặc định từ file KPI Threshhold)
-async function syncInputsFromThreshold() {
-    const col = kpiSelect.value;
-    if (!col) return;
 
-    // Ưu tiên giá trị tùy chỉnh
-    if (customThresholdMap[col]) {
-        opSelect.value = customThresholdMap[col].op;
-        valueInput.value = customThresholdMap[col].value;
-        return;
+    // Đồng bộ ô Operator & Threshold theo map hiện tại (default từ file + custom + tắt ngưỡng)
+    async function syncInputsFromThreshold() {
+        const col = kpiSelect.value;
+        if (!col) return;
+
+        // Nếu đã có override trong customThresholdMap (kể cả disabled)
+        if (Object.prototype.hasOwnProperty.call(customThresholdMap, col)) {
+            const entry = customThresholdMap[col];
+
+            // entry null/disabled => coi như đang chọn "--" và Threshold rỗng
+            if (!entry || entry.disabled) {
+                opSelect.value = "";
+                valueInput.value = "";
+            } else {
+                opSelect.value = entry.op || "";
+                valueInput.value = entry.value ?? "";
+            }
+            return;
+        }
+
+        // Chưa có tùy chỉnh → dùng default trong file KPI Threshhold (chỉ load 1 lần)
+        if (kpiThresholdMap === null) {
+            await ensureKpiThresholdsLoaded();
+        }
+
+        const thr = getThresholdForKpiColumn(col);
+        opSelect.value = thr?.op || "";
+        valueInput.value = thr?.value ?? "";
     }
 
-    // Nếu chưa có tùy chỉnh → dùng default từ file
-    if (kpiThresholdMap === null) {
-        await ensureKpiThresholdsLoaded();
-    }
-
-    const thr = getThresholdForKpiColumn(col);
-    opSelect.value = thr?.op || "";
-    valueInput.value = thr?.value ?? "";
-}
 
 
     kpiSelect.onchange = () => {
@@ -2970,26 +3014,29 @@ async function syncInputsFromThreshold() {
             return;
         }
 
-        // Nếu chọn "--" thì cho phép xoá NGƯỠNG TÙY CHỈNH (threshold có thể để trống)
-        if (op === "") {
-            // Xóa ngưỡng tùy chỉnh cho KPI này (nếu có),
-            // quay về dùng ngưỡng mặc định trong file KPI Threshhold
-            if (customThresholdMap && customThresholdMap[col]) {
-                delete customThresholdMap[col];
-                localStorage.setItem(
-                    "customThresholdMap",
-                    JSON.stringify(customThresholdMap)
-                );
-            }
 
-            // Cập nhật lại bảng & chart
-            renderExcelStyleTable();
-            if (typeof renderLatestKpiTable === "function") {
-                renderLatestKpiTable();
-            }
-            renderCharts();
-            return;
+    // Nếu chọn "--" thì TẮT HOÀN TOÀN NGƯỠNG cho KPI này (không dùng default trong file nữa)
+    if (op === "") {
+        // Ghi override "disabled" vào customThresholdMap
+        customThresholdMap[col] = { disabled: true };
+        try {
+            localStorage.setItem(
+                "customThresholdMap",
+                JSON.stringify(customThresholdMap)
+            );
+        } catch (e) {
+            console.warn("Cannot save customThresholdMap", e);
         }
+
+        // Cập nhật lại bảng & chart
+        renderExcelStyleTable();
+        if (typeof renderLatestKpiTable === "function") {
+            renderLatestKpiTable();
+        }
+        renderCharts();
+        return;
+    }
+
 
         // Các trường hợp còn lại → yêu cầu phải có số
         if (!valStr) {
