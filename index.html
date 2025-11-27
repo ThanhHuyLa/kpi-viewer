@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.1</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.2</h1>
         </div>
 
         <!-- Upload -->
@@ -1163,6 +1163,7 @@
         let funnelSortOrder = "desc";
         let emailIntroTouched = false;
         let chartConfigAppliedOnce = false;   // áp sheet từ cấu hình cũ đúng 1 lần
+        let chartTargetVisible = {}; // NEW: lưu trạng thái checkbox "Target" theo từng KPI
 
         // ===== LINK THƯ MỤC KPI TRÊN ONEDRIVE (CÁCH 2) =====
         const ONEDRIVE_KPI_URL = "https://rnovnpt-my.sharepoint.com/personal/anhnqt_rnovnpt_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fanhnqt%5Frnovnpt%5Fonmicrosoft%5Fcom%2FDocuments%2FKPI%20Scheduler&ga=1";
@@ -3358,6 +3359,7 @@ async function syncInputsFromThreshold() {
             chartInstances = {};
             container.innerHTML = "";
 
+
             // Vẽ khung chart + combobox chọn kiểu
             activeKpiCols.forEach((valueCol, index) => {
                 const chartId = `chart_${index}`;
@@ -3370,22 +3372,46 @@ async function syncInputsFromThreshold() {
 
                 const titleText = getKpiTitleWithUnit(valueCol);
 
+                // Kiểm tra xem KPI này có ngưỡng không
+                const thr = getThresholdForKpiColumn(valueCol);
+                const hasThreshold =
+                    thr && typeof thr.value === "number" && !isNaN(thr.value);
+
+                const isTargetOn = !!chartTargetVisible[valueCol];
+
                 container.innerHTML += `
                     <div class="chart-card">
                         <h3>${titleText}</h3>
-                          <div class="chart-header-row" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
-                            <span id="period-label-${chartId}" style="font-size:0.8em; color:#6b7280;"></span>
+                        <div class="chart-header-row"
+                            style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+                            <span id="period-label-${chartId}"
+                                style="font-size:0.8em; color:#6b7280;"></span>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <span style="font-size:0.85em; color:#555;">Kiểu chart:</span>
-                                <select class="chart-type-select" data-chart-id="${chartId}" data-column="${valueCol}">
+                                <select class="chart-type-select"
+                                        data-chart-id="${chartId}"
+                                        data-column="${valueCol}">
                                     <option value="line" ${prevType === "line" ? "selected" : ""}>Line</option>
                                     <option value="bar" ${prevType === "bar" ? "selected" : ""}>Bar</option>
                                     <option value="stackedArea" ${prevType === "stackedArea" ? "selected" : ""}>Stacked Area</option>
                                     <option value="pie" ${prevType === "pie" ? "selected" : ""}>Pie</option>
                                     <option value="doughnut" ${prevType === "doughnut" ? "selected" : ""}>Doughnut</option>
                                     <option value="funnel" ${prevType === "funnel" ? "selected" : ""}>Funnel</option>
-
                                 </select>
+                                ${
+                                    hasThreshold
+                                        ? `
+                                <label style="display:flex; align-items:center; gap:4px; font-size:0.8em; color:#374151;">
+                                    <input type="checkbox"
+                                        class="chart-target-toggle"
+                                        data-chart-id="${chartId}"
+                                        data-column="${valueCol}"
+                                        ${isTargetOn ? "checked" : ""}/>
+                                    Target
+                                </label>
+                                `
+                                        : ""
+                                }
                             </div>
                         </div>
                         <div class="chart-wrapper">
@@ -3563,32 +3589,70 @@ if (chartType === "funnel") {
     }
 }
 
-                let internalType = chartType;
-                if (chartType === 'stackedArea') {
-                    internalType = 'line';
-                }
+// Xác định loại chart thực tế
+const thrForChart = getThresholdForKpiColumn(valueCol);
 
-                if (chartType === 'funnel') {
-                    internalType = 'bar';
-                }
+let internalType = chartType;
+if (chartType === "stackedArea") {
+    internalType = "line";
+}
 
-                let chartDatasets = datasets;
-                if (chartType === 'stackedArea') {
-                    chartDatasets = datasets.map((ds, idx) => {
-                        let solidColor = ds.borderColor || '#667eea';
+if (chartType === "funnel") {
+    internalType = "bar";
+}
 
-                        return {
-                            ...ds,
-                            fill: true,
-                            backgroundColor: solidColor,
-                            borderWidth: 1,
-                            stack: 'stack_' + valueCol,
-                            borderColor: solidColor,
-                            pointRadius: 0,
-                            tension: 0.3
-                        };
-                    });
-                }
+let chartDatasets = datasets;
+if (chartType === "stackedArea") {
+    chartDatasets = datasets.map((ds, idx) => {
+        let solidColor = ds.borderColor || "#667eea";
+
+        return {
+            ...ds,
+            fill: true,
+            backgroundColor: solidColor,
+            borderWidth: 1,
+            stack: "stack_" + valueCol,
+            borderColor: solidColor,
+            pointRadius: 0,
+            tension: 0.3,
+        };
+    });
+}
+
+// NEW: thêm dataset line target nếu có ngưỡng & checkbox bật
+const hasThrForChart =
+    thrForChart &&
+    typeof thrForChart.value === "number" &&
+    !isNaN(thrForChart.value);
+
+const showTargetLine =
+    hasThrForChart &&
+    chartTargetVisible[valueCol] &&
+    (chartType === "line" ||
+        chartType === "bar" ||
+        chartType === "stackedArea");
+
+if (showTargetLine) {
+    const targetVal = thrForChart.value;
+    const targetData = (labels || []).map(() => targetVal);
+
+    chartDatasets = [
+        ...chartDatasets,
+            {
+                label: "Target",
+                data: targetData,
+                type: "line",
+                borderWidth: 5,        // ⭐ ĐỘ DÀY TĂNG LÊN
+                borderColor: "#ff0000", // ⭐ ĐỎ ĐẬM – rất dễ thấy (có thể đổi)
+                borderDash: [8, 5],     // ⭐ Nét đứt to – rõ ràng
+                pointRadius: 0,
+                tension: 0,             // ⭐ Đường thẳng, không bo cong
+                fill: false,
+                yAxisID: "y",
+            },
+
+    ];
+}
 
                 chartInstances[chartId] = new Chart(ctx, {
                     type: internalType,
@@ -3780,6 +3844,17 @@ if (chartType === "funnel") {
                 .querySelectorAll(".chart-type-select")
                 .forEach((sel) => {
                     sel.onchange = () => {
+                        renderCharts();
+                    };
+                });
+
+            // NEW: checkbox bật/tắt line target
+            document
+                .querySelectorAll(".chart-target-toggle")
+                .forEach((cb) => {
+                    cb.onchange = () => {
+                        const col = cb.dataset.column;
+                        chartTargetVisible[col] = cb.checked;
                         renderCharts();
                     };
                 });
