@@ -644,7 +644,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.0</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.1</h1>
         </div>
 
         <!-- Upload -->
@@ -933,7 +933,82 @@
                         <button type="button" id="excelLatestBtn" class="excel-latest-btn">Latest</button>
                     </div>
                 </div>
-                <div id="excelTable"></div>
+                    <div
+        id="kpiThresholdPanel"
+        style="
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px dashed #d1d5db;
+            background: #f9fafb;
+            font-size: 0.85em;
+            display: none;
+        "
+    >
+<div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+
+    <!-- Hàng 1: Tiêu đề -->
+    <strong>⚙️ Tùy chỉnh ngưỡng:</strong>
+
+    <!-- BẮT BUỘC THÊM DÒNG NÀY để xuống hàng -->
+    <div style="width:100%;"></div>
+
+    <!-- Hàng 2: KPI + Operator + Threshold + Button -->
+    <label style="display:flex; align-items:center;">
+        KPI:
+        <select
+            id="thresholdKpiSelect"
+            style="margin-left:4px; padding:4px 8px; min-width:220px;"
+        ></select>
+    </label>
+
+    <label style="display:flex; align-items:center;">
+        Operator:
+        <select
+            id="thresholdOpSelect"
+            style="margin-left:4px; padding:4px 8px; min-width:80px;"
+        >
+            <option value="">--</option>
+            <option value="<">&lt;</option>
+            <option value="<=">&lt;=</option>
+            <option value=">">&gt;</option>
+            <option value=">=">&gt;=</option>
+            <option value="=">=</option>
+            <option value="==">==</option>
+        </select>
+    </label>
+
+    <label style="display:flex; align-items:center;">
+        Threshold:
+        <input
+            id="thresholdValueInput"
+            type="number"
+            step="any"
+            style="margin-left:4px; padding:4px 6px; width:110px;"
+        />
+    </label>
+
+    <button
+        type="button"
+        id="thresholdApplyBtn"
+        style="
+            padding:6px 12px;
+            border-radius:6px;
+            border:1px solid #2563eb;
+            background:#2563eb;
+            color:#fff;
+            cursor:pointer;
+        "
+    >
+        Áp dụng
+    </button>
+</div>
+
+    </div>
+
+    <div id="excelTable"></div>
+</div>
+
             </div>
 
             <!-- Charts -->
@@ -1101,6 +1176,7 @@
 
         // BẢNG NGƯỠNG KPI
         let kpiThresholdMap = null;
+        let customThresholdMap = {}; // lưu tùy chỉnh vĩnh viễn
         let worstCellThresholdMap = null;   // sheet "WorstCell Threshold"
         // ==== CẤU HÌNH FILE KPI NẶNG ====
         const HEAVY_KPI_ROW_THRESHOLD = 5000;   // > 3k dòng coi là file nặng
@@ -1118,7 +1194,18 @@
                 i3 ? i3.value : "",
             ];
         }
-
+        // Load custom thresholds từ LocalStorage
+        function loadCustomThresholds() {
+            try {
+                const data = localStorage.getItem("customThresholdMap");
+                if (data) {
+                    customThresholdMap = JSON.parse(data);
+                }
+            } catch (e) {
+                console.error("Cannot load custom thresholds", e);
+            }
+        }
+        loadCustomThresholds();
         function wsPassesTextFilters(wsLower) {
             for (const kw of wsSearchKeywords) {
                 const trimmed = (kw || "").trim().toLowerCase();
@@ -2257,9 +2344,7 @@ async function ensureKpiThresholdsLoaded() {
     return kpiThresholdMap;
 }
 
-// Tìm threshold theo tên cột KPI (dùng meta map để match ID / Alias)
 function getThresholdForKpiColumn(kpiCol) {
-    if (!kpiThresholdMap || !Object.keys(kpiThresholdMap).length) return null;
     if (!kpiCol) return null;
 
     const meta = findKpiMetaForColumn(kpiCol) || {};
@@ -2269,11 +2354,46 @@ function getThresholdForKpiColumn(kpiCol) {
     if (meta.name) keysToTry.push(String(meta.name).trim());
     keysToTry.push(String(kpiCol).trim());
 
+    // 1. Ưu tiên custom threshold
     for (const key of keysToTry) {
-        if (kpiThresholdMap[key]) return kpiThresholdMap[key];
+        if (customThresholdMap[key]) {
+            return customThresholdMap[key];
+        }
     }
+
+    // 2. Nếu không có, dùng file KPI Threshold
+    if (kpiThresholdMap) {
+        for (const key of keysToTry) {
+            if (kpiThresholdMap[key]) {
+                return kpiThresholdMap[key];
+            }
+        }
+    }
+
     return null;
 }
+
+
+function setCustomThresholdForKpiColumn(kpiCol, op, value) {
+    if (!kpiCol || !op || value == null || isNaN(value)) return;
+
+    const entry = { op, value };
+    const key = String(kpiCol).trim();
+
+    // Lưu vào custom map
+    customThresholdMap[key] = entry;
+
+    // Lưu vĩnh viễn vào localStorage
+    localStorage.setItem("customThresholdMap", JSON.stringify(customThresholdMap));
+
+    // Ghi đè trên map tổng hợp
+    if (!kpiThresholdMap) kpiThresholdMap = {};
+    kpiThresholdMap[key] = entry;
+
+    console.log("Saved custom threshold:", kpiCol, entry);
+}
+
+
 // ====== ĐỌC SHEET "WorstCell Threshold" CHO WORST CELL & NON-TRAFFIC ======
 async function ensureWorstCellThresholdsLoaded() {
     // Đã load rồi thì thôi
@@ -2435,6 +2555,7 @@ function updateCharts() {
     buildWsFilterOptions(jsonData);
     buildKpiFilterOptions();
     buildExcelDateOptions();
+    buildThresholdCustomUi();
     renderCharts();
     fillDefaultEmailText();
 
@@ -2682,6 +2803,7 @@ function detectColumnsAndNumeric(columns) {
                 renderExcelStyleTable();
                 renderLatestKpiTable();
                 renderWorstCellTable();   // 🔁 cập nhật luôn Worst Cell / Non-Traffic
+                buildThresholdCustomUi(); // ⬅️ update lại list KPI cho phần Tùy chỉnh ngưỡng
             };
 
             container.onclick = (e) => {
@@ -2702,6 +2824,7 @@ function detectColumnsAndNumeric(columns) {
                 renderExcelStyleTable();
                 renderLatestKpiTable();
                 renderWorstCellTable();   // 🔁 cập nhật luôn Worst Cell / Non-Traffic
+                buildThresholdCustomUi(); // ⬅️ đồng bộ phần Tùy chỉnh ngưỡng
             };
 
             if (searchInput) {
@@ -2710,6 +2833,103 @@ function detectColumnsAndNumeric(columns) {
                 });
             }
         }
+// Xây UI "Tùy chỉnh ngưỡng" cho các KPI đang được chọn
+function buildThresholdCustomUi() {
+    const panel      = document.getElementById("kpiThresholdPanel");
+    const kpiSelect  = document.getElementById("thresholdKpiSelect");
+    const opSelect   = document.getElementById("thresholdOpSelect");
+    const valueInput = document.getElementById("thresholdValueInput");
+    const applyBtn   = document.getElementById("thresholdApplyBtn");
+
+    if (!panel || !kpiSelect || !opSelect || !valueInput || !applyBtn) return;
+
+    if (!numericColumns || !numericColumns.length || !currentData) {
+        panel.style.display = "none";
+        return;
+    }
+
+    // Chỉ show KPI đang được chọn để vẽ / bảng (selectedKpiColumns)
+    const activeKpiCols = numericColumns.filter(col => selectedKpiColumns.has(col));
+
+    if (!activeKpiCols.length) {
+        panel.style.display = "none";
+        return;
+    }
+
+    panel.style.display = "block";
+
+    // Đổ danh sách KPI
+    kpiSelect.innerHTML = "";
+    activeKpiCols.forEach((col) => {
+        const meta = findKpiMetaForColumn(col) || {};
+        const text = meta.name ? `${meta.name} (${col})` : col;
+
+        const opt = document.createElement("option");
+        opt.value = col;
+        opt.textContent = text;
+        kpiSelect.appendChild(opt);
+    });
+
+    // Đồng bộ ô Operator & Threshold theo map hiện tại (mặc định từ file KPI Threshhold)
+async function syncInputsFromThreshold() {
+    const col = kpiSelect.value;
+    if (!col) return;
+
+    // Ưu tiên giá trị tùy chỉnh
+    if (customThresholdMap[col]) {
+        opSelect.value = customThresholdMap[col].op;
+        valueInput.value = customThresholdMap[col].value;
+        return;
+    }
+
+    // Nếu chưa có tùy chỉnh → dùng default từ file
+    if (kpiThresholdMap === null) {
+        await ensureKpiThresholdsLoaded();
+    }
+
+    const thr = getThresholdForKpiColumn(col);
+    opSelect.value = thr?.op || "";
+    valueInput.value = thr?.value ?? "";
+}
+
+
+    kpiSelect.onchange = () => {
+        syncInputsFromThreshold();
+    };
+
+    applyBtn.onclick = async () => {
+        const col    = kpiSelect.value;
+        const op     = (opSelect.value || "").trim();
+        const valStr = valueInput.value;
+
+        if (!col || !op || !valStr) {
+            alert("Vui lòng chọn KPI, Operator và nhập Threshold.");
+            return;
+        }
+
+        const num = parseFloat(valStr);
+        if (isNaN(num)) {
+            alert("Threshold phải là số.");
+            return;
+        }
+
+        if (kpiThresholdMap === null) {
+            await ensureKpiThresholdsLoaded();
+        }
+
+        // Ghi đè ngưỡng trong map
+        setCustomThresholdForKpiColumn(col, op, num);
+
+        // Cập nhật lại bảng theo ngưỡng mới
+        renderExcelStyleTable();
+        if (typeof renderLatestKpiTable === "function") {
+            renderLatestKpiTable();
+        }
+    };
+
+    // Khởi tạo lần đầu theo KPI đầu tiên
+    syncInputsFromThreshold();
+}
 
         function buildWsFilterOptions(data) {
             const wsNameCol = getCellNameColumn();   // 👉 dùng CELL_NAME ưu tiên LNCEL/NRCEL
