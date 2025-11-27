@@ -656,7 +656,10 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.7</h1>
+            <h1>📊 KPI Viewer and Report</h1>
+            <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
+                Version: v1.4.0
+            </div>
         </div>
 
         <!-- Upload -->
@@ -3805,7 +3808,8 @@ const showTargetLine =
     chartTargetVisible[valueCol] &&
     (chartType === "line" ||
         chartType === "bar" ||
-        chartType === "stackedArea");
+        chartType === "stackedArea" ||
+        chartType === "funnel");
 
 if (showTargetLine) {
     const targetVal = thrForChart.value;
