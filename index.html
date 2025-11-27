@@ -656,7 +656,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📊 KPI Viewer and Report v1.3.9.5</h1>
+            <h1>📊 KPI Viewer and Report v1.3.9.6</h1>
         </div>
 
         <!-- Upload -->
@@ -2883,7 +2883,7 @@ function buildThresholdCustomUi() {
 
     panel.style.display = "block";
 
-        // Khởi tạo trạng thái checkbox tổng từ localStorage (nếu có)
+    // Khởi tạo trạng thái checkbox tổng + đồng bộ state Target lần đầu
     if (globalToggle) {
         try {
             const saved = localStorage.getItem("globalThresholdEnabled");
@@ -2895,6 +2895,16 @@ function buildThresholdCustomUi() {
         }
         globalToggle.checked = globalThresholdEnabled;
     }
+
+    // Đồng bộ trạng thái checkbox Target trên từng chart theo globalThresholdEnabled
+    // (áp dụng khi mở file, dựa trên các KPI đang active)
+    chartTargetVisible = {};
+    if (globalThresholdEnabled) {
+        activeKpiCols.forEach((col) => {
+            chartTargetVisible[col] = true;
+        });
+    }
+
 
     // Đổ danh sách KPI
     kpiSelect.innerHTML = "";
@@ -2942,7 +2952,13 @@ async function syncInputsFromThreshold() {
     kpiSelect.onchange = () => {
         syncInputsFromThreshold();
     };
-
+    // Khi đổi Operator sang "--" (value = ""), tự xoá ô Threshold
+    opSelect.onchange = () => {
+        if (!opSelect.value) {
+            // value rỗng = đang chọn option "--"
+            valueInput.value = "";
+        }
+    };
     applyBtn.onclick = async () => {
         const col    = kpiSelect.value;
         const op     = (opSelect.value || "").trim();
@@ -6374,37 +6390,7 @@ function updateKpiFolderPath() {
 
     alert("Đã cập nhật đường dẫn OneDrive:\n" + newPath);
 }
-const globalToggle = document.getElementById("thresholdGlobalToggle");
-if (globalToggle) {
-    // đồng bộ trạng thái biến với checkbox tổng
-    globalToggle.checked = globalThresholdEnabled;
 
-    globalToggle.addEventListener("change", () => {
-        globalThresholdEnabled = globalToggle.checked;
-
-        // 🔁 Đồng bộ trạng thái Target line của TẤT CẢ chart
-        //    - Bật "Kích hoạt tùy chỉnh"  -> bật Target cho mọi KPI (có ngưỡng)
-        //    - Tắt "Kích hoạt tùy chỉnh" -> tắt Target cho mọi KPI
-        if (typeof window.chartTargetVisible === "undefined") {
-            window.chartTargetVisible = {};
-        }
-        if (Array.isArray(numericColumns)) {
-            numericColumns.forEach((col) => {
-                window.chartTargetVisible[col] = globalThresholdEnabled;
-            });
-        }
-
-        // vẽ lại KPI Overview (Target + highlight)
-        if (typeof renderExcelStyleTable === "function") {
-            renderExcelStyleTable();
-        }
-
-        // vẽ lại tất cả chart để ẩn/hiện line target + checkbox Target
-        if (typeof renderCharts === "function") {
-            renderCharts();
-        }
-    });
-}
 
 
 
