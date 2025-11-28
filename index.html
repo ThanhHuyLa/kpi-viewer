@@ -317,9 +317,32 @@
     font-weight: 600 !important;
 }
 
+
+/* ==== WORST CELL WRAPPER ==== */
+#worstCellWrapper {
+    max-height: 700px;      /* giới hạn chiều cao */
+    overflow-y: auto;       /* scroll dọc */
+    overflow-x: auto;
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-top: 4px;
+}
+
+/* ==== STICKY HEADER WORST CELL ==== */
+#worstCellWrapper table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;                 /* cao hơn body */
+    background: #1e3a8a;        /* đúng màu header Worst Cell */
+    color: #fff;
+}
+
+
+
 /* === STYLE BẢNG KPI THỜI ĐIỂM GẦN NHẤT === */
 #latestTableWrapper {
-    max-height: 800px;              /* nếu bảng cao hơn sẽ có scroll dọc */
+    max-height: 700px;              /* nếu bảng cao hơn sẽ có scroll dọc */
     overflow-y: auto;
     overflow-x: auto;
     position: relative;
@@ -328,11 +351,16 @@
     margin-top: 4px;
 }
 
+
+
+
 #latestTableWrapper table {
     width: auto;                    /* auto width theo nội dung */
     table-layout: auto;
     border-collapse: collapse;
 }
+
+
 
 /* Cố định cột 1 */
 #latestTableWrapper table th:first-child,
@@ -535,6 +563,15 @@
         #nonTrafficTable table td:nth-child(-n+4) {
             white-space: nowrap;
         }
+        /* Header Worst Cell & Cell Non-Traffic dính trên khi scroll dọc */
+        #worstCellTable table thead th,
+        #nonTrafficTable table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 5;              /* cao hơn sticky-col */
+            background: #203864;     /* trùng màu header hiện tại */
+        }
+
 
         #worstCellTable .sticky-col,
         #nonTrafficTable .sticky-col {
@@ -700,7 +737,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.14
+                Version: v1.4.0.25
             </div>
         </div>
 
@@ -1101,6 +1138,9 @@
                         </select>
                     </label>
 
+                    <!-- 🔍 Filter Province -->
+
+
                     <button type="button" id="worstFilterAddBtn"
                             style="padding:4px 8px; border-radius:6px; border:1px solid #2563eb; background:#2563eb; color:#fff; cursor:pointer;">
                         + Thêm điều kiện
@@ -1111,12 +1151,26 @@
                         Xóa filter
                     </button>
 
+                    <label style="display:flex; align-items:center; gap:4px; margin-left:auto;">
+                        Province:
+                        <input 
+                            type="text" 
+                            id="worstProvinceFilter"
+                            class="wc-filter-input"
+                            placeholder="VD: LCI;LCU"
+                            style="width:120px;"
+                        />
+                    </label>
+
                     <!-- Danh sách các dòng điều kiện KPI -->
                     <div id="worstFilterRules"
                         style="width:100%; margin-top:4px; display:flex; flex-direction:column; gap:4px;"></div>
                 </div>
 
+
+
                 <div id="worstCellTable"></div>
+
             </div>
 
 
@@ -4778,9 +4832,10 @@ let worstFilterUiBound     = false;
 function initWorstFilterEvents() {
     if (worstFilterUiBound) return;
 
-    const logicSelect = document.getElementById("worstFilterLogic");
-    const addBtn      = document.getElementById("worstFilterAddBtn");
-    const clearBtn    = document.getElementById("worstFilterClearBtn");
+    const logicSelect   = document.getElementById("worstFilterLogic");
+    const addBtn        = document.getElementById("worstFilterAddBtn");
+    const clearBtn      = document.getElementById("worstFilterClearBtn");
+    const provinceInput = document.getElementById("worstProvinceFilter");
 
     if (!logicSelect || !addBtn || !clearBtn) return;
 
@@ -4811,6 +4866,22 @@ function initWorstFilterEvents() {
         renderWorstFilterRules();
         renderWorstCellTable();
     };
+
+    // 🔍 Province: đổi giá trị hoặc nhấn Enter sẽ filter Worst Cell
+    if (provinceInput) {
+        // khi rời ô
+        provinceInput.addEventListener("change", () => {
+            renderWorstCellTable();
+        });
+
+        // nhấn Enter
+        provinceInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();      // tránh submit form
+                renderWorstCellTable();
+            }
+        });
+    }
 
     worstFilterUiBound = true;
 }
@@ -4948,55 +5019,88 @@ function renderWorstFilterRules() {
     });
 }
 
-// Áp dụng danh sách điều kiện vào rowsArr
-function applyWorstCellValueFilters(rowsArr, orderedCols) {
-    if (!worstCellFilterRules.length) return rowsArr;
 
-    // Chỉ giữ rule có đủ KPI + toán tử + value
+// Áp dụng danh sách điều kiện vào rowsArr
+// Áp dụng filter Province + các điều kiện KPI
+function applyWorstCellValueFilters(rowsArr, orderedCols) {
+
+    // ===== 1. XÁC ĐỊNH CỘT NRCEL / NRCELL ĐỂ LẤY PROVINCE =====
+    const nrCellColKey =
+        orderedCols.find((col) => {
+            const lower = String(col).toLowerCase();
+            return lower.includes("nrcel") || lower.includes("nrcell");
+        }) || null;
+
+    // ===== 2. LỌC PROVINCE =====
+    const provinceRaw =
+        (document.getElementById("worstProvinceFilter")?.value || "")
+            .trim()
+            .toLowerCase();
+
+    let filtered = rowsArr;
+
+    if (provinceRaw && nrCellColKey) {
+        const provinceList = provinceRaw
+            .split(";")
+            .map((x) => x.trim().toLowerCase())
+            .filter(Boolean);
+
+        if (provinceList.length) {
+            // Province trong bảng = 3 ký tự cuối của cột NRCEL
+            filtered = filtered.filter((row) => {
+                const cell = String(row[nrCellColKey] || "").trim();
+                const prov = cell.length >= 3
+                    ? cell.slice(-3).toLowerCase()
+                    : cell.toLowerCase();
+                return provinceList.some((p) => prov.includes(p));
+            });
+        }
+    }
+    // Nếu không tìm thấy cột NRCEL/NRCELL thì bỏ qua filter Province
+
+    // ===== 3. NẾU KHÔNG CÓ KPI RULE → TRẢ VỀ LUÔN =====
+    if (!worstCellFilterRules.length) return filtered;
+
+    // Lọc rule hợp lệ
     const rules = worstCellFilterRules.filter(
         (r) => r.colKey && r.op && r.value !== ""
     );
-    if (!rules.length) return rowsArr;
+    if (!rules.length) return filtered;
 
+    // ===== 4. LỌC THEO KPIs =====
     const logic = worstCellFilterLogic === "OR" ? "OR" : "AND";
 
-    function toNumberSafe(v) {
+    function toNum(v) {
         if (v === null || v === undefined || v === "") return null;
-        const num = parseFloat(String(v).replace(/\s+/g, "").replace(",", "."));
-        return Number.isNaN(num) ? null : num;
+        const n = parseFloat(String(v).replace(",", "."));
+        return isNaN(n) ? null : n;
     }
 
-    return rowsArr.filter((row) => {
-        let anyTrue = false;
+    return filtered.filter((row) => {
+        let okAny = false;
 
-        for (const rule of rules) {
-            const val = row[rule.colKey];
-            const num = toNumberSafe(val);
-            const thr = toNumberSafe(rule.value);
-
-            // Nếu không convert được sang số ⇒ coi như không thỏa
-            if (num === null || thr === null) {
-                if (logic === "AND") return false;
-                else continue;
-            }
+        for (const r of rules) {
+            const num = toNum(row[r.colKey]);
+            const thr = toNum(r.value);
 
             let ok = false;
-            if (rule.op === "<") ok = num < thr;
-            else if (rule.op === "<=") ok = num <= thr;
-            else if (rule.op === ">") ok = num > thr;
-            else if (rule.op === ">=") ok = num >= thr;
-            else if (rule.op === "=" || rule.op === "==") ok = num === thr;
+            if (num !== null && thr !== null) {
+                if (r.op === "<") ok = num < thr;
+                else if (r.op === "<=") ok = num <= thr;
+                else if (r.op === ">") ok = num > thr;
+                else if (r.op === ">=") ok = num >= thr;
+                else if (r.op === "=" || r.op === "==") ok = num === thr;
+            }
 
             if (logic === "AND" && !ok) return false;
-            if (logic === "OR" && ok) {
-                anyTrue = true;
-                break;
-            }
+            if (logic === "OR" && ok) okAny = true;
         }
 
-        return logic === "AND" ? true : anyTrue;
+        return logic === "AND" ? true : okAny;
     });
 }
+
+
 
         function renderWorstCellTable() {
             const worstCard    = document.getElementById("worstCellCard");
@@ -5027,16 +5131,34 @@ function applyWorstCellValueFilters(rowsArr, orderedCols) {
                 }
                 return;
             }
-            let rows = null;
 
+            let rows = [];
+
+            // Ưu tiên dữ liệu đã merge sẵn
             if (typeof mergedDataPerSheet !== "undefined" &&
-                mergedDataPerSheet &&
-                mergedDataPerSheet["WorstCell"]) {
-                rows = mergedDataPerSheet["WorstCell"];
+                mergedDataPerSheet) {
+
+                const worstRows = mergedDataPerSheet["WorstCell"] || [];
+                const cellRows  = mergedDataPerSheet["Cell"]      || [];
+
+                rows = []
+                    .concat(worstRows)
+                    .concat(cellRows);
             }
-            else if (workbook && workbook.Sheets["WorstCell"]) {
-                const sheet = workbook.Sheets["WorstCell"];
-                rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+            // Nếu chưa có mergedDataPerSheet → đọc trực tiếp từ workbook
+            else if (workbook) {
+                const worstSheet = workbook.Sheets["WorstCell"];
+                const cellSheet  = workbook.Sheets["Cell"];
+
+                if (worstSheet) {
+                    const r1 = XLSX.utils.sheet_to_json(worstSheet, { defval: null });
+                    rows = rows.concat(r1);
+                }
+
+                if (cellSheet) {
+                    const r2 = XLSX.utils.sheet_to_json(cellSheet, { defval: null });
+                    rows = rows.concat(r2);
+                }
             }
 
             if (!rows || !rows.length) {
@@ -5077,9 +5199,27 @@ let traffic5gCol  = null; // 5G Total Traffic Volume
 cleanColumns.forEach(col => {
     const lower = String(col).toLowerCase();
 
-    if (!nrbtsCol && lower.includes("nrbts")) nrbtsCol = col;
-    if (!nrCellCol && (lower.includes("nrcel") || lower.includes("nrcell")))
+    // NRBTS / LNBTS
+    if (
+        !nrbtsCol &&
+        (lower.includes("nrbts") || lower.includes("lnbts"))
+    ) {
+        nrbtsCol = col;
+    }
+
+    // NRCEL / NRCELL / LNCEL / LNCELL
+    if (
+        !nrCellCol &&
+        (
+            lower.includes("nrcel") ||
+            lower.includes("nrcell") ||
+            lower.includes("lncel") ||
+            lower.includes("lncell")
+        )
+    ) {
         nrCellCol = col;
+    }
+
     if (!availCol && lower.includes("cell avail")) availCol = col;
 
     if (!macDlCol && lower.startsWith("mac sdu data vol trans dl dtch")) {
@@ -5089,7 +5229,6 @@ cleanColumns.forEach(col => {
         macUlCol = col;
     }
 
-    // 👉 Cột "5G Total Traffic Volume"
     if (!traffic5gCol && lower.includes("5g total traffic volume")) {
         traffic5gCol = col;
     }
@@ -5448,7 +5587,11 @@ function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
     });
 
     html += "</tbody></table>";
-    tableEl.innerHTML = `<div style="min-width:100%; overflow-x:auto;">${html}</div>`;
+    tableEl.innerHTML = `
+        <div style="min-width:100%; max-height:700px; overflow:auto;">
+            ${html}
+        </div>
+    `;
     titleEl.textContent = baseTitle;
 
     // Sau khi vẽ xong → cố định 4 cột đầu cho Worst Cell & Cell Non-Traffic
@@ -6940,11 +7083,14 @@ function applyWorstCellStickyColumns() {
         }
 
         // Reset sticky cũ
+        // Reset sticky cũ – KHÔNG đụng tới background/color để giữ màu tô ngưỡng
         table.querySelectorAll(".sticky-col-wc").forEach((td) => {
             td.classList.remove("sticky-col-wc");
             td.style.left = "";
-            td.style.background = "";
+            td.style.position = "";
+            td.style.zIndex = "";
         });
+
 
         const rows = Array.from(table.rows);
 
@@ -6955,25 +7101,24 @@ function applyWorstCellStickyColumns() {
                 const cell = row.cells[i];
                 if (!cell) continue;
 
-                // Sticky
+                // Gắn sticky theo vị trí tính được
                 cell.classList.add("sticky-col-wc");
                 cell.style.position = "sticky";
                 cell.style.left = (leftOffsets[i] || 0) + "px";
-                cell.style.zIndex = isHeader ? 5 : 4;
+                cell.style.zIndex = isHeader ? 6 : 4;
 
-                // In đậm
-                cell.style.fontWeight = "600";
-
-                // ⭐ MÀU CHUẨN GIỐNG BẢNG WORST CELL
                 if (isHeader) {
-                    cell.style.background = "#203864";   // xanh header
-                    cell.style.color = "white";
+                    // Chỉ set màu cho header
+                    cell.style.background = "#203864";
+                    cell.style.color = "#ffffff";
+                    cell.style.fontWeight = "600";
                 } else {
-                    cell.style.background = "#d9e1f2";   // xanh nhạt body
-                    cell.style.color = "#111827";
+                    // Body: giữ nguyên background/color/condStyle (ô đỏ), chỉ chống xuống dòng
+                    cell.style.whiteSpace = "nowrap";
                 }
             }
         });
+
     });
 }
 
