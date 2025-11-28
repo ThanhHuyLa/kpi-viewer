@@ -658,7 +658,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.4
+                Version: v1.4.0.5
             </div>
         </div>
 
@@ -1799,6 +1799,7 @@ function odBuildGroupMapForCurrentFolder(folderName) {
 }
 // Đọc các file Excel KPI trong SharedWithMe, lọc theo thư mục KPI đang cấu hình
 // Trả về map: { folderName: [ { itemId, name, downloadUrl, lastModified } ] }
+// Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
 async function odLoadSharedExcelFilesForKpiPath() {
     // Lấy từ khóa cuối của đường dẫn KPI, ví dụ: "/Documents/KPI Scheduler" -> "KPI Scheduler"
     const rawPath = graphKpiConfig.kpiFolderPath || "/";
@@ -1808,10 +1809,11 @@ async function odLoadSharedExcelFilesForKpiPath() {
         .pop() || "";
     keyword = keyword.toLowerCase();
 
+    // Gọi Graph API sharedWithMe
     const data = await graphGetJson("/me/drive/sharedWithMe");
     const items = (data && data.value) || [];
 
-    const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+    const isExcel = (name) => /\.(xlsx|xlsm?|xls)$/i.test(name || "");
     const resultMap = {}; // { folderName: [item...] }
 
     items.forEach((it) => {
@@ -1827,8 +1829,7 @@ async function odLoadSharedExcelFilesForKpiPath() {
             return;
         }
 
-        const folderName =
-            parentRef.name || "Shared (từ người khác)";
+        const folderName = parentRef.name || "Shared (từ người khác)";
 
         if (!resultMap[folderName]) {
             resultMap[folderName] = [];
@@ -1837,9 +1838,8 @@ async function odLoadSharedExcelFilesForKpiPath() {
         resultMap[folderName].push({
             itemId: remote.id || it.id,
             name,
-            // Có thể có downloadUrl ở remoteItem hoặc trên item gốc
             downloadUrl:
-                remote["@microsoft.graph.downloadUrl"] ||
+                (remote["@microsoft.graph.downloadUrl"]) ||
                 it["@microsoft.graph.downloadUrl"] ||
                 null,
             lastModified:
