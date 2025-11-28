@@ -362,6 +362,14 @@
     background: #fff;
 }
 
+.wc-filter-input {
+    padding: 4px 8px !important;
+    height: 30px !important;
+    min-width: 90px !important;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+}
 
         tr:hover {
             background: #f3f4ff;
@@ -506,6 +514,40 @@
         #excelTable table td:nth-child(4) {
             white-space: nowrap;
         }
+
+        /* Cố định & auto-fit 4 cột đầu cho Worst Cell + Cell Non-Traffic */
+        #worstCellTable,
+        #nonTrafficTable {
+            position: relative;
+        }
+
+        #worstCellTable table th,
+        #worstCellTable table td,
+        #nonTrafficTable table th,
+        #nonTrafficTable table td {
+            position: relative;
+        }
+
+        /* 4 cột đầu không xuống dòng → auto-fit theo nội dung */
+        #worstCellTable table th:nth-child(-n+4),
+        #worstCellTable table td:nth-child(-n+4),
+        #nonTrafficTable table th:nth-child(-n+4),
+        #nonTrafficTable table td:nth-child(-n+4) {
+            white-space: nowrap;
+        }
+
+        #worstCellTable .sticky-col,
+        #nonTrafficTable .sticky-col {
+            z-index: 3;
+        }
+
+        #worstCellTable thead .sticky-col,
+        #nonTrafficTable thead .sticky-col {
+            z-index: 4;
+        }
+
+
+
 
 
         .excel-latest-btn {
@@ -658,7 +700,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.13
+                Version: v1.4.0.14
             </div>
         </div>
 
@@ -1042,8 +1084,41 @@
             <!-- 4. WORST CELL -->
             <div class="data-table" id="worstCellCard" style="margin-top: 10px; display:none;">
                 <h3 id="worstCellTitle">Worst Cell (Thời điểm gần nhất)</h3>
+
+                <!-- 🔎 Bộ lọc giá trị cho bảng Worst Cell -->
+                <div id="worstFilterBar"
+                    style="margin:4px 0 8px; font-size:0.85em; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <strong>Lọc theo KPI:</strong>
+
+                    <label style="display:flex; align-items:center; gap:4px;">
+                        Logic:
+                        <select
+                            id="worstFilterLogic"
+                            style="padding:4px 6px; border-radius:6px; border:1px solid #cbd5e1;"
+                        >
+                            <option value="AND">AND</option>
+                            <option value="OR">OR</option>
+                        </select>
+                    </label>
+
+                    <button type="button" id="worstFilterAddBtn"
+                            style="padding:4px 8px; border-radius:6px; border:1px solid #2563eb; background:#2563eb; color:#fff; cursor:pointer;">
+                        + Thêm điều kiện
+                    </button>
+
+                    <button type="button" id="worstFilterClearBtn"
+                            style="padding:4px 8px; border-radius:6px; border:1px solid #6b7280; background:#f3f4f6; color:#111827; cursor:pointer;">
+                        Xóa filter
+                    </button>
+
+                    <!-- Danh sách các dòng điều kiện KPI -->
+                    <div id="worstFilterRules"
+                        style="width:100%; margin-top:4px; display:flex; flex-direction:column; gap:4px;"></div>
+                </div>
+
                 <div id="worstCellTable"></div>
             </div>
+
 
             <!-- CELL NON-TRAFFIC -->
             <div class="data-table" id="nonTrafficCard" style="margin-top: 16px; display:none;">
@@ -4610,6 +4685,60 @@ if (showTargetLine) {
                 });
             });
         }
+// Cố định N cột đầu cho 1 bảng bất kỳ (theo id container)
+function applyStickyForTable(wrapperId, stickyCount) {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+
+    const table = wrapper.querySelector("table");
+    if (!table || !table.tHead) return;
+
+    requestAnimationFrame(() => {
+        const headerRows = Array.from(table.tHead.rows);
+        if (!headerRows.length) return;
+
+        const headerRow = headerRows[headerRows.length - 1];
+
+        const tableRect = table.getBoundingClientRect();
+        const colLeft = [];
+
+        // Tính left cho từng cột sẽ sticky
+        for (let i = 0; i < stickyCount; i++) {
+            const cell = headerRow.cells[i];
+            if (!cell) continue;
+            const rect = cell.getBoundingClientRect();
+            colLeft[i] = rect.left - tableRect.left;
+        }
+
+        // Xóa class sticky cũ nếu có
+        const oldSticky = table.querySelectorAll(".sticky-col");
+        oldSticky.forEach((c) => {
+            c.classList.remove("sticky-col");
+            c.style.left = "";
+            c.style.position = "";
+        });
+
+        // Gán lại sticky cho N cột đầu
+        const rows = Array.from(table.rows);
+        rows.forEach((row) => {
+            for (let i = 0; i < stickyCount; i++) {
+                const cell = row.cells[i];
+                if (!cell) continue;
+
+                cell.classList.add("sticky-col");
+                cell.style.position = "sticky";
+                cell.style.left = (colLeft[i] || 0) + "px";
+            }
+        });
+    });
+}
+
+// Áp dụng cho Worst Cell + Cell Non-Traffic (4 cột đầu)
+function applyWorstCellStickyColumns() {
+    applyStickyForTable("worstCellTable", 4);
+    applyStickyForTable("nonTrafficTable", 4);
+}
+
         function applyKpiOverviewTargetVisibility() {
             const wrapper = document.getElementById("excelTable");
             if (!wrapper) return;
@@ -4640,6 +4769,234 @@ if (showTargetLine) {
                 });
             });
         }
+// ===== Bộ lọc giá trị cho bảng Worst Cell =====
+let worstCellFilterRules   = [];   // [{id, colKey, op, value}, ...]
+let worstCellFilterLogic   = "AND";
+let worstFilterKpiOptions  = [];   // [{colKey, label}]
+let worstFilterUiBound     = false;
+
+function initWorstFilterEvents() {
+    if (worstFilterUiBound) return;
+
+    const logicSelect = document.getElementById("worstFilterLogic");
+    const addBtn      = document.getElementById("worstFilterAddBtn");
+    const clearBtn    = document.getElementById("worstFilterClearBtn");
+
+    if (!logicSelect || !addBtn || !clearBtn) return;
+
+    // Thay đổi AND / OR
+    logicSelect.onchange = (e) => {
+        worstCellFilterLogic = e.target.value === "OR" ? "OR" : "AND";
+        renderWorstCellTable();
+    };
+
+    // Thêm 1 điều kiện mới
+    addBtn.onclick = () => {
+        if (!worstFilterKpiOptions.length) return;
+
+        const firstColKey = worstFilterKpiOptions[0].colKey;
+        worstCellFilterRules.push({
+            id: Date.now() + "_" + Math.random().toString(16).slice(2),
+            colKey: firstColKey,
+            op: "<",
+            value: ""
+        });
+        renderWorstFilterRules();
+        renderWorstCellTable();
+    };
+
+    // Xóa toàn bộ điều kiện
+    clearBtn.onclick = () => {
+        worstCellFilterRules = [];
+        renderWorstFilterRules();
+        renderWorstCellTable();
+    };
+
+    worstFilterUiBound = true;
+}
+
+// Tạo danh sách KPI cho combobox filter (từ orderedCols của bảng)
+function initWorstFilterOptionsFromCols(orderedCols) {
+    initWorstFilterEvents();
+
+    // KPI: từ cột thứ 5 trở đi (bỏ PO, Province, NRBTS, NRCEL)
+    const metricCols = orderedCols.slice(4);
+
+    worstFilterKpiOptions = metricCols.map((colKey) => ({
+        colKey,
+        label: String(colKey)
+    }));
+
+    renderWorstFilterRules();
+}
+
+// Vẽ lại list điều kiện dưới thanh filter
+function renderWorstFilterRules() {
+    const container = document.getElementById("worstFilterRules");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!worstCellFilterRules.length) {
+        const p = document.createElement("div");
+        p.style.fontSize = "0.8em";
+        p.style.color = "#6b7280";
+        p.textContent = "Chưa có điều kiện filter.";
+        container.appendChild(p);
+        return;
+    }
+
+    worstCellFilterRules.forEach((rule) => {
+        const rowDiv = document.createElement("div");
+        rowDiv.style.display = "flex";
+        rowDiv.style.gap = "4px";
+        rowDiv.style.alignItems = "center";
+
+        // Chọn KPI
+        const kpiSelect = document.createElement("select");
+        kpiSelect.style.padding = "4px 6px";
+        kpiSelect.style.borderRadius = "6px";
+        kpiSelect.style.border = "1px solid #cbd5e1";
+
+        worstFilterKpiOptions.forEach((optInfo) => {
+            const opt = document.createElement("option");
+            opt.value = optInfo.colKey;
+            opt.textContent = optInfo.label;
+            if (optInfo.colKey === rule.colKey) opt.selected = true;
+            kpiSelect.appendChild(opt);
+        });
+        kpiSelect.onchange = (e) => {
+            rule.colKey = e.target.value;
+            renderWorstCellTable();
+        };
+
+        // Chọn toán tử
+        const opSelect = document.createElement("select");
+        opSelect.style.padding = "4px 6px";
+        opSelect.style.borderRadius = "6px";
+        opSelect.style.border = "1px solid #cbd5e1";
+
+        ["<", "<=", ">", ">=", "=", "=="].forEach((op) => {
+            const opt = document.createElement("option");
+            opt.value = op;
+            opt.textContent = op;
+            if (op === rule.op) opt.selected = true;
+            opSelect.appendChild(opt);
+        });
+        opSelect.onchange = (e) => {
+            rule.op = e.target.value;
+            renderWorstCellTable();
+        };
+
+        // Nhập giá trị
+        // Nhập giá trị - chỉ filter khi kết thúc nhập (change hoặc Enter)
+        // Nhập giá trị - chỉ filter khi kết thúc nhập (change hoặc Enter)
+        const valInput = document.createElement("input");
+        valInput.type = "number";
+        valInput.step = "any";
+        valInput.style.padding = "4px 6px";
+        valInput.style.width = "90px";
+        valInput.style.borderRadius = "6px";
+        valInput.style.border = "1px solid #cbd5e1";
+
+        // 👉 Gán lại giá trị đang lưu trong rule (nếu có) để hiển thị lên ô input
+        valInput.value = rule.value ?? "";
+
+        // Khi đang gõ thì chỉ lưu value, KHÔNG render lại bảng
+        valInput.oninput = (e) => {
+            rule.value = e.target.value;
+        };
+
+        // Khi người dùng rời khỏi ô (blur/change) thì mới áp dụng filter
+        valInput.onchange = (e) => {
+            rule.value = e.target.value;
+            renderWorstCellTable();
+        };
+
+        // Nhấn Enter cũng áp dụng filter ngay
+        valInput.onkeydown = (ev) => {
+            if (ev.key === "Enter") {
+                ev.preventDefault();
+                valInput.blur();        // cho trigger onchange
+                renderWorstCellTable();
+            }
+        };
+
+
+
+        // Nút xóa điều kiện
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.textContent = "✕";
+        removeBtn.style.padding = "2px 6px";
+        removeBtn.style.borderRadius = "6px";
+        removeBtn.style.border = "1px solid #ef4444";
+        removeBtn.style.background = "#fee2e2";
+        removeBtn.style.cursor = "pointer";
+        removeBtn.onclick = () => {
+            worstCellFilterRules = worstCellFilterRules.filter((r) => r.id !== rule.id);
+            renderWorstFilterRules();
+            renderWorstCellTable();
+        };
+
+        rowDiv.appendChild(kpiSelect);
+        rowDiv.appendChild(opSelect);
+        rowDiv.appendChild(valInput);
+        rowDiv.appendChild(removeBtn);
+
+        container.appendChild(rowDiv);
+    });
+}
+
+// Áp dụng danh sách điều kiện vào rowsArr
+function applyWorstCellValueFilters(rowsArr, orderedCols) {
+    if (!worstCellFilterRules.length) return rowsArr;
+
+    // Chỉ giữ rule có đủ KPI + toán tử + value
+    const rules = worstCellFilterRules.filter(
+        (r) => r.colKey && r.op && r.value !== ""
+    );
+    if (!rules.length) return rowsArr;
+
+    const logic = worstCellFilterLogic === "OR" ? "OR" : "AND";
+
+    function toNumberSafe(v) {
+        if (v === null || v === undefined || v === "") return null;
+        const num = parseFloat(String(v).replace(/\s+/g, "").replace(",", "."));
+        return Number.isNaN(num) ? null : num;
+    }
+
+    return rowsArr.filter((row) => {
+        let anyTrue = false;
+
+        for (const rule of rules) {
+            const val = row[rule.colKey];
+            const num = toNumberSafe(val);
+            const thr = toNumberSafe(rule.value);
+
+            // Nếu không convert được sang số ⇒ coi như không thỏa
+            if (num === null || thr === null) {
+                if (logic === "AND") return false;
+                else continue;
+            }
+
+            let ok = false;
+            if (rule.op === "<") ok = num < thr;
+            else if (rule.op === "<=") ok = num <= thr;
+            else if (rule.op === ">") ok = num > thr;
+            else if (rule.op === ">=") ok = num >= thr;
+            else if (rule.op === "=" || rule.op === "==") ok = num === thr;
+
+            if (logic === "AND" && !ok) return false;
+            if (logic === "OR" && ok) {
+                anyTrue = true;
+                break;
+            }
+        }
+
+        return logic === "AND" ? true : anyTrue;
+    });
+}
 
         function renderWorstCellTable() {
             const worstCard    = document.getElementById("worstCellCard");
@@ -4715,6 +5072,7 @@ let nrCellCol = null;
 let availCol  = null;
 let macDlCol  = null; // MAC SDU data vol trans DL DTCH
 let macUlCol  = null; // MAC SDU data vol rcvd UL DTCH
+let traffic5gCol  = null; // 5G Total Traffic Volume
 
 cleanColumns.forEach(col => {
     const lower = String(col).toLowerCase();
@@ -4730,8 +5088,12 @@ cleanColumns.forEach(col => {
     if (!macUlCol && lower.startsWith("mac sdu data vol rcvd ul dtch")) {
         macUlCol = col;
     }
-});
 
+    // 👉 Cột "5G Total Traffic Volume"
+    if (!traffic5gCol && lower.includes("5g total traffic volume")) {
+        traffic5gCol = col;
+    }
+});
 
             const highlightedKeys = new Set();
 
@@ -4889,11 +5251,20 @@ latestRows.forEach(row => {
         return;
     }
 
-const hasData = cleanColumns.some(col => {
-    if (col === periodCol || col === nrbtsCol || col === nrCellCol || col === availCol) return false;
-    const v = row[col];
-    return v !== null && v !== "" && !Number.isNaN(parseFloat(v));
-});
+    // 3️⃣ 5G Total Traffic Volume < 100 -> Non-Traffic
+    if (traffic5gCol) {
+        const trafficVal = toNumber(row[traffic5gCol]);
+        if (trafficVal !== null && trafficVal < 100) {
+            nonTrafficRows.push(row);
+            return;
+        }
+    }
+
+    const hasData = cleanColumns.some(col => {
+        if (col === periodCol || col === nrbtsCol || col === nrCellCol || col === availCol) return false;
+        const v = row[col];
+        return v !== null && v !== "" && !Number.isNaN(parseFloat(v));
+    });
 
     if (!hasData) nonTrafficRows.push(row);
     else trafficRows.push(row);
@@ -4925,185 +5296,171 @@ function toNumber(val) {
     return isNaN(num) ? null : num;
 }
 
-            function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
-                if (!rowsArr.length) {
-                    titleEl.textContent = baseTitle + " (không có dữ liệu)";
-                    tableEl.innerHTML = "";
-                    return;
-                }
+function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
+    if (!rowsArr.length) {
+        titleEl.textContent = baseTitle + " (không có dữ liệu)";
+        tableEl.innerHTML = "";
+        return;
+    }
 
-const otherCols = cleanColumns.filter(col => {
-    const lower = String(col).toLowerCase();
-    if (col === periodCol) return false;
-    if (col === nrbtsCol) return false;
-    if (col === nrCellCol) return false;
-    if (col === availCol)  return false;
-    if (lower.includes("mrbts")) return false;
-    return true;
-});
+    const otherCols = cleanColumns.filter(col => {
+        const lower = String(col).toLowerCase();
+        if (col === periodCol) return false;
+        if (col === nrbtsCol) return false;
+        if (col === nrCellCol) return false;
+        if (col === availCol)  return false;
+        if (lower.includes("mrbts")) return false;
+        return true;
+    });
 
+    const orderedCols = ["__PO", "__province"];
+    if (nrbtsCol)  orderedCols.push(nrbtsCol);
+    if (nrCellCol) orderedCols.push(nrCellCol);
+    if (availCol)  orderedCols.push(availCol);
+    orderedCols.push(...otherCols);
 
-                const orderedCols = ["__PO", "__province"];
-                if (nrbtsCol)  orderedCols.push(nrbtsCol);
-                if (nrCellCol) orderedCols.push(nrCellCol);
-                if (availCol)  orderedCols.push(availCol);
-                orderedCols.push(...otherCols);
+    // 🔥 NEW: nếu là bảng Worst Cell thì apply filter giá trị
+    let effectiveRows = rowsArr;
+    if (baseTitle.startsWith("Worst Cell")) {
+        initWorstFilterOptionsFromCols(orderedCols);
+        effectiveRows = applyWorstCellValueFilters(rowsArr, orderedCols);
 
-                const kpiAccessName = "NSA call access";
-                const kpiDropName   = "NSA Active ERAB drop UserR";
-                const kpiAvailName  = "Cell avail R";
-                const kpiSnChangeName = "SN Init Change Intra-freq SR src gNB";
-
-                function findColKeyByName(displayName) {
-                    const target = displayName.toLowerCase();
-                    return orderedCols.find(colKey =>
-                        colKey !== "__province" &&
-                        String(colKey).toLowerCase() === target
-                    );
-                }
-
-                const kpiAccessColKey = findColKeyByName(kpiAccessName);
-                const kpiDropColKey   = findColKeyByName(kpiDropName);
-                const kpiAvailColKey  = findColKeyByName(kpiAvailName);
-                const kpiSnChangeColKey = findColKeyByName(kpiSnChangeName);
-
-                const sortedRows = [...rowsArr].sort((a, b) => {
-                    const aCell = nrCellCol ? String(a[nrCellCol] ?? "") : "";
-                    const bCell = nrCellCol ? String(b[nrCellCol] ?? "") : "";
-                    const provA = aCell.slice(-3);
-                    const provB = bCell.slice(-3);
-                    return provA.localeCompare(provB);
-                });
-
-                let html = "<table><thead><tr>";
-                orderedCols.forEach((colKey, idx) => {
-                    const isFirst4 = idx < 4;
-
-                    let title = colKey;
-
-                    if (colKey === "__PO")        title = "PO";
-                    if (colKey === "__province")  title = "Province";
-
-                    const thStyle =
-                        "background:#203864; color:#fff; padding:6px 8px; " +
-                        "border:1px solid #cbd5e1; text-align:center;" +
-                        (isFirst4 ? "white-space:nowrap;" : "");
-                    html += `<th style="${thStyle}">${title}</th>`;
-                });
-                html += "</tr></thead><tbody>";
-
-                sortedRows.forEach(row => {
-                    const rowKey = makeRowKey(row);
-                    const isHighlighted = highlightedKeys.has(rowKey);
-                    const trStyle = isHighlighted ? ' style="background:#fef3c7;"' : "";
-
-                    html += `<tr${trStyle}>`;
-
-                    orderedCols.forEach((colKey, idx) => {
-                        const isFirst4 = idx < 4;
-                        let value;
-
-                        if (colKey === "__province") {
-                            const cellVal = nrCellCol ? row[nrCellCol] : "";
-                            const str = cellVal == null ? "" : String(cellVal).trim();
-                            value = str.length >= 3 ? str.slice(-3) : str;
-                        } else if (colKey === "__PO") {
-                            // PO lấy từ file Tiến độ đo kiểm (CQT-SSV) theo NRBTS name
-                            const siteName = nrbtsCol ? row[nrbtsCol] : "";
-                            value = getPoFromProgress(siteName);
-                        } else {
-                            value = row[colKey];
-                        }
-
-                        let display = value == null ? "" : value;
-
-                        if (idx >= 4 && isNumericLike(display)) {
-                            display = formatNumberSmart(display);
-                        }
-
-                let condStyle = "";
-
-        // Ưu tiên dùng file cấu hình sheet "WorstCell Threshold" nếu có
-                if (worstCellThresholdMap && Object.keys(worstCellThresholdMap).length) {
-                    // Xác định tên KPI để tra trong bảng ngưỡng
-                    let kpiDisplayName = colKey;
-                    if (colKey === "__PO")       kpiDisplayName = "PO";
-                    else if (colKey === "__province") kpiDisplayName = "Province";
-
-                    const thr = getWorstCellThresholdByName(kpiDisplayName);
-
-                    if (thr && isNumericLike(value)) {
-                        const num = toNumber(value);
-                        const t   = thr.value;
-                        const op  = thr.op;
-                        let isBad = false;
-
-                        if (num !== null) {
-                            if (op === "<")       isBad = num <  t;
-                            else if (op === ">")  isBad = num >  t;
-                            else if (op === "<=") isBad = num <= t;
-                            else if (op === ">=") isBad = num >= t;
-                            else if (op === "=" || op === "==") isBad = num === t;
-                        }
-
-                        if (isBad) {
-                            condStyle =
-                                "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                        }
-                    }
-                } else {
-                    // Fallback: nếu chưa có sheet WorstCell Threshold -> dùng rule cứng như cũ
-                    if (kpiAccessColKey && colKey === kpiAccessColKey) {
-                        const num = toNumber(value);
-                        if (num !== null && num < 95) {
-                            condStyle =
-                                "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                        }
-                    }
-
-                    if (kpiDropColKey && colKey === kpiDropColKey) {
-                        const num = toNumber(value);
-                if (num !== null && num > 3) {
-                    condStyle =
-                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                }
-            }
-
-            if (kpiAvailColKey && colKey === kpiAvailColKey) {
-                const num = toNumber(value);
-                if (num !== null && num === 0) {
-                    condStyle =
-                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                }
-            }
-
-            if (kpiSnChangeColKey && colKey === kpiSnChangeColKey) {
-                const num = toNumber(value);
-                if (num !== null && num < 70) {
-                    condStyle =
-                        "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                }
-            }
+        if (!effectiveRows.length) {
+            titleEl.textContent = baseTitle + " – không có dòng nào khớp filter";
+            tableEl.innerHTML = "";
+            return;
         }
+    }
 
-                        const baseCell =
-                            "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
-                        const extraCell = isFirst4
-                            ? " background:#d9e1f2; font-weight:600; white-space:nowrap; text-align:left;"
-                            : "";
+    const kpiAccessName    = "NSA call access";
+    const kpiDropName      = "NSA Active ERAB drop UserR";
+    const kpiAvailName     = "Cell avail R";
+    const kpiSnChangeName  = "SN Init Change Intra-freq SR src gNB";
 
-                        const finalStyle = baseCell + extraCell + condStyle;
+    function findColKeyByName(displayName) {
+        const target = displayName.toLowerCase();
+        return orderedCols.find(colKey =>
+            colKey !== "__province" &&
+            String(colKey).toLowerCase() === target
+        );
+    }
 
-                        html += `<td style="${finalStyle}">${display}</td>`;
-                    });
+    const kpiAccessColKey   = findColKeyByName(kpiAccessName);
+    const kpiDropColKey     = findColKeyByName(kpiDropName);
+    const kpiAvailColKey    = findColKeyByName(kpiAvailName);
+    const kpiSnChangeColKey = findColKeyByName(kpiSnChangeName);
 
-                    html += "</tr>";
-                });
+    const sortedRows = [...effectiveRows].sort((a, b) => {
+        const aCell = nrCellCol ? String(a[nrCellCol] ?? "") : "";
+        const bCell = nrCellCol ? String(b[nrCellCol] ?? "") : "";
+        const provA = aCell.slice(-3);
+        const provB = bCell.slice(-3);
+        return provA.localeCompare(provB);
+    });
 
-                html += "</tbody></table>";
-                tableEl.innerHTML = html;
-                titleEl.textContent = baseTitle;
+    let html = "<table><thead><tr>";
+    orderedCols.forEach((colKey, idx) => {
+        const isFirst4 = idx < 4;
+
+        let title = colKey;
+        if (colKey === "__PO")       title = "PO";
+        if (colKey === "__province") title = "Province";
+
+        const thStyle =
+            "background:#203864; color:#fff; padding:6px 8px; " +
+            "border:1px solid #cbd5e1; text-align:center;" +
+            (isFirst4 ? "white-space:nowrap;" : "");
+        html += `<th style="${thStyle}">${title}</th>`;
+    });
+    html += "</tr></thead><tbody>";
+
+    sortedRows.forEach(row => {
+        const rowKey = makeRowKey(row);
+        const isHighlighted = highlightedKeys.has(rowKey);
+        const trStyle = isHighlighted ? ' style="background:#fef3c7;"' : "";
+
+        html += `<tr${trStyle}>`;
+
+        orderedCols.forEach((colKey, idx) => {
+            const isFirst4 = idx < 4;
+            let value;
+
+            if (colKey === "__province") {
+                const cellVal = nrCellCol ? row[nrCellCol] : "";
+                const str = cellVal == null ? "" : String(cellVal).trim();
+                value = str.length >= 3 ? str.slice(-3) : str;
+            } else if (colKey === "__PO") {
+                const siteName = nrbtsCol ? row[nrbtsCol] : "";
+                value = getPoFromProgress(siteName);
+            } else {
+                value = row[colKey];
             }
+
+            let display = value == null ? "" : value;
+            if (idx >= 4 && isNumericLike(display)) {
+                display = formatNumberSmart(display);
+            }
+
+            let condStyle = "";
+
+            // Ưu tiên dùng file cấu hình sheet "WorstCell Threshold" nếu có
+            if (worstCellThresholdMap && Object.keys(worstCellThresholdMap).length) {
+                let kpiDisplayName = colKey;
+                if (colKey === "__PO")       kpiDisplayName = "PO";
+                else if (colKey === "__province") kpiDisplayName = "Province";
+
+                const thr = getWorstCellThresholdByName(kpiDisplayName);
+
+                if (thr && isNumericLike(value)) {
+                    const num = toNumber(value);
+                    const t   = thr.value;
+                    const op  = thr.op;
+                    let isBad = false;
+
+                    if (num !== null) {
+                        if      (op === "<")  isBad = num <  t;
+                        else if (op === ">")  isBad = num >  t;
+                        else if (op === "<=") isBad = num <= t;
+                        else if (op === ">=") isBad = num >= t;
+                        else if (op === "=" || op === "==") isBad = num === t;
+                    }
+
+                    if (isBad) {
+                        condStyle =
+                            "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                    }
+                }
+            }
+
+            // Style ô dữ liệu: giống file chuẩn (nền xanh nhạt + đậm 4 cột đầu)
+            const baseCell =
+                "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+            const extraCell = isFirst4
+                ? " background:#d9e1f2; font-weight:600; white-space:nowrap; text-align:left;"
+                : "";
+
+            const finalStyle = baseCell + extraCell + condStyle;
+
+            html += `<td style="${finalStyle}">${display}</td>`;
+        });
+
+        html += "</tr>";
+    });
+
+    html += "</tbody></table>";
+    tableEl.innerHTML = `<div style="min-width:100%; overflow-x:auto;">${html}</div>`;
+    titleEl.textContent = baseTitle;
+
+    // Sau khi vẽ xong → cố định 4 cột đầu cho Worst Cell & Cell Non-Traffic
+    if (
+        (baseTitle.startsWith("Worst Cell") ||
+         baseTitle.startsWith("Cell Non-Traffic")) &&
+        typeof applyWorstCellStickyColumns === "function"
+    ) {
+        setTimeout(applyWorstCellStickyColumns, 0);
+    }
+}
+
 
 const worstTitleText = latestLabel ? `Worst Cell (${latestLabel})` : "Worst Cell";
 worstCard.style.display = "block";
@@ -5436,6 +5793,9 @@ if (daysWindowSelect) {
 
 window.addEventListener("resize", () => {
     applyStickyKpiColumns();
+    if (typeof applyWorstCellStickyColumns === "function") {
+        applyWorstCellStickyColumns();
+    }
 });
 
 const funnelSortSelect = document.getElementById("funnelSortSelect");
@@ -6548,6 +6908,72 @@ function renderProgressTable(data) {
             cell.style.position = "sticky";
             cell.style.left = (colLeft[i] || 0) + "px";
         }
+    });
+}
+
+// Cố định 4 cột đầu cho bảng Worst Cell (PO, Province, NRBTS, NRCEL)
+// Cố định 4 cột đầu cho bảng Worst Cell (PO, Province, NRBTS, NRCEL)
+function applyWorstCellStickyColumns() {
+    const wrappers = [
+        document.getElementById("worstCellTable"),
+        document.getElementById("nonTrafficTable"),
+    ].filter(Boolean);
+
+    const stickyCount = 4; // 4 cột đầu
+
+    wrappers.forEach((wrapper) => {
+        const table = wrapper.querySelector("table");
+        if (!table || !table.tHead) return;
+
+        const headerRow = table.tHead.rows[table.tHead.rows.length - 1];
+        if (!headerRow) return;
+
+        const tableRect = table.getBoundingClientRect();
+        const leftOffsets = [];
+
+        // Tính left cho 4 cột đầu
+        for (let i = 0; i < stickyCount; i++) {
+            const cell = headerRow.cells[i];
+            if (!cell) continue;
+            const rect = cell.getBoundingClientRect();
+            leftOffsets[i] = rect.left - tableRect.left;
+        }
+
+        // Reset sticky cũ
+        table.querySelectorAll(".sticky-col-wc").forEach((td) => {
+            td.classList.remove("sticky-col-wc");
+            td.style.left = "";
+            td.style.background = "";
+        });
+
+        const rows = Array.from(table.rows);
+
+        rows.forEach((row) => {
+            const isHeader = row.parentNode.tagName === "THEAD";
+
+            for (let i = 0; i < stickyCount; i++) {
+                const cell = row.cells[i];
+                if (!cell) continue;
+
+                // Sticky
+                cell.classList.add("sticky-col-wc");
+                cell.style.position = "sticky";
+                cell.style.left = (leftOffsets[i] || 0) + "px";
+                cell.style.zIndex = isHeader ? 5 : 4;
+
+                // In đậm
+                cell.style.fontWeight = "600";
+
+                // ⭐ MÀU CHUẨN GIỐNG BẢNG WORST CELL
+                if (isHeader) {
+                    cell.style.background = "#203864";   // xanh header
+                    cell.style.color = "white";
+                } else {
+                    cell.style.background = "#d9e1f2";   // xanh nhạt body
+                    cell.style.color = "#111827";
+                }
+            }
+        });
     });
 }
 
