@@ -1856,19 +1856,20 @@ async function odLoadSharedExcelFilesForKpiPath() {
 // Dùng tên thư mục cuối trong graphKpiConfig.kpiFolderPath, ví dụ:
 //  "/KPI Scheduler"  -> tìm folder share tên "KPI Scheduler"
 
-async function getAllExcelFiles(driveId, folderId) {
+// Đệ quy duyệt toàn bộ cây thư mục trong 1 drive, lấy tất cả file Excel
+async function getAllExcelFiles(driveId, rootFolderId) {
     const result = [];
-    const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+    const isExcel = (name) => /\.(xlsx|xlsm?|xls)$/i.test(name || "");
 
-    async function traverse(itemId) {
+    async function traverse(folderId) {
         const childrenData = await graphGetJson(
-            `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(itemId)}/children`
+            `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
         );
         const children = (childrenData && childrenData.value) || [];
 
         for (const c of children) {
             if (c.folder) {
-                // Đệ quy vào subfolder
+                // 👉 có subfolder thì đi tiếp
                 await traverse(c.id);
             } else if (isExcel(c.name)) {
                 result.push({
@@ -1881,62 +1882,69 @@ async function getAllExcelFiles(driveId, folderId) {
         }
     }
 
-    await traverse(folderId);
+    await traverse(rootFolderId);
     return result;
 }
 
-// Đọc folder KPI share qua remoteItem + đệ quy toàn bộ subfolder
+// Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
+// Dùng tên thư mục cuối trong graphKpiConfig.kpiFolderPath, ví dụ:
+//  "/KPI Scheduler"  -> tìm folder share tên "KPI Scheduler"
 async function odLoadKpiSharedFolderViaRemoteItem() {
-    // Tên folder share cấu hình trong graphKpiConfig
-    const sharedNameRaw = (graphKpiConfig.sharedFolderName || "").trim();
-    if (!sharedNameRaw) {
+    const rawPath = graphKpiConfig.kpiFolderPath || "/";
+    const folderName = rawPath
+        .split("/")
+        .filter(Boolean)
+        .pop();    // lấy đoạn cuối
+
+    if (!folderName) {
+        console.warn("Không xác định được tên thư mục từ kpiFolderPath:", rawPath);
         return {};
     }
 
-    const sharedNameLower = sharedNameRaw.toLowerCase();
-    const resultMap = {};
+    const folderNameLower = folderName.toLowerCase();
 
-    // 1) Lấy danh sách các item "Shared with me"
-    const data = await graphGetJson("/me/drive/sharedWithMe");
+    // 1. Lấy danh sách SharedWithMe
+    const data  = await graphGetJson("/me/drive/sharedWithMe");
     const items = (data && data.value) || [];
 
-    // 2) Tìm đúng folder remoteItem theo tên cấu hình
-    let target = null;
+    let targetRemote = null;
+
     for (const it of items) {
         const remote = it.remoteItem;
-        if (!remote || !remote.folder) continue;
+        if (!remote) continue;
+        if (!remote.folder) continue; // chỉ quan tâm thư mục share
 
-        const name = (remote.name || it.name || "").trim();
-        if (!name) continue;
-
-        if (name.toLowerCase() === sharedNameLower) {
-            target = it;
+        const remoteName = (remote.name || "").toLowerCase();
+        if (remoteName === folderNameLower) {
+            targetRemote = remote;
             break;
         }
     }
 
-    if (!target || !target.remoteItem) {
-        console.warn("Không tìm thấy folder share phù hợp:", sharedNameRaw);
+    if (!targetRemote) {
+        console.warn("Không tìm thấy thư mục share tên:", folderName);
         return {};
     }
 
-    const remote = target.remoteItem;
-    const parentRef = remote.parentReference || {};
-    const driveId = parentRef.driveId;
-    const itemId  = remote.id;
+    // 2. Lấy driveId + itemId thật của folder share
+    const driveId = targetRemote.parentReference
+        ? targetRemote.parentReference.driveId
+        : null;
+    const itemId  = targetRemote.id;
 
     if (!driveId || !itemId) {
-        console.warn("remoteItem thiếu driveId hoặc id:", remote);
+        console.warn("remoteItem không có driveId hoặc id:", targetRemote);
         return {};
     }
 
-    // 3) Dùng hàm đệ quy để lấy TẤT CẢ file Excel trong folder + subfolder
-    const list = await getAllExcelFiles(driveId, itemId);
+    // 3. ĐỆ QUY duyệt toàn bộ cây thư mục share để lấy tất cả file Excel (kể cả subfolder)
+    const allExcelFiles = await getAllExcelFiles(driveId, itemId);
 
-    // 4) Đặt tên folder hiển thị (key của map)
-    const folderDisplayName = remote.name || target.name || sharedNameRaw;
-
-    resultMap[folderDisplayName] = list;
+    const resultMap = {};
+    if (allExcelFiles.length) {
+        // Gộp tất cả file (kể cả trong subfolder) vào cùng một group theo tên folder gốc
+        resultMap[folderName] = allExcelFiles;
+    }
 
     return resultMap;
 }
