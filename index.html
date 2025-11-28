@@ -658,7 +658,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.3
+                Version: v1.4.0.4
             </div>
         </div>
 
@@ -1933,132 +1933,198 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 // Đọc danh sách file KPI từ OneDrive và build map folder -> file
 // Đọc danh sách file KPI từ OneDrive (thư mục riêng + file share) và build map folder -> file
 // Đọc danh sách file KPI từ OneDrive và build map folder -> file
+// Đọc danh sách file KPI từ OneDrive (hỗ trợ cả folder thường và shortcut / remoteItem)
 async function odLoadKpiGroupsFromOneDrive() {
-    const loading      = document.getElementById("loading");
+    const statusSpan   = document.getElementById("odStatus");
     const folderSelect = document.getElementById("odFolderSelect");
     const groupSelect  = document.getElementById("odGroupSelect");
 
-    if (loading) {
-        loading.textContent = "⏳ Đang tải danh sách file từ OneDrive.";
-        loading.classList.add("show");
-    }
+    // Reset map
+    oneDriveFolderFileMap     = {};
+    oneDriveCurrentFolderName = "";
+    oneDriveGroupMap          = {};
+
+    const rawPath = (graphKpiConfig.kpiFolderPath || "/").trim() || "/";
+    const isExcel = (name) => /\.(xlsx|xlsm?|xls)$/i.test(name || "");
+
+    // -------- 1. Lấy danh sách item con của folder gốc (theo path) --------
+    let rootChildren = [];
+
+    // Helper encode path: "/KPI Scheduler/Test" -> "KPI%20Scheduler/Test"
+    const buildEncodedPath = (p) =>
+        p.split("/")
+         .filter(Boolean)
+         .map(encodeURIComponent)
+         .join("/");
 
     try {
-        const rawPath = graphKpiConfig.kpiFolderPath || "/";
         let endpoint;
-
-        // 🔹 Nếu đọc ROOT OneDrive
-        if (!rawPath || rawPath === "/") {
-            // /me/drive/root/children  (đúng chuẩn Graph)
-            endpoint = "/me/drive/root/children";
+        if (rawPath === "/" || rawPath === "") {
+            // Root My files
+            endpoint = "/me/drive/root/children?$expand=remoteItem";
         } else {
-            // 🔹 Nếu đọc 1 thư mục con: /Folder1/Folder2
-            const encodedPath = rawPath
-                .split("/")
-                .filter(Boolean)
-                .map(encodeURIComponent)
-                .join("/");
-
-            endpoint = `/me/drive/root:/${encodedPath}:/children`;
+            const encoded = buildEncodedPath(rawPath);
+            endpoint = `/me/drive/root:/${encoded}:/children?$expand=remoteItem`;
         }
 
-        const data  = await graphGetJson(endpoint);
-        const items = (data && data.value) || [];
+        const data = await graphGetJson(endpoint);
+        rootChildren = data.value || [];
+    } catch (err) {
+        console.warn("Không đọc được children theo path, thử fallback remoteItem:", err);
+    }
 
-        // Reset map
-        oneDriveFolderFileMap     = {};
-        oneDriveGroupMap          = {};
-        oneDriveCurrentFolderName = "";
+    // -------- 1b. Fallback cho trường hợp path là shortcut (Add shortcut to My files) --------
+    if ((!rootChildren || !rootChildren.length) && rawPath !== "/" && rawPath !== "") {
+        try {
+            const encoded = buildEncodedPath(rawPath);
+            // Lấy chính item shortcut
+            const shortcut = await graphGetJson(
+                `/me/drive/root:/${encoded}?$expand=remoteItem`
+            );
 
-        // Hàm check file Excel
-        const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+            if (shortcut && shortcut.remoteItem && shortcut.remoteItem.folder) {
+                const remote = shortcut.remoteItem;
+                // driveId thật nằm trong parentReference.driveId
+                const driveId =
+                    (remote.parentReference && remote.parentReference.driveId) || null;
+                const itemId = remote.id;
 
-        const rootFiles  = [];
-        const subFolders = [];
-
-        // Phân loại: file Excel ở ROOT + các folder con
-        items.forEach((it) => {
-            if (it.folder) {
-                // Thư mục con (có thể là thư mục bình thường hoặc shortcut → remoteItem)
-                const remoteDriveId =
-                    (it.remoteItem &&
-                        it.remoteItem.parentReference &&
-                        it.remoteItem.parentReference.driveId) ||
-                    null;
-                const remoteItemId = (it.remoteItem && it.remoteItem.id) || null;
-
-                subFolders.push({
-                    id: it.id,
-                    name: it.name || "(no-name)",
-                    remoteDriveId,
-                    remoteItemId,
-                });
-            } else if (isExcel(it.name)) {
-                // File Excel nằm trực tiếp trong thư mục KPI Scheduler
-                rootFiles.push({
-                    itemId: it.id,
-                    name: it.name,
-                    downloadUrl: it["@microsoft.graph.downloadUrl"],
-                    lastModified: it.lastModifiedDateTime || "",
-                });
+                if (driveId && itemId) {
+                    const data = await graphGetJson(
+                        `/drives/${encodeURIComponent(
+                            driveId
+                        )}/items/${encodeURIComponent(
+                            itemId
+                        )}/children?$expand=remoteItem`
+                    );
+                    rootChildren = data.value || [];
+                }
             }
-        });
-
-        if (rootFiles.length) {
-            oneDriveFolderFileMap["(ROOT)"] = rootFiles;
+        } catch (err2) {
+            console.error("Fallback remoteItem cũng lỗi:", err2);
         }
+    }
 
-        // Lấy file Excel trong từng thư mục con (hỗ trợ cả shortcut / remoteItem)
-        for (const f of subFolders) {
-            let childEndpoint;
-
-            if (f.remoteDriveId && f.remoteItemId) {
-                // Thư mục là shortcut tới thư mục share (remoteItem)
-                childEndpoint =
-                    `/drives/${encodeURIComponent(f.remoteDriveId)}` +
-                    `/items/${encodeURIComponent(f.remoteItemId)}/children`;
-            } else {
-                // Thư mục bình thường trong My files
-                childEndpoint =
-                    `/me/drive/items/${encodeURIComponent(f.id)}/children`;
-            }
-
-            const childData  = await graphGetJson(childEndpoint);
-            const childItems = (childData && childData.value) || [];
-
-            const excelInFolder = childItems
-                .filter((it) => !it.folder && isExcel(it.name))
-                .map((it) => ({
-                    itemId: it.id,
-                    name: it.name,
-                    downloadUrl: it["@microsoft.graph.downloadUrl"],
-                    lastModified: it.lastModifiedDateTime || "",
-                }));
-
-            if (excelInFolder.length) {
-                // key = tên thư mục con → dùng cho combobox "Thư mục"
-                oneDriveFolderFileMap[f.name] = excelInFolder;
-            }
+    if (!rootChildren || !rootChildren.length) {
+        alert("Không tìm thấy file nào trong thư mục OneDrive: " + rawPath);
+        if (statusSpan) {
+            statusSpan.textContent =
+                "Đã đăng nhập: " +
+                (oneDriveAccount?.username || oneDriveAccount?.name || "") +
+                " – Không đọc được thư mục: " +
+                rawPath;
         }
+        if (folderSelect) folderSelect.innerHTML = "";
+        if (groupSelect) groupSelect.innerHTML = "";
+        return;
+    }
 
-        const allFolders = Object.keys(oneDriveFolderFileMap);
+    // -------- 2. Gom file Excel trong chính folder gốc (ROOT) --------
+    const ROOT_FOLDER_NAME = "(ROOT)";
+    rootChildren.forEach((it) => {
+        if (it.file && isExcel(it.name)) {
+            if (!oneDriveFolderFileMap[ROOT_FOLDER_NAME]) {
+                oneDriveFolderFileMap[ROOT_FOLDER_NAME] = [];
+            }
+            oneDriveFolderFileMap[ROOT_FOLDER_NAME].push({
+                itemId: it.id,
+                name: it.name,
+                downloadUrl: it["@microsoft.graph.downloadUrl"],
+                lastModified: it.lastModifiedDateTime
+            });
+        }
+    });
 
-        if (!allFolders.length) {
-            if (groupSelect) groupSelect.innerHTML = "";
-            alert("Thư mục KPI trên OneDrive không có file Excel nào.");
+    // -------- 3. Đọc thêm file Excel trong từng sub-folder --------
+    async function loadExcelFromSubFolder(item) {
+        // item có thể là folder thường hoặc shortcut tới folder
+        let driveId = null;
+        let itemId  = null;
+        let label   = item.name || "Subfolder";
+
+        if (item.folder && !item.remoteItem) {
+            // Folder bình thường trong OneDrive của anh
+            itemId = item.id;
+        } else if (item.remoteItem && item.remoteItem.folder) {
+            // Folder là shortcut / remoteItem
+            const remote = item.remoteItem;
+            driveId =
+                (remote.parentReference && remote.parentReference.driveId) || null;
+            itemId = remote.id;
+        } else {
             return;
         }
 
-        // Build lại combobox Thư mục + Nhóm file OneDrive
-        odPopulateFolderSelectOptions();
-    } catch (err) {
-        console.error("Lỗi tải danh sách file KPI từ OneDrive:", err);
-        alert("Không đọc được danh sách file từ OneDrive.\n" + err.message);
-    } finally {
-        if (loading) {
-            loading.textContent = "⏳ Đang xử lý file...";
-            loading.classList.remove("show");
+        try {
+            let childrenData;
+            if (driveId && itemId) {
+                childrenData = await graphGetJson(
+                    `/drives/${encodeURIComponent(
+                        driveId
+                    )}/items/${encodeURIComponent(
+                        itemId
+                    )}/children?$expand=remoteItem`
+                );
+            } else if (itemId) {
+                childrenData = await graphGetJson(
+                    `/me/drive/items/${encodeURIComponent(
+                        itemId
+                    )}/children?$expand=remoteItem`
+                );
+            } else {
+                return;
+            }
+
+            const children = (childrenData && childrenData.value) || [];
+            children
+                .filter((c) => c.file && isExcel(c.name))
+                .forEach((c) => {
+                    if (!oneDriveFolderFileMap[label]) {
+                        oneDriveFolderFileMap[label] = [];
+                    }
+                    oneDriveFolderFileMap[label].push({
+                        itemId: c.id,
+                        name: c.name,
+                        downloadUrl: c["@microsoft.graph.downloadUrl"],
+                        lastModified: c.lastModifiedDateTime
+                    });
+                });
+        } catch (e) {
+            console.warn("Không đọc được subfolder:", label, e);
         }
+    }
+
+    // Chạy lần lượt cho tất cả item là folder / shortcut-folder
+    for (const it of rootChildren) {
+        if ((it.folder && !it.remoteItem) || (it.remoteItem && it.remoteItem.folder)) {
+            // eslint-disable-next-line no-await-in-loop
+            await loadExcelFromSubFolder(it);
+        }
+    }
+
+    // -------- 4. Cập nhật combobox folder + group như cũ --------
+    const folderNames = Object.keys(oneDriveFolderFileMap).sort();
+    if (!folderNames.length) {
+        alert(
+            "Không tìm thấy file Excel (.xlsx, .xls) trong thư mục OneDrive: " + rawPath
+        );
+        if (folderSelect) folderSelect.innerHTML = "";
+        if (groupSelect) groupSelect.innerHTML = "";
+        return;
+    }
+
+    oneDriveCurrentFolderName = folderNames[0];
+
+    // Hàm cũ anh đang dùng – vẫn gọi lại bình thường
+    odPopulateFolderSelectOptions();
+    odBuildGroupMapForCurrentFolder();
+
+    if (statusSpan) {
+        statusSpan.textContent =
+            "Đã đăng nhập: " +
+            (oneDriveAccount?.username || oneDriveAccount?.name || "") +
+            " – Đã tải danh sách file từ: " +
+            rawPath;
     }
 }
 
