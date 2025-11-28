@@ -658,7 +658,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0
+                Version: v1.4.0.1
             </div>
         </div>
 
@@ -1797,8 +1797,63 @@ function odBuildGroupMapForCurrentFolder(folderName) {
         groupSelect.value = groupNames[0];
     }
 }
+// Đọc các file Excel KPI trong SharedWithMe, lọc theo thư mục KPI đang cấu hình
+// Trả về map: { folderName: [ { itemId, name, downloadUrl, lastModified } ] }
+async function odLoadSharedExcelFilesForKpiPath() {
+    // Lấy từ khóa cuối của đường dẫn KPI, ví dụ: "/Documents/KPI Scheduler" -> "KPI Scheduler"
+    const rawPath = graphKpiConfig.kpiFolderPath || "/";
+    let keyword = rawPath
+        .split("/")
+        .filter(Boolean)
+        .pop() || "";
+    keyword = keyword.toLowerCase();
+
+    const data = await graphGetJson("/me/drive/sharedWithMe");
+    const items = (data && data.value) || [];
+
+    const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+    const resultMap = {}; // { folderName: [item...] }
+
+    items.forEach((it) => {
+        const remote = it.remoteItem || {};
+        const name = remote.name || it.name || "";
+        if (!isExcel(name)) return;
+
+        const parentRef  = remote.parentReference || {};
+        const parentPath = (parentRef.path || "").toLowerCase();
+
+        // Nếu có cấu hình KPI path, chỉ giữ các file mà path cha có chứa keyword (vd "KPI Scheduler")
+        if (keyword && parentPath && !parentPath.includes(keyword)) {
+            return;
+        }
+
+        const folderName =
+            parentRef.name || "Shared (từ người khác)";
+
+        if (!resultMap[folderName]) {
+            resultMap[folderName] = [];
+        }
+
+        resultMap[folderName].push({
+            itemId: remote.id || it.id,
+            name,
+            // Có thể có downloadUrl ở remoteItem hoặc trên item gốc
+            downloadUrl:
+                remote["@microsoft.graph.downloadUrl"] ||
+                it["@microsoft.graph.downloadUrl"] ||
+                null,
+            lastModified:
+                remote.lastModifiedDateTime ||
+                it.lastModifiedDateTime ||
+                ""
+        });
+    });
+
+    return resultMap;
+}
 
 // Đọc danh sách file KPI từ OneDrive và build map folder -> file
+// Đọc danh sách file KPI từ OneDrive (thư mục riêng + file share) và build map folder -> file
 async function odLoadKpiGroupsFromOneDrive() {
     const loading      = document.getElementById("loading");
     const folderSelect = document.getElementById("odFolderSelect");
@@ -1837,14 +1892,12 @@ async function odLoadKpiGroupsFromOneDrive() {
         oneDriveCurrentFolderName = "";
 
         // Hàm check file Excel
-        const isExcel = (name) => {
-            return /\.(xlsx|xls)$/i.test(name || "");
-        };
+        const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
 
         const rootFiles  = [];
         const subFolders = [];
 
-        // Phân loại: file Excel ở ROOT + các folder con
+        // Phân loại: file Excel ở ROOT + các thư mục con
         items.forEach((it) => {
             if (it.folder) {
                 // Thư mục con
@@ -1887,11 +1940,29 @@ async function odLoadKpiGroupsFromOneDrive() {
             }
         }
 
+        // 🔹 THÊM PHẦN NÀY: gộp thêm các file Excel từ SharedWithMe
+        try {
+            const sharedMap = await odLoadSharedExcelFilesForKpiPath();
+            Object.keys(sharedMap || {}).forEach((folderName) => {
+                const list = sharedMap[folderName];
+                if (!list || !list.length) return;
+
+                if (!oneDriveFolderFileMap[folderName]) {
+                    oneDriveFolderFileMap[folderName] = [];
+                }
+                oneDriveFolderFileMap[folderName] =
+                    oneDriveFolderFileMap[folderName].concat(list);
+            });
+        } catch (e) {
+            console.warn("Không đọc được SharedWithMe:", e);
+            // Không alert để tránh làm phiền, chỉ log
+        }
+
         const allFolders = Object.keys(oneDriveFolderFileMap);
 
         if (!allFolders.length) {
             if (groupSelect) groupSelect.innerHTML = "";
-            alert("Thư mục KPI trên OneDrive không có file Excel nào.");
+            alert("Thư mục KPI trên OneDrive (bao gồm SharedWithMe) không có file Excel nào.");
             return;
         }
 
@@ -1899,7 +1970,7 @@ async function odLoadKpiGroupsFromOneDrive() {
         odPopulateFolderSelectOptions();
     } catch (err) {
         console.error("Lỗi tải danh sách file KPI từ OneDrive:", err);
-        alert("Không đọc được danh sách file từ OneDrive.\\n" + err.message);
+        alert("Không đọc được danh sách file từ OneDrive.\n" + err.message);
     } finally {
         if (loading) {
             loading.textContent = "⏳ Đang xử lý file...";
@@ -1908,6 +1979,7 @@ async function odLoadKpiGroupsFromOneDrive() {
     }
 }
 
+// Tải các file trong nhóm đã chọn từ OneDrive → chuyển thành File[] → processMultipleFiles
 // Tải các file trong nhóm đã chọn từ OneDrive → chuyển thành File[] → processMultipleFiles
 async function odLoadSelectedGroupFromOneDrive() {
     const groupSelect = document.getElementById("odGroupSelect");
@@ -1938,9 +2010,26 @@ async function odLoadSelectedGroupFromOneDrive() {
         const fileObjs = [];
 
         for (const item of sorted) {
-            if (!item.downloadUrl) continue;
+            let downloadUrl = item.downloadUrl;
 
-            const res = await fetch(item.downloadUrl);
+            // 🔁 Fallback: nếu chưa có downloadUrl (thường gặp với SharedWithMe)
+            if (!downloadUrl && item.itemId) {
+                try {
+                    const detail = await graphGetJson(
+                        `/me/drive/items/${encodeURIComponent(item.itemId)}`
+                    );
+                    downloadUrl = detail["@microsoft.graph.downloadUrl"];
+                } catch (e) {
+                    console.warn("Không lấy được downloadUrl cho", item.name, e);
+                }
+            }
+
+            if (!downloadUrl) {
+                console.warn("Bỏ qua file vì không có downloadUrl:", item.name);
+                continue;
+            }
+
+            const res = await fetch(downloadUrl);
             if (!res.ok) {
                 console.warn("Không tải được file:", item.name, res.status);
                 continue;
@@ -1948,7 +2037,9 @@ async function odLoadSelectedGroupFromOneDrive() {
 
             const blob = await res.blob();
             const file = new File([blob], item.name, {
-                type: blob.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                type:
+                    blob.type ||
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             });
             fileObjs.push(file);
         }
