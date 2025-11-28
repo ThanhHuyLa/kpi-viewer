@@ -658,7 +658,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.10
+                Version: v1.4.0.11
             </div>
         </div>
 
@@ -1347,23 +1347,27 @@ if (uploadArea) {
         }
 
 // Giá trị đặc biệt cho lựa chọn "Tất cả"
+// Giá trị đặc biệt cho lựa chọn "Tất cả"
 const ALL_FOLDERS_VALUE = "__ALL__";
 
 function populateFolderSelectOptions() {
     const folderSelect = document.getElementById("folderSelect");
-    const groupSelect = document.getElementById("fileGroupSelect");
-    const wrapper = document.getElementById("folderFileSelectors");
+    const groupSelect  = document.getElementById("fileGroupSelect");
+    const wrapper      = document.getElementById("folderFileSelectors");
 
     if (!folderSelect || !groupSelect || !wrapper) return;
 
-    const folderNames = Object.keys(folderFileMap);
+    // Tất cả folder đọc được từ thư mục KPI (local)
+    const allFolderNames = Object.keys(folderFileMap);
 
-    if (!folderNames.length) {
+    if (!allFolderNames.length) {
         wrapper.style.display = "none";
         return;
     }
 
-    const hasOnlyRoot = folderNames.length === 1 && folderNames[0] === "(ROOT)";
+    // Trường hợp chỉ có ROOT
+    const hasOnlyRoot =
+        allFolderNames.length === 1 && allFolderNames[0] === "(ROOT)";
 
     wrapper.style.display = "flex";
 
@@ -1376,7 +1380,16 @@ function populateFolderSelectOptions() {
         return;
     }
 
-    // Có folder con → hiện combobox Thư mục + thêm lựa chọn "Tất cả"
+    // 🔹 Có folder con → chỉ giữ những thư mục bắt đầu bằng "NA"
+    let folderNames = allFolderNames.filter((name) => /^NA/i.test(name));
+
+    // Nếu không có thư mục NAxx nào thì fallback về toàn bộ danh sách
+    // (để tránh trường hợp thư mục không có NA nhưng vẫn dùng được)
+    if (!folderNames.length) {
+        folderNames = allFolderNames;
+    }
+
+    // Hiện combobox Thư mục + thêm lựa chọn "Tất cả"
     folderSelect.parentElement.style.display = "inline-block";
 
     folderSelect.innerHTML = "";
@@ -1387,7 +1400,7 @@ function populateFolderSelectOptions() {
     allOpt.textContent = "Tất cả";
     folderSelect.appendChild(allOpt);
 
-    // Các folder còn lại
+    // Các folder còn lại (đã lọc)
     folderNames.sort().forEach((folder) => {
         const opt = document.createElement("option");
         opt.value = folder;
@@ -1749,6 +1762,7 @@ function odPopulateFolderSelectOptions() {
     folderSelect.value = ALL_FOLDERS_VALUE;
     odBuildGroupMapForCurrentFolder(ALL_FOLDERS_VALUE);
 }
+
 
 // Build oneDriveGroupMap (nhóm file) theo folder đang chọn
 function odBuildGroupMapForCurrentFolder(folderName) {
