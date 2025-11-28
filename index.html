@@ -658,7 +658,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.12
+                Version: v1.4.0.13
             </div>
         </div>
 
@@ -1715,9 +1715,10 @@ function odPopulateFolderSelectOptions() {
 
     if (!folderSelect || !groupSelect) return;
 
-    const folderNames = Object.keys(oneDriveFolderFileMap);
+    // Lấy toàn bộ tên folder thật sự có file
+    const allFolders = Object.keys(oneDriveFolderFileMap);
 
-    if (!folderNames.length) {
+    if (!allFolders.length) {
         // Không có file Excel nào trong thư mục KPI
         folderSelect.parentElement.style.display = "none";
         groupSelect.innerHTML = "";
@@ -1725,8 +1726,7 @@ function odPopulateFolderSelectOptions() {
         return;
     }
 
-    const hasOnlyRoot =
-        folderNames.length === 1 && folderNames[0] === "(ROOT)";
+    const hasOnlyRoot = allFolders.length === 1 && allFolders[0] === "(ROOT)";
 
     // Luôn hiển thị thanh trạng thái; chỉ ẩn/hiện combobox Thư mục
     if (hasOnlyRoot) {
@@ -1736,6 +1736,14 @@ function odPopulateFolderSelectOptions() {
         oneDriveCurrentFolderName = "(ROOT)";
         odBuildGroupMapForCurrentFolder("(ROOT)");
         return;
+    }
+
+    // 🔎 CHỈ GIỮ CÁC FOLDER BẮT ĐẦU BẰNG "NA"
+    let displayFolders = allFolders.filter(name => /^NA/i.test(name || ""));
+
+    // Nếu không có folder NA nào thì fallback: dùng tất cả folder trừ (ROOT)
+    if (!displayFolders.length) {
+        displayFolders = allFolders.filter(name => name !== "(ROOT)");
     }
 
     // Có folder con → hiện combobox Thư mục + thêm lựa chọn "Tất cả"
@@ -1749,8 +1757,8 @@ function odPopulateFolderSelectOptions() {
     allOpt.textContent = "Tất cả";
     folderSelect.appendChild(allOpt);
 
-    // Các folder còn lại
-    folderNames.sort().forEach((folder) => {
+    // Các folder còn lại (đã lọc chỉ còn NAxx)
+    displayFolders.sort().forEach((folder) => {
         const opt = document.createElement("option");
         opt.value = folder;
         opt.textContent = folder;
@@ -1763,7 +1771,7 @@ function odPopulateFolderSelectOptions() {
     odBuildGroupMapForCurrentFolder(ALL_FOLDERS_VALUE);
 }
 
-
+// Build oneDriveGroupMap (nhóm file) theo folder đang chọn
 // Build oneDriveGroupMap (nhóm file) theo folder đang chọn
 function odBuildGroupMapForCurrentFolder(folderName) {
     const folderSelect = document.getElementById("odFolderSelect");
@@ -1781,11 +1789,21 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     let filesInFolder = [];
 
     if (effectiveFolder === ALL_FOLDERS_VALUE) {
-        // Gộp tất cả folder (kể cả ROOT)
-        Object.values(oneDriveFolderFileMap).forEach((list) => {
+        // 🔁 Gộp tất cả folder NAxx (và bỏ qua các folder khác như Report, Test,…)
+        const allFolders = Object.keys(oneDriveFolderFileMap);
+        let includeFolders = allFolders.filter(name => /^NA/i.test(name || ""));
+
+        // Nếu không có folder NA nào thì dùng toàn bộ (giữ nguyên behaviour cũ)
+        if (!includeFolders.length) {
+            includeFolders = allFolders;
+        }
+
+        includeFolders.forEach((name) => {
+            const list = oneDriveFolderFileMap[name] || [];
             filesInFolder = filesInFolder.concat(list);
         });
     } else {
+        // Một folder cụ thể
         filesInFolder = oneDriveFolderFileMap[effectiveFolder] || [];
     }
 
@@ -1811,7 +1829,7 @@ function odBuildGroupMapForCurrentFolder(folderName) {
         groupSelect.value = groupNames[0];
     }
 }
-// Đọc các file Excel KPI trong SharedWithMe, lọc theo thư mục KPI đang cấu hình
+
 // Trả về map: { folderName: [ { itemId, name, downloadUrl, lastModified } ] }
 // Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
 async function odLoadSharedExcelFilesForKpiPath() {
