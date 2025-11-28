@@ -658,7 +658,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.11
+                Version: v1.4.0.12
             </div>
         </div>
 
@@ -2037,14 +2037,22 @@ async function odLoadKpiGroupsFromOneDrive() {
 
         const rootFiles  = [];
         const subFolders = [];
-
+        // Phân loại: file Excel ở ROOT + các folder con (chỉ giữ folder bắt đầu bằng "NA")
         items.forEach((it) => {
             if (it.folder) {
-                subFolders.push({
-                    id: it.id,
-                    name: it.name || "(no-name)"
-                });
+                // Tên thư mục
+                const folderName = it.name || "(no-name)";
+
+                // ❗ CHỈ giữ các folder có tên bắt đầu bằng "NA" (NA08, NA09, ...)
+                if (/^NA\d+/i.test(folderName.trim())) {
+                    subFolders.push({
+                        id: it.id,
+                        name: folderName
+                    });
+                }
+                // các folder khác (Parameter..., Report, Test...) sẽ bị bỏ qua
             } else if (isExcel(it.name)) {
+                // File Excel nằm ngay trong root thư mục KPI
                 rootFiles.push({
                     itemId: it.id,
                     name: it.name,
