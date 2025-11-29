@@ -2758,22 +2758,20 @@ function processMultipleFiles(files) {
                 const wb = XLSX.read(buf, { type: "array" });
 
                 // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
-                // Dùng tự phát hiện header để tránh lỗi khoảng trắng / hoa-thường
+                // Dò header linh hoạt để tránh lỗi khoảng trắng / hoa-thường
                 provinceAreaMap = {};
                 const provinceAreaSheet = wb.Sheets["Province Area"];
                 if (provinceAreaSheet) {
                     const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
-
                     paRows.forEach((r) => {
                         if (!r) return;
-
                         const keys = Object.keys(r);
 
-                        // Tìm key chứa "province" & "area" (bỏ qua hoa-thường, khoảng trắng)
+                        // tìm key header chứa "province" và "area"
                         const provinceKey =
-                            keys.find(k => k.toLowerCase().trim() === "province") || "Province";
+                            keys.find((k) => k.toLowerCase().trim() === "province") || "Province";
                         const areaKey =
-                            keys.find(k => k.toLowerCase().trim() === "area") || "Area";
+                            keys.find((k) => k.toLowerCase().trim() === "area") || "Area";
 
                         const province = String(r[provinceKey] || "")
                             .trim()
@@ -2786,7 +2784,6 @@ function processMultipleFiles(files) {
                     });
                 }
 
-                // debug: xem map có đọc được không
                 console.log("Province->Area map loaded:", provinceAreaMap);
 
 
@@ -5804,11 +5801,14 @@ if (nonCard && nonTableEl && nonTitleEl) {
                 let area = "";
                 if (province && provinceAreaMap && Object.keys(provinceAreaMap).length) {
                     const pKey = province.toUpperCase().trim();
+
+                    // tra trực tiếp
                     area = provinceAreaMap[pKey] || "";
 
-                    // fallback phòng trường hợp header / dữ liệu có khoảng trắng lạ
+                    // fallback: duyệt toàn bộ key, so sánh sau khi trim + upper
                     if (!area) {
                         for (const k in provinceAreaMap) {
+                            if (!Object.prototype.hasOwnProperty.call(provinceAreaMap, k)) continue;
                             if (k.trim().toUpperCase() === pKey) {
                                 area = provinceAreaMap[k];
                                 break;
@@ -5816,6 +5816,14 @@ if (nonCard && nonTableEl && nonTitleEl) {
                         }
                     }
                 }
+
+                // debug 1 dòng đầu tiên để chắc ăn
+                // (nếu thấy nhiều log quá có thể xóa dòng này sau khi ok)
+                if (!window.__cqiAreaDebugLogged && province) {
+                    console.log("CQI row province =", province, " => area =", area);
+                    window.__cqiAreaDebugLogged = true;
+                }
+
 
                 // ID = mid(LNCEL NAME,10,3)  (vị trí 10-12 => index 9..11)
                 let id = "";
