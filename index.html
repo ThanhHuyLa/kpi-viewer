@@ -2501,7 +2501,7 @@ function processMultipleFiles(files) {
                 if (index === 0) {
                     workbook = wb;
                     buildGlobalKpiMetaMap();
-                    loadProvinceAreaFromWorkbook(workbook);
+                    loadProvinceAreaFromThresholdWorkbook(workbook);
                 }
 
                 wb.SheetNames.forEach((sheetName) => {
@@ -2599,7 +2599,7 @@ function processMultipleFiles(files) {
                     workbook = XLSX.read(data, { type: "array", cellStyles: true });
 
                     buildGlobalKpiMetaMap();
-                    loadProvinceAreaFromWorkbook(workbook);
+                    loadProvinceAreaFromThresholdWorkbook(workbook);
 
                     loading.classList.remove("show");
                     fileInfo.innerHTML = `
@@ -2628,6 +2628,7 @@ function processMultipleFiles(files) {
                         // fallback nếu vì lý do gì đó không có ensureKpiThresholdsLoaded
                         renderCqiTable();
                     }
+
                     document
                         .getElementById("chartsSection")
                         .classList.add("show");
@@ -2780,33 +2781,33 @@ function processMultipleFiles(files) {
 
                 const buf = await resp.arrayBuffer();
                 const wb = XLSX.read(buf, { type: "array" });
+                loadProvinceAreaFromThresholdWorkbook(wb);
+            // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
+            provinceAreaMap = {};
+            const provinceAreaSheet = wb.Sheets["Province Area"];
+            if (provinceAreaSheet) {
+                const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
 
-                // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
-                provinceAreaMap = {};
-                const provinceAreaSheet = wb.Sheets["Province Area"];
-                if (provinceAreaSheet) {
-                    const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
+                paRows.forEach((r) => {
+                    // Tự tìm cột Province / Area linh hoạt
+                    const keys = Object.keys(r || {});
+                    const provinceKey =
+                        keys.find((k) => k.toLowerCase().trim() === "province") || "Province";
+                    const areaKey =
+                        keys.find((k) => k.toLowerCase().trim() === "area") || "Area";
 
-                    paRows.forEach((r) => {
-                        // Tự tìm cột Province / Area linh hoạt
-                        const keys = Object.keys(r || {});
-                        const provinceKey =
-                            keys.find((k) => k.toLowerCase().trim() === "province") || "Province";
-                        const areaKey =
-                            keys.find((k) => k.toLowerCase().trim() === "area") || "Area";
+                    const province = String(r[provinceKey] || "")
+                        .trim()
+                        .toUpperCase();
+                    const area = String(r[areaKey] || "").trim();
 
-                        const province = String(r[provinceKey] || "")
-                            .trim()
-                            .toUpperCase();
-                        const area = String(r[areaKey] || "").trim();
+                    if (province) {
+                        provinceAreaMap[province] = area;
+                    }
+                });
+            }
 
-                        if (province) {
-                            provinceAreaMap[province] = area;
-                        }
-                    });
-                }
-
-                console.log("Province->Area map loaded:", provinceAreaMap);
+            console.log("Province->Area map loaded:", provinceAreaMap);
 
                 // 👉 Hàm helper: lấy Area theo Province
                 function getAreaFromProvince(province) {
@@ -5744,10 +5745,16 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
         }
         
-        function loadProvinceAreaFromWorkbook(wb) {
-            const sheet = wb.Sheets["Province Area"];
+        // Chỉ load Province Area từ file KPI Threshold
+        function loadProvinceAreaFromThresholdWorkbook(wb) {
+            // Sheet nằm trong file KPI Threshhold
+            const sheet =
+                wb.Sheets["Province Area"] ||
+                wb.Sheets["Province_Area"] ||
+                wb.Sheets["ProvinceArea"];
+
             if (!sheet) {
-                console.warn("Không tìm thấy sheet Province Area");
+                console.warn("❌ Không tìm thấy sheet 'Province Area' trong file KPI Threshhold");
                 provinceAreaMap = {};
                 return;
             }
@@ -5763,10 +5770,9 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 }
             });
 
-            console.log("Loaded Province Area:", provinceAreaMap);
+            console.log("✔ Loaded Province Area từ KPI Threshhold:", provinceAreaMap);
         }
-        
-        
+
         async function renderCqiTable() {
             const card = document.getElementById("cqiCard");
             const tableEl = document.getElementById("cqiTable");
