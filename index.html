@@ -2782,41 +2782,12 @@ function processMultipleFiles(files) {
 
                 const buf = await resp.arrayBuffer();
                 const wb = XLSX.read(buf, { type: "array" });
+
+                // 1) Province -> Area (sheet "Province Area")
+                //    => dùng riêng file KPI Threshhold để nuôi provinceAreaMap
                 loadProvinceAreaFromThresholdWorkbook(wb);
-            // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
-            provinceAreaMap = {};
-            const provinceAreaSheet = wb.Sheets["Province Area"];
-            if (provinceAreaSheet) {
-                const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
 
-                paRows.forEach((r) => {
-                    // Tự tìm cột Province / Area linh hoạt
-                    const keys = Object.keys(r || {});
-                    const provinceKey =
-                        keys.find((k) => k.toLowerCase().trim() === "province") || "Province";
-                    const areaKey =
-                        keys.find((k) => k.toLowerCase().trim() === "area") || "Area";
-
-                    const province = String(r[provinceKey] || "")
-                        .trim()
-                        .toUpperCase();
-                    const area = String(r[areaKey] || "").trim();
-
-                    if (province) {
-                        provinceAreaMap[province] = area;
-                    }
-                });
-            }
-
-            console.log("Province->Area map loaded:", provinceAreaMap);
-
-                // 👉 Hàm helper: lấy Area theo Province
-                function getAreaFromProvince(province) {
-                    if (!province) return "";
-                    const key = String(province).trim();
-                    return provinceAreaMap[key] || "";
-                }
-                // ==== MAP ID -> Config/Threshold cho CQI (sheet "CQI Threshold") ====
+                // 2) MAP ID -> Config/Threshold cho CQI (sheet "CQI Threshold")
                 cqiConfigMap = {};
                 const cqiSheet = wb.Sheets["CQI Threshold"];
                 if (cqiSheet) {
@@ -2837,11 +2808,10 @@ function processMultipleFiles(files) {
                     });
                 }
 
-                // Tên sheet đúng trong file bạn gửi là "KPI Threshold"
+                // 3) Map KPI Threshold cho toàn bộ KPI (sheet "KPI Threshold")
                 const sheet =
                     wb.Sheets["KPI Threshold"] || wb.Sheets[wb.SheetNames[0]];
 
-   
                 if (!sheet) return kpiThresholdMap;
 
                 const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
@@ -2861,7 +2831,10 @@ function processMultipleFiles(files) {
                     if (name) kpiThresholdMap[name] = entry;
                 });
 
-                console.log("Loaded KPI threshold count =", Object.keys(kpiThresholdMap).length);
+                console.log(
+                    "Loaded KPI threshold count =",
+                    Object.keys(kpiThresholdMap).length
+                );
             } catch (e) {
                 console.warn("Không đọc được KPI Threshhold.xlsx:", e);
                 kpiThresholdMap = {}; // để khỏi thử lại nhiều lần
@@ -5763,11 +5736,14 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
             provinceAreaMap = {};
-            json.forEach(row => {
-                const province = row["Province"] || row["Tỉnh"] || row["PO"] || "";
-                const area = row["Area"] || row["Vùng"] || "";
+            json.forEach((row) => {
+                const province =
+                    row["Province"] || row["Tỉnh"] || row["PO"] || "";
+                const area =
+                    row["Area"] || row["Vùng"] || "";
                 if (province) {
-                    provinceAreaMap[province.trim()] = area;
+                    const key = String(province).trim().toUpperCase(); // key chuẩn = mã tỉnh 3 ký tự
+                    provinceAreaMap[key] = String(area || "").trim();
                 }
             });
 
