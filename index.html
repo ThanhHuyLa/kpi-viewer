@@ -2782,16 +2782,14 @@ function processMultipleFiles(files) {
                 const wb = XLSX.read(buf, { type: "array" });
 
                 // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
-                // Dò header linh hoạt để tránh lỗi khoảng trắng / hoa-thường
                 provinceAreaMap = {};
                 const provinceAreaSheet = wb.Sheets["Province Area"];
                 if (provinceAreaSheet) {
                     const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
-                    paRows.forEach((r) => {
-                        if (!r) return;
-                        const keys = Object.keys(r);
 
-                        // tìm key header chứa "province" và "area"
+                    paRows.forEach((r) => {
+                        // Tự tìm cột Province / Area linh hoạt
+                        const keys = Object.keys(r || {});
                         const provinceKey =
                             keys.find((k) => k.toLowerCase().trim() === "province") || "Province";
                         const areaKey =
