@@ -5784,10 +5784,11 @@ if (nonCard && nonTableEl && nonTitleEl) {
                 const avgNum = Math.round(avgNumRaw * 1000) / 1000;
                 const avgCqi = avgNum.toFixed(3);
 
-                // Province = 3 ký tự cuối LNCEL
+                // Province = 3 ký tự cuối LNCEL (sau khi trim để bỏ khoảng trắng)
+                const lncelTrim = (lncel || "").trim();
                 const province =
-                    lncel && lncel.length >= 3
-                        ? lncel.slice(-3).toUpperCase()
+                    lncelTrim && lncelTrim.length >= 3
+                        ? lncelTrim.slice(-3).toUpperCase()
                         : "";
 
                 // PO = vlookup theo LNBTS từ file tiến độ (CQT-SSV)
