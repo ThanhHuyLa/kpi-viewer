@@ -1030,7 +1030,7 @@
             <div
                 class="data-table"
                 id="excelTableCard"
-                style="margin-top: 20px; margin-bottom: 24px"
+                style="margin-top: 16px; margin-bottom: 24px"
             >
                 <div class="excel-header-row">
                     <h3 id="excelTableTitle">KPI Overview (Ngày: ...)</h3>
@@ -1041,98 +1041,98 @@
                     </div>
                 </div>
                     <div
-        id="kpiThresholdPanel"
-        style="
-            margin-bottom: 10px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px dashed #d1d5db;
-            background: #f9fafb;
-            font-size: 0.85em;
-            display: none;
-        "
-    >
-<div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                id="kpiThresholdPanel"
+                style="
+                    margin-bottom: 10px;
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    border: 1px dashed #d1d5db;
+                    background: #f9fafb;
+                    font-size: 0.85em;
+                    display: none;
+                "
+            >
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
 
-    <!-- Hàng 1: Tiêu đề -->
-    <strong>⚙️ Tùy chỉnh ngưỡng:</strong>
+                <!-- Hàng 1: Tiêu đề -->
+                <strong>⚙️ Tùy chỉnh ngưỡng:</strong>
 
-    <!-- BẮT BUỘC THÊM DÒNG NÀY để xuống hàng -->
-    <div style="width:100%;"></div>
+                <!-- BẮT BUỘC THÊM DÒNG NÀY để xuống hàng -->
+                <div style="width:100%;"></div>
 
-    <!-- Hàng 2: KPI + Operator + Threshold + Button -->
-    <label style="display:flex; align-items:center;">
-        KPI:
-        <select
-            id="thresholdKpiSelect"
-            style="margin-left:4px; padding:4px 8px; min-width:220px;"
-        ></select>
-    </label>
+                <!-- Hàng 2: KPI + Operator + Threshold + Button -->
+                <label style="display:flex; align-items:center;">
+                    KPI:
+                    <select
+                        id="thresholdKpiSelect"
+                        style="margin-left:4px; padding:4px 8px; min-width:220px;"
+                    ></select>
+                </label>
 
-    <label style="display:flex; align-items:center;">
-        Operator:
-        <select
-            id="thresholdOpSelect"
-            style="margin-left:4px; padding:4px 8px; min-width:80px;"
-        >
-            <option value="">--</option>
-            <option value="<">&lt;</option>
-            <option value="<=">&lt;=</option>
-            <option value=">">&gt;</option>
-            <option value=">=">&gt;=</option>
-            <option value="=">=</option>
-            <option value="==">==</option>
-        </select>
-    </label>
+                <label style="display:flex; align-items:center;">
+                    Operator:
+                    <select
+                        id="thresholdOpSelect"
+                        style="margin-left:4px; padding:4px 8px; min-width:80px;"
+                    >
+                        <option value="">--</option>
+                        <option value="<">&lt;</option>
+                        <option value="<=">&lt;=</option>
+                        <option value=">">&gt;</option>
+                        <option value=">=">&gt;=</option>
+                        <option value="=">=</option>
+                        <option value="==">==</option>
+                    </select>
+                </label>
 
-    <label style="display:flex; align-items:center;">
-        Threshold:
-        <input
-            id="thresholdValueInput"
-            type="number"
-            step="any"
-            style="margin-left:4px; padding:4px 6px; width:110px;"
-        />
-    </label>
+                <label style="display:flex; align-items:center;">
+                    Threshold:
+                    <input
+                        id="thresholdValueInput"
+                        type="number"
+                        step="any"
+                        style="margin-left:4px; padding:4px 6px; width:110px;"
+                    />
+                </label>
 
-    <button
-        type="button"
-        id="thresholdApplyBtn"
-        style="
-            padding:6px 12px;
-            border-radius:6px;
-            border:1px solid #2563eb;
-            background:#2563eb;
-            color:#fff;
-            cursor:pointer;
-        "
-    >
-        Áp dụng
-    </button>
-    
-    <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85em;">
-        <input
-            type="checkbox"
-            id="thresholdGlobalToggle"
-            style="accent-color:#4f46e5;"
-        />
-        <span>Kích hoạt tùy chỉnh</span>
-    </label>
+                <button
+                    type="button"
+                    id="thresholdApplyBtn"
+                    style="
+                        padding:6px 12px;
+                        border-radius:6px;
+                        border:1px solid #2563eb;
+                        background:#2563eb;
+                        color:#fff;
+                        cursor:pointer;
+                    "
+                >
+                    Áp dụng
+                </button>
+                
+                <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85em;">
+                    <input
+                        type="checkbox"
+                        id="thresholdGlobalToggle"
+                        style="accent-color:#4f46e5;"
+                    />
+                    <span>Kích hoạt tùy chỉnh</span>
+                </label>
 
-</div>
+            </div>
 
-    </div>
+                </div>
 
-    <div id="excelTable"></div>
-</div>
+                <div id="excelTable"></div>
+            </div>
 
             </div>
 
             <!-- Charts -->
             <div id="chartsContainer"></div>
 
-            <!-- 4. WORST CELL -->
-            <div class="data-table" id="worstCellCard" style="margin-top: 10px; display:none;">
+            <!-- WORST CELL -->
+            <div class="data-table" id="worstCellCard" style="margin-top: 16px; display:none;">
                 <h3 id="worstCellTitle">Worst Cell (Thời điểm gần nhất)</h3>
 
                 <!-- 🔎 Bộ lọc giá trị cho bảng Worst Cell -->
@@ -1193,13 +1193,20 @@
                 <div id="nonTrafficTable"></div>
             </div>
 
-            <!-- 3. BẢNG KPI THỜI ĐIỂM GẦN NHẤT -->
-            <div class="data-table" id="latestTableCard" style="margin-top: 10px">
+            <!-- CQI -->
+            <div class="data-table" id="cqiCard" style="margin-top: 16px; display:none;">
+                <h3 id="cqiTitle">CQI</h3>
+                <div id="cqiTable"></div>
+            </div>
+
+
+            <!-- BẢNG KPI THỜI ĐIỂM GẦN NHẤT -->
+            <div class="data-table" id="latestTableCard" style="margin-top: 16px;display:none;">
                 <h3 id="latestTableTitle">Bảng KPI thời điểm gần nhất</h3>
                 <div id="latestTable"></div>
             </div>
 
-            <!-- 4. EMAIL -->
+            <!-- EMAIL -->
             <div class="email-section">
                 <div class="chart-card">
                     <h3>📧 Gửi Email báo cáo</h3>
@@ -1347,6 +1354,11 @@
         let kpiThresholdMap = null;
         let customThresholdMap = {}; // lưu tùy chỉnh vĩnh viễn
         let worstCellThresholdMap = null;   // sheet "WorstCell Threshold"
+        // Map phục vụ bảng CQI
+        let provinceAreaMap = {};      // Province -> Area (từ file KPI Threshhold / sheet "Province Area")
+        let cqiConfigMap    = {};      // ID -> { config, target } (từ sheet "CQI Threshold")
+        let progressPoBySiteMap = {};  // Site Name (LNBTS) -> PO (từ file tiến độ CQT-SSV)
+
         // ==== CẤU HÌNH FILE KPI NẶNG ====
         const HEAVY_KPI_ROW_THRESHOLD = 5000;   // > 3k dòng coi là file nặng
         let isHeavyKpiFile = false;
@@ -2520,6 +2532,10 @@ function processMultipleFiles(files) {
                     updateCharts();
                     renderWorstCellTable();
 
+                    if (typeof renderCqiTable === "function") {
+                        renderCqiTable();
+                    }
+
                     const chartsSection = document.getElementById("chartsSection");
                     if (chartsSection) chartsSection.classList.add("show");
                 }
@@ -2583,6 +2599,10 @@ function processMultipleFiles(files) {
                     populateSheetSelect();
                     updateCharts();
                     renderWorstCellTable();
+
+                    if (typeof renderCqiTable === "function") {
+                        renderCqiTable();
+                    }
 
                     document
                         .getElementById("chartsSection")
@@ -2721,182 +2741,222 @@ function processMultipleFiles(files) {
 
             return best;
         }
-// ====== ĐỌC FILE "KPI Threshhold.xlsx" ======
-async function ensureKpiThresholdsLoaded() {
-    // Đã load rồi thì thôi
-    if (kpiThresholdMap !== null) return kpiThresholdMap;
 
-    kpiThresholdMap = {}; // tránh null để không gọi lại nhiều lần
+        // ====== ĐỌC FILE "KPI Threshhold.xlsx" ======
+        async function ensureKpiThresholdsLoaded() {
+            // Đã load rồi thì thôi
+            if (kpiThresholdMap !== null) return kpiThresholdMap;
 
-    try {
-        // File KPI Threshhold.xlsx để cùng thư mục với index.html
-        const resp = await fetch("KPI Threshhold.xlsx");
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
+            kpiThresholdMap = {}; // tránh null để không gọi lại nhiều lần
 
-        const buf = await resp.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
+            try {
+                // File KPI Threshhold.xlsx để cùng thư mục với index.html
+                const resp = await fetch("KPI Threshhold.xlsx");
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
 
-        // Tên sheet đúng trong file bạn gửi là "KPI Threshold"
-        const sheet =
-            wb.Sheets["KPI Threshold"] || wb.Sheets[wb.SheetNames[0]];
-        if (!sheet) return kpiThresholdMap;
+                const buf = await resp.arrayBuffer();
+                const wb = XLSX.read(buf, { type: "array" });
 
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
+                provinceAreaMap = {};
+                const provinceAreaSheet = wb.Sheets["Province Area"];
+                if (provinceAreaSheet) {
+                    const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
+                    paRows.forEach((r) => {
+                        const province = String(r["Province"] || r["PROVINCE"] || "")
+                            .trim()
+                            .toUpperCase();
+                        const area = String(r["Area"] || r["AREA"] || "").trim();
+                        if (province) {
+                            provinceAreaMap[province] = area;
+                        }
+                    });
+                }
 
-        rows.forEach((r) => {
-            const id = String(r["KPI ID"] || "").trim();
-            const name = String(r["KPI Name"] || "").trim();
-            const op = String(r["operator"] || "").trim();   // <, >, =
-            const thr = parseFloat(r["Threshold"]);
+                // ==== MAP ID -> Config/Threshold cho CQI (sheet "CQI Threshold") ====
+                cqiConfigMap = {};
+                const cqiSheet = wb.Sheets["CQI Threshold"];
+                if (cqiSheet) {
+                    const cqiRows = XLSX.utils.sheet_to_json(cqiSheet, { defval: "" });
+                    cqiRows.forEach((r) => {
+                        const id = String(r["ID"] || r["Id"] || "")
+                            .trim()
+                            .toUpperCase();
+                        if (!id) return;
 
-            if (!op || isNaN(thr)) return;
+                        const config = String(r["Config ATP"] || r["Config"] || "").trim();
+                        const thrVal = r["Threshold"];
 
-            const entry = { op, value: thr };
+                        cqiConfigMap[id] = {
+                            config,
+                            target: thrVal,
+                        };
+                    });
+                }
 
-            // map theo KPI ID, KPI Name và có thể reuse cho nhiều chỗ
-            if (id) kpiThresholdMap[id] = entry;
-            if (name) kpiThresholdMap[name] = entry;
-        });
+                // Tên sheet đúng trong file bạn gửi là "KPI Threshold"
+                const sheet =
+                    wb.Sheets["KPI Threshold"] || wb.Sheets[wb.SheetNames[0]];
 
-        console.log("Loaded KPI threshold count =", Object.keys(kpiThresholdMap).length);
-    } catch (e) {
-        console.warn("Không đọc được KPI Threshhold.xlsx:", e);
-        kpiThresholdMap = {}; // để khỏi thử lại nhiều lần
-    }
+   
+                if (!sheet) return kpiThresholdMap;
 
-    return kpiThresholdMap;
-}
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-function getThresholdForKpiColumn(kpiCol) {
-    if (!kpiCol) return null;
+                rows.forEach((r) => {
+                    const id = String(r["KPI ID"] || "").trim();
+                    const name = String(r["KPI Name"] || "").trim();
+                    const op = String(r["operator"] || "").trim();   // <, >, =
+                    const thr = parseFloat(r["Threshold"]);
 
-    const meta = findKpiMetaForColumn(kpiCol) || {};
-    const keysToTry = [];
+                    if (!op || isNaN(thr)) return;
 
-    if (meta.id)   keysToTry.push(String(meta.id).trim());
-    if (meta.name) keysToTry.push(String(meta.name).trim());
-    keysToTry.push(String(kpiCol).trim());
+                    const entry = { op, value: thr };
 
-    // 1. Ưu tiên custom threshold (kể cả trường hợp TẮT NGƯỠNG)
-    for (const key of keysToTry) {
-        if (Object.prototype.hasOwnProperty.call(customThresholdMap, key)) {
-            const entry = customThresholdMap[key];
+                    // map theo KPI ID, KPI Name và có thể reuse cho nhiều chỗ
+                    if (id) kpiThresholdMap[id] = entry;
+                    if (name) kpiThresholdMap[name] = entry;
+                });
 
-            // entry = null hoặc entry.disabled => tắt hoàn toàn ngưỡng cho KPI này
-            if (!entry || entry.disabled) return null;
-
-            return entry; // { op, value }
-        }
-    }
-
-    // 2. Nếu không có custom → dùng file KPI Threshold (load 1 lần)
-    if (kpiThresholdMap) {
-        for (const key of keysToTry) {
-            if (kpiThresholdMap[key]) {
-                return kpiThresholdMap[key];
+                console.log("Loaded KPI threshold count =", Object.keys(kpiThresholdMap).length);
+            } catch (e) {
+                console.warn("Không đọc được KPI Threshhold.xlsx:", e);
+                kpiThresholdMap = {}; // để khỏi thử lại nhiều lần
             }
-        }
-    }
 
-    return null;
-}
-
-
-function setCustomThresholdForKpiColumn(kpiCol, op, value) {
-    if (!kpiCol) return;
-
-    const key = String(kpiCol).trim();
-
-    // Trường hợp TẮT NGƯỠNG (op = "")
-    if (!op) {
-        customThresholdMap[key] = { disabled: true };
-
-        try {
-            localStorage.setItem(
-                "customThresholdMap",
-                JSON.stringify(customThresholdMap)
-            );
-        } catch (e) {
-            console.warn("Cannot save customThresholdMap", e);
+            return kpiThresholdMap;
         }
 
-        // Không ghi đè vào kpiThresholdMap để giữ nguyên default trong file,
-        // nhưng do getThresholdForKpiColumn ưu tiên custom nên KPI này sẽ KHÔNG dùng ngưỡng nữa.
-        return;
-    }
+        function getThresholdForKpiColumn(kpiCol) {
+            if (!kpiCol) return null;
 
-    // Các trường hợp còn lại: phải có value số
-    if (value == null || isNaN(value)) return;
+            const meta = findKpiMetaForColumn(kpiCol) || {};
+            const keysToTry = [];
 
-    const entry = { op, value: Number(value) };
+            if (meta.id)   keysToTry.push(String(meta.id).trim());
+            if (meta.name) keysToTry.push(String(meta.name).trim());
+            keysToTry.push(String(kpiCol).trim());
 
-    // Lưu vào custom map
-    customThresholdMap[key] = entry;
+            // 1. Ưu tiên custom threshold (kể cả trường hợp TẮT NGƯỠNG)
+            for (const key of keysToTry) {
+                if (Object.prototype.hasOwnProperty.call(customThresholdMap, key)) {
+                    const entry = customThresholdMap[key];
 
-    // Lưu vĩnh viễn vào localStorage
-    try {
-        localStorage.setItem(
-            "customThresholdMap",
-            JSON.stringify(customThresholdMap)
-        );
-    } catch (e) {
-        console.warn("Cannot save customThresholdMap", e);
-    }
+                    // entry = null hoặc entry.disabled => tắt hoàn toàn ngưỡng cho KPI này
+                    if (!entry || entry.disabled) return null;
 
-    // Ghi đè trên map tổng hợp để bảng/chart dùng ngay
-    if (!kpiThresholdMap) kpiThresholdMap = {};
-    kpiThresholdMap[key] = entry;
+                    return entry; // { op, value }
+                }
+            }
 
-    console.log("Saved custom threshold:", kpiCol, entry);
-}
+            // 2. Nếu không có custom → dùng file KPI Threshold (load 1 lần)
+            if (kpiThresholdMap) {
+                for (const key of keysToTry) {
+                    if (kpiThresholdMap[key]) {
+                        return kpiThresholdMap[key];
+                    }
+                }
+            }
+
+            return null;
+        }
 
 
-// ====== ĐỌC SHEET "WorstCell Threshold" CHO WORST CELL & NON-TRAFFIC ======
-async function ensureWorstCellThresholdsLoaded() {
-    // Đã load rồi thì thôi
-    if (worstCellThresholdMap !== null) return worstCellThresholdMap;
+        function setCustomThresholdForKpiColumn(kpiCol, op, value) {
+            if (!kpiCol) return;
 
-    worstCellThresholdMap = {}; // tránh null để không gọi lại nhiều lần
+            const key = String(kpiCol).trim();
 
-    try {
-        const resp = await fetch("KPI Threshhold.xlsx");
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
+            // Trường hợp TẮT NGƯỠNG (op = "")
+            if (!op) {
+                customThresholdMap[key] = { disabled: true };
 
-        const buf = await resp.arrayBuffer();
-        const wb  = XLSX.read(buf, { type: "array" });
+                try {
+                    localStorage.setItem(
+                        "customThresholdMap",
+                        JSON.stringify(customThresholdMap)
+                    );
+                } catch (e) {
+                    console.warn("Cannot save customThresholdMap", e);
+                }
 
-        const sheet = wb.Sheets["WorstCell Threshold"];
-        if (!sheet) {
-            console.warn('Không tìm thấy sheet "WorstCell Threshold" trong KPI Threshhold.xlsx');
+                // Không ghi đè vào kpiThresholdMap để giữ nguyên default trong file,
+                // nhưng do getThresholdForKpiColumn ưu tiên custom nên KPI này sẽ KHÔNG dùng ngưỡng nữa.
+                return;
+            }
+
+            // Các trường hợp còn lại: phải có value số
+            if (value == null || isNaN(value)) return;
+
+            const entry = { op, value: Number(value) };
+
+            // Lưu vào custom map
+            customThresholdMap[key] = entry;
+
+            // Lưu vĩnh viễn vào localStorage
+            try {
+                localStorage.setItem(
+                    "customThresholdMap",
+                    JSON.stringify(customThresholdMap)
+                );
+            } catch (e) {
+                console.warn("Cannot save customThresholdMap", e);
+            }
+
+            // Ghi đè trên map tổng hợp để bảng/chart dùng ngay
+            if (!kpiThresholdMap) kpiThresholdMap = {};
+            kpiThresholdMap[key] = entry;
+
+            console.log("Saved custom threshold:", kpiCol, entry);
+        }
+
+
+        // ====== ĐỌC SHEET "WorstCell Threshold" CHO WORST CELL & NON-TRAFFIC ======
+        async function ensureWorstCellThresholdsLoaded() {
+            // Đã load rồi thì thôi
+            if (worstCellThresholdMap !== null) return worstCellThresholdMap;
+
+            worstCellThresholdMap = {}; // tránh null để không gọi lại nhiều lần
+
+            try {
+                const resp = await fetch("KPI Threshhold.xlsx");
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+                const buf = await resp.arrayBuffer();
+                const wb  = XLSX.read(buf, { type: "array" });
+
+                const sheet = wb.Sheets["WorstCell Threshold"];
+                if (!sheet) {
+                    console.warn('Không tìm thấy sheet "WorstCell Threshold" trong KPI Threshhold.xlsx');
+                    return worstCellThresholdMap;
+                }
+
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+                rows.forEach((r) => {
+                    const name = String(r["KPI Name"] || "").trim();
+                    const op   = String(r["operator"] || "").trim();   // <, >, <=, >=, =, ...
+                    const thr  = parseFloat(r["Threshold"]);
+
+                    if (!name || !op || isNaN(thr)) return;
+
+                    worstCellThresholdMap[name] = { op, value: thr };
+                });
+
+                console.log(
+                    "Loaded WorstCell threshold count =",
+                    Object.keys(worstCellThresholdMap).length
+                );
+            } catch (e) {
+                console.warn("Không đọc được sheet WorstCell Threshold:", e);
+                worstCellThresholdMap = {}; // để khỏi thử lại nhiều lần
+            }
+
             return worstCellThresholdMap;
         }
 
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-        rows.forEach((r) => {
-            const name = String(r["KPI Name"] || "").trim();
-            const op   = String(r["operator"] || "").trim();   // <, >, <=, >=, =, ...
-            const thr  = parseFloat(r["Threshold"]);
-
-            if (!name || !op || isNaN(thr)) return;
-
-            worstCellThresholdMap[name] = { op, value: thr };
-        });
-
-        console.log(
-            "Loaded WorstCell threshold count =",
-            Object.keys(worstCellThresholdMap).length
-        );
-    } catch (e) {
-        console.warn("Không đọc được sheet WorstCell Threshold:", e);
-        worstCellThresholdMap = {}; // để khỏi thử lại nhiều lần
-    }
-
-    return worstCellThresholdMap;
-}
-
-// Lấy threshold cho 1 KPI theo tên hiển thị cột (KPI Name)
-function getWorstCellThresholdByName(kpiDisplayName) {
+        // Lấy threshold cho 1 KPI theo tên hiển thị cột (KPI Name)
+        function getWorstCellThresholdByName(kpiDisplayName) {
     if (!worstCellThresholdMap || !Object.keys(worstCellThresholdMap).length) return null;
     if (!kpiDisplayName) return null;
 
@@ -2935,193 +2995,190 @@ function getWorstCellThresholdByName(kpiDisplayName) {
             updateCharts();
         }
 
-function updateCharts() {
-    if (!workbook) return;
+        function updateCharts() {
+            if (!workbook) return;
 
-    const sheetSelect = document.getElementById("sheetSelect");
+            const sheetSelect = document.getElementById("sheetSelect");
 
-    // Áp sheet đã lưu trong localStorage lần đầu sau khi có danh sách sheet
-    if (!chartConfigAppliedOnce && sheetSelect) {
-        try {
-            const raw = localStorage.getItem("chartConfig");
-            if (raw) {
-                const cfg = JSON.parse(raw);
-                if (cfg.sheet) {
-                    const hasOption = Array.from(sheetSelect.options).some(
-                        (opt) => opt.value === cfg.sheet
-                    );
-                    if (hasOption) {
-                        sheetSelect.value = cfg.sheet;
+            // Áp sheet đã lưu trong localStorage lần đầu sau khi có danh sách sheet
+            if (!chartConfigAppliedOnce && sheetSelect) {
+                try {
+                    const raw = localStorage.getItem("chartConfig");
+                    if (raw) {
+                        const cfg = JSON.parse(raw);
+                        if (cfg.sheet) {
+                            const hasOption = Array.from(sheetSelect.options).some(
+                                (opt) => opt.value === cfg.sheet
+                            );
+                            if (hasOption) {
+                                sheetSelect.value = cfg.sheet;
+                            }
+                        }
                     }
+                } catch (e) {
+                    console.warn("Không đọc được chartConfig:", e);
+                }
+                chartConfigAppliedOnce = true;
+            }
+
+            const sheetName =
+                (sheetSelect && sheetSelect.value) || workbook.SheetNames[0];
+
+            let jsonData;
+
+            if (mergedDataPerSheet && mergedDataPerSheet[sheetName]) {
+                jsonData = mergedDataPerSheet[sheetName];
+            } else {
+                const sheet = workbook.Sheets[sheetName];
+                jsonData = XLSX.utils.sheet_to_json(sheet);
+            }
+
+            if (!jsonData || jsonData.length === 0) {
+                alert("Sheet không có dữ liệu!");
+                return;
+            }
+
+            currentData = jsonData;
+            const columns = Object.keys(jsonData[0]);
+            numericColumns = detectColumnsAndNumeric(columns);
+
+            // ==== ĐÁNH DẤU SHEET KPI NẶNG ====
+            // Điều kiện file nặng:
+            // 1) Số dòng > ngưỡng
+            // 2) Số cột > 30
+            const colCount = columns.length;
+
+            isHeavyKpiFile =
+                (Array.isArray(jsonData) && jsonData.length > HEAVY_KPI_ROW_THRESHOLD) ||
+                colCount > 30;
+
+            console.log(
+                "Số dòng:", jsonData.length,
+                "Số cột:", colCount,
+                "isHeavyKpiFile =", isHeavyKpiFile
+            );
+
+
+            // mỗi lần đổi sheet thì reset lại KPI & filter
+            //  - nếu file nặng -> TẮT HẾT KPI (set rỗng)
+            //  - nếu file bình thường -> bật hết KPI như cũ
+            selectedKpiColumns = isHeavyKpiFile
+                ? new Set()
+                : new Set(numericColumns);
+
+            wsFilterValues = null;
+
+
+            buildWsFilterOptions(jsonData);
+            buildKpiFilterOptions();
+            buildExcelDateOptions();
+            buildThresholdCustomUi();
+            renderCharts();
+            fillDefaultEmailText();
+
+            // lưu lại cấu hình (sheet, daysWindow, chartsPerRow, funnelSort)
+            if (typeof saveChartConfig === "function") {
+                saveChartConfig();
+            }
+        }
+
+
+        // ==== CHỌN CHÍNH XÁC CELL_NAME (ưu tiên NRCEL / LNCEL) ====
+        function getCellNameColumn() {
+            if (!currentData || !currentData.length) return wsNameColumnName;
+
+            const columns = Object.keys(currentData[0]);
+            const meta = columns.map(c => ({
+                name: c,
+                lower: String(c).toLowerCase().trim()
+            }));
+
+            const candidates = [];
+
+            function pushIf(testFn, weight) {
+                meta.forEach(col => {
+                    if (testFn(col.lower)) {
+                        candidates.push({ name: col.name, weight });
+                    }
+                });
+            }
+
+            // 1. ƯU TIÊN CAO NHẤT: NRCEL name (đúng case của bạn)
+            pushIf(l => l === "nrcel name" || l === "nrcell name", 110);
+            pushIf(l =>
+                (l.includes("nrcel") || l.includes("nrcell")) &&
+                l.includes("name"),
+                100
+            );
+
+            // 2. LNCEL name
+            pushIf(l => l === "lncel name", 95);
+            pushIf(l => l.includes("lncel") && l.includes("name"), 90);
+
+            // 3. CELL_NAME chung chung
+            pushIf(l =>
+                l === "cell name" ||
+                l === "cell_name" ||
+                l === "cellname",
+                80
+            );
+            pushIf(l => l.includes("cell") && l.includes("name"), 75);
+
+            // 4. WS_NAME / site name fallback
+            pushIf(l =>
+                l === "ws_name" ||
+                l === "wsname" ||
+                l === "ws name",
+                60
+            );
+            pushIf(l => l.includes("ws") && l.includes("name"), 55);
+
+            // 5. NRBTS / MRBTS chỉ là fallback thấp (trong file bạn có 2 cột này)
+            pushIf(l => l.includes("nrbts") && l.includes("name"), 40);
+            pushIf(l => l.includes("mrbts") && l.includes("name"), 35);
+
+            // Nếu tìm được ứng viên thì lấy cái có weight cao nhất
+            if (candidates.length) {
+                candidates.sort((a, b) => b.weight - a.weight);
+                return candidates[0].name;
+            }
+
+            // 6. Fallback thông minh: chọn cột text (ít numeric) đầu tiên, KHÔNG phải Period/Time/Date
+            const periodSet = new Set();
+            meta.forEach(col => {
+                if (
+                    col.lower.includes("period") ||
+                    col.lower.includes("time") ||
+                    col.lower.includes("date")
+                ) {
+                    periodSet.add(col.name);
+                }
+            });
+
+            for (const colName of columns) {
+                if (periodSet.has(colName)) continue;
+
+                let numericCount = 0;
+                let total = 0;
+
+                currentData.forEach(row => {
+                    const v = row[colName];
+                    if (v === null || v === undefined || v === "") return;
+                    total++;
+                    if (!isNaN(parseFloat(v))) numericCount++;
+                });
+
+                // Chủ yếu là text → rất có thể là CELL_NAME
+                if (total > 0 && numericCount / total < 0.3) {
+                    return colName;
                 }
             }
-        } catch (e) {
-            console.warn("Không đọc được chartConfig:", e);
+
+            // 7. Fallback cuối cùng
+            return wsNameColumnName || columns[1] || columns[0];
         }
-        chartConfigAppliedOnce = true;
-    }
 
-    const sheetName =
-        (sheetSelect && sheetSelect.value) || workbook.SheetNames[0];
-
-    let jsonData;
-
-    if (mergedDataPerSheet && mergedDataPerSheet[sheetName]) {
-        jsonData = mergedDataPerSheet[sheetName];
-    } else {
-        const sheet = workbook.Sheets[sheetName];
-        jsonData = XLSX.utils.sheet_to_json(sheet);
-    }
-
-    if (!jsonData || jsonData.length === 0) {
-        alert("Sheet không có dữ liệu!");
-        return;
-    }
-
-    currentData = jsonData;
-    const columns = Object.keys(jsonData[0]);
-    numericColumns = detectColumnsAndNumeric(columns);
-
-    // ==== ĐÁNH DẤU SHEET KPI NẶNG ====
-    // Điều kiện file nặng:
-    // 1) Số dòng > ngưỡng
-    // 2) Số cột > 30
-    const colCount = columns.length;
-
-    isHeavyKpiFile =
-        (Array.isArray(jsonData) && jsonData.length > HEAVY_KPI_ROW_THRESHOLD) ||
-        colCount > 30;
-
-    console.log(
-        "Số dòng:", jsonData.length,
-        "Số cột:", colCount,
-        "isHeavyKpiFile =", isHeavyKpiFile
-    );
-
-
-    // mỗi lần đổi sheet thì reset lại KPI & filter
-    //  - nếu file nặng -> TẮT HẾT KPI (set rỗng)
-    //  - nếu file bình thường -> bật hết KPI như cũ
-    selectedKpiColumns = isHeavyKpiFile
-        ? new Set()
-        : new Set(numericColumns);
-
-    wsFilterValues = null;
-
-
-    buildWsFilterOptions(jsonData);
-    buildKpiFilterOptions();
-    buildExcelDateOptions();
-    buildThresholdCustomUi();
-    renderCharts();
-    fillDefaultEmailText();
-
-    // lưu lại cấu hình (sheet, daysWindow, chartsPerRow, funnelSort)
-    if (typeof saveChartConfig === "function") {
-        saveChartConfig();
-    }
-}
-
-
-        // ==== ĐOẠN QUAN TRỌNG: ƯU TIÊN LNCEL name / NRCEL name LÀM CELL_NAME ====
-        // Chọn cột CELL_NAME dùng chung: ưu tiên LNCEL name -> NRCEL name -> WS_NAME
-// ==== CHỌN CHÍNH XÁC CELL_NAME (ưu tiên LNCEL/NRCEL) ====
-// ==== CHỌN CHÍNH XÁC CELL_NAME (ưu tiên NRCEL / LNCEL) ====
-function getCellNameColumn() {
-    if (!currentData || !currentData.length) return wsNameColumnName;
-
-    const columns = Object.keys(currentData[0]);
-    const meta = columns.map(c => ({
-        name: c,
-        lower: String(c).toLowerCase().trim()
-    }));
-
-    const candidates = [];
-
-    function pushIf(testFn, weight) {
-        meta.forEach(col => {
-            if (testFn(col.lower)) {
-                candidates.push({ name: col.name, weight });
-            }
-        });
-    }
-
-    // 1. ƯU TIÊN CAO NHẤT: NRCEL name (đúng case của bạn)
-    pushIf(l => l === "nrcel name" || l === "nrcell name", 110);
-    pushIf(l =>
-        (l.includes("nrcel") || l.includes("nrcell")) &&
-        l.includes("name"),
-        100
-    );
-
-    // 2. LNCEL name
-    pushIf(l => l === "lncel name", 95);
-    pushIf(l => l.includes("lncel") && l.includes("name"), 90);
-
-    // 3. CELL_NAME chung chung
-    pushIf(l =>
-        l === "cell name" ||
-        l === "cell_name" ||
-        l === "cellname",
-        80
-    );
-    pushIf(l => l.includes("cell") && l.includes("name"), 75);
-
-    // 4. WS_NAME / site name fallback
-    pushIf(l =>
-        l === "ws_name" ||
-        l === "wsname" ||
-        l === "ws name",
-        60
-    );
-    pushIf(l => l.includes("ws") && l.includes("name"), 55);
-
-    // 5. NRBTS / MRBTS chỉ là fallback thấp (trong file bạn có 2 cột này)
-    pushIf(l => l.includes("nrbts") && l.includes("name"), 40);
-    pushIf(l => l.includes("mrbts") && l.includes("name"), 35);
-
-    // Nếu tìm được ứng viên thì lấy cái có weight cao nhất
-    if (candidates.length) {
-        candidates.sort((a, b) => b.weight - a.weight);
-        return candidates[0].name;
-    }
-
-    // 6. Fallback thông minh: chọn cột text (ít numeric) đầu tiên, KHÔNG phải Period/Time/Date
-    const periodSet = new Set();
-    meta.forEach(col => {
-        if (
-            col.lower.includes("period") ||
-            col.lower.includes("time") ||
-            col.lower.includes("date")
-        ) {
-            periodSet.add(col.name);
-        }
-    });
-
-    for (const colName of columns) {
-        if (periodSet.has(colName)) continue;
-
-        let numericCount = 0;
-        let total = 0;
-
-        currentData.forEach(row => {
-            const v = row[colName];
-            if (v === null || v === undefined || v === "") return;
-            total++;
-            if (!isNaN(parseFloat(v))) numericCount++;
-        });
-
-        // Chủ yếu là text → rất có thể là CELL_NAME
-        if (total > 0 && numericCount / total < 0.3) {
-            return colName;
-        }
-    }
-
-    // 7. Fallback cuối cùng
-    return wsNameColumnName || columns[1] || columns[0];
-}
-
-function detectColumnsAndNumeric(columns) {
+        function detectColumnsAndNumeric(columns) {
     // 1. Xác định cột Period (thời gian)
     periodColumnName = null;
 
@@ -3291,7 +3348,7 @@ function detectColumnsAndNumeric(columns) {
             }
         }
 // Xây UI "Tùy chỉnh ngưỡng" cho các KPI đang được chọn
-function buildThresholdCustomUi() {
+        function buildThresholdCustomUi() {
     const panel      = document.getElementById("kpiThresholdPanel");
     const kpiSelect  = document.getElementById("thresholdKpiSelect");
     const opSelect   = document.getElementById("thresholdOpSelect");
@@ -4752,56 +4809,57 @@ if (showTargetLine) {
                 });
             });
         }
-// Cố định N cột đầu cho 1 bảng bất kỳ (theo id container)
-function applyStickyForTable(wrapperId, stickyCount) {
-    const wrapper = document.getElementById(wrapperId);
-    if (!wrapper) return;
+        
+        // Cố định N cột đầu cho 1 bảng bất kỳ (theo id container)
+        function applyStickyForTable(wrapperId, stickyCount) {
+            const wrapper = document.getElementById(wrapperId);
+            if (!wrapper) return;
 
-    const table = wrapper.querySelector("table");
-    if (!table || !table.tHead) return;
+            const table = wrapper.querySelector("table");
+            if (!table || !table.tHead) return;
 
-    requestAnimationFrame(() => {
-        const headerRows = Array.from(table.tHead.rows);
-        if (!headerRows.length) return;
+            requestAnimationFrame(() => {
+                const headerRows = Array.from(table.tHead.rows);
+                if (!headerRows.length) return;
 
-        const headerRow = headerRows[headerRows.length - 1];
+                const headerRow = headerRows[headerRows.length - 1];
 
-        const tableRect = table.getBoundingClientRect();
-        const colLeft = [];
+                const tableRect = table.getBoundingClientRect();
+                const colLeft = [];
 
-        // Tính left cho từng cột sẽ sticky
-        for (let i = 0; i < stickyCount; i++) {
-            const cell = headerRow.cells[i];
-            if (!cell) continue;
-            const rect = cell.getBoundingClientRect();
-            colLeft[i] = rect.left - tableRect.left;
+                // Tính left cho từng cột sẽ sticky
+                for (let i = 0; i < stickyCount; i++) {
+                    const cell = headerRow.cells[i];
+                    if (!cell) continue;
+                    const rect = cell.getBoundingClientRect();
+                    colLeft[i] = rect.left - tableRect.left;
+                }
+
+                // Xóa class sticky cũ nếu có
+                const oldSticky = table.querySelectorAll(".sticky-col");
+                oldSticky.forEach((c) => {
+                    c.classList.remove("sticky-col");
+                    c.style.left = "";
+                    c.style.position = "";
+                });
+
+                // Gán lại sticky cho N cột đầu
+                const rows = Array.from(table.rows);
+                rows.forEach((row) => {
+                    for (let i = 0; i < stickyCount; i++) {
+                        const cell = row.cells[i];
+                        if (!cell) continue;
+
+                        cell.classList.add("sticky-col");
+                        cell.style.position = "sticky";
+                        cell.style.left = (colLeft[i] || 0) + "px";
+                    }
+                });
+            });
         }
 
-        // Xóa class sticky cũ nếu có
-        const oldSticky = table.querySelectorAll(".sticky-col");
-        oldSticky.forEach((c) => {
-            c.classList.remove("sticky-col");
-            c.style.left = "";
-            c.style.position = "";
-        });
-
-        // Gán lại sticky cho N cột đầu
-        const rows = Array.from(table.rows);
-        rows.forEach((row) => {
-            for (let i = 0; i < stickyCount; i++) {
-                const cell = row.cells[i];
-                if (!cell) continue;
-
-                cell.classList.add("sticky-col");
-                cell.style.position = "sticky";
-                cell.style.left = (colLeft[i] || 0) + "px";
-            }
-        });
-    });
-}
-
-// Áp dụng cho Worst Cell + Cell Non-Traffic (4 cột đầu)
-function applyWorstCellStickyColumns() {
+        // Áp dụng cho Worst Cell + Cell Non-Traffic (4 cột đầu)
+        function applyWorstCellStickyColumns() {
     applyStickyForTable("worstCellTable", 4);
     applyStickyForTable("nonTrafficTable", 4);
 }
@@ -4836,206 +4894,205 @@ function applyWorstCellStickyColumns() {
                 });
             });
         }
-// ===== Bộ lọc giá trị cho bảng Worst Cell =====
-let worstCellFilterRules   = [];   // [{id, colKey, op, value}, ...]
-let worstCellFilterLogic   = "AND";
-let worstFilterKpiOptions  = [];   // [{colKey, label}]
-let worstFilterUiBound     = false;
+        
+        // ===== Bộ lọc giá trị cho bảng Worst Cell =====
+        let worstCellFilterRules   = [];   // [{id, colKey, op, value}, ...]
+        let worstCellFilterLogic   = "AND";
+        let worstFilterKpiOptions  = [];   // [{colKey, label}]
+        let worstFilterUiBound     = false;
 
-function initWorstFilterEvents() {
-    if (worstFilterUiBound) return;
+        function initWorstFilterEvents() {
+            if (worstFilterUiBound) return;
 
-    const logicSelect   = document.getElementById("worstFilterLogic");
-    const addBtn        = document.getElementById("worstFilterAddBtn");
-    const clearBtn      = document.getElementById("worstFilterClearBtn");
-    const provinceInput = document.getElementById("worstProvinceFilter");
+            const logicSelect   = document.getElementById("worstFilterLogic");
+            const addBtn        = document.getElementById("worstFilterAddBtn");
+            const clearBtn      = document.getElementById("worstFilterClearBtn");
+            const provinceInput = document.getElementById("worstProvinceFilter");
 
-    if (!logicSelect || !addBtn || !clearBtn) return;
+            if (!logicSelect || !addBtn || !clearBtn) return;
 
-    // Thay đổi AND / OR
-    logicSelect.onchange = (e) => {
-        worstCellFilterLogic = e.target.value === "OR" ? "OR" : "AND";
-        renderWorstCellTable();
-    };
-
-    // Thêm 1 điều kiện mới
-    addBtn.onclick = () => {
-        if (!worstFilterKpiOptions.length) return;
-
-        const firstColKey = worstFilterKpiOptions[0].colKey;
-        worstCellFilterRules.push({
-            id: Date.now() + "_" + Math.random().toString(16).slice(2),
-            colKey: firstColKey,
-            op: "<",
-            value: ""
-        });
-        renderWorstFilterRules();
-        renderWorstCellTable();
-    };
-
-    // Xóa toàn bộ điều kiện
-    clearBtn.onclick = () => {
-        worstCellFilterRules = [];
-        renderWorstFilterRules();
-        renderWorstCellTable();
-    };
-
-    // 🔍 Province: đổi giá trị hoặc nhấn Enter sẽ filter Worst Cell
-    if (provinceInput) {
-        // khi rời ô
-        provinceInput.addEventListener("change", () => {
-            renderWorstCellTable();
-        });
-
-        // nhấn Enter
-        provinceInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();      // tránh submit form
+            // Thay đổi AND / OR
+            logicSelect.onchange = (e) => {
+                worstCellFilterLogic = e.target.value === "OR" ? "OR" : "AND";
                 renderWorstCellTable();
-            }
-        });
-    }
+            };
 
-    worstFilterUiBound = true;
-}
+            // Thêm 1 điều kiện mới
+            addBtn.onclick = () => {
+                if (!worstFilterKpiOptions.length) return;
 
-// Tạo danh sách KPI cho combobox filter (từ orderedCols của bảng)
-function initWorstFilterOptionsFromCols(orderedCols) {
-    initWorstFilterEvents();
-
-    // KPI: từ cột thứ 5 trở đi (bỏ PO, Province, NRBTS, NRCEL)
-    const metricCols = orderedCols.slice(4);
-
-    worstFilterKpiOptions = metricCols.map((colKey) => ({
-        colKey,
-        label: String(colKey)
-    }));
-
-    renderWorstFilterRules();
-}
-
-// Vẽ lại list điều kiện dưới thanh filter
-function renderWorstFilterRules() {
-    const container = document.getElementById("worstFilterRules");
-    if (!container) return;
-
-    container.innerHTML = "";
-
-    if (!worstCellFilterRules.length) {
-        const p = document.createElement("div");
-        p.style.fontSize = "0.8em";
-        p.style.color = "#6b7280";
-        p.textContent = "Chưa có điều kiện filter.";
-        container.appendChild(p);
-        return;
-    }
-
-    worstCellFilterRules.forEach((rule) => {
-        const rowDiv = document.createElement("div");
-        rowDiv.style.display = "flex";
-        rowDiv.style.gap = "4px";
-        rowDiv.style.alignItems = "center";
-
-        // Chọn KPI
-        const kpiSelect = document.createElement("select");
-        kpiSelect.style.padding = "4px 6px";
-        kpiSelect.style.borderRadius = "6px";
-        kpiSelect.style.border = "1px solid #cbd5e1";
-
-        worstFilterKpiOptions.forEach((optInfo) => {
-            const opt = document.createElement("option");
-            opt.value = optInfo.colKey;
-            opt.textContent = optInfo.label;
-            if (optInfo.colKey === rule.colKey) opt.selected = true;
-            kpiSelect.appendChild(opt);
-        });
-        kpiSelect.onchange = (e) => {
-            rule.colKey = e.target.value;
-            renderWorstCellTable();
-        };
-
-        // Chọn toán tử
-        const opSelect = document.createElement("select");
-        opSelect.style.padding = "4px 6px";
-        opSelect.style.borderRadius = "6px";
-        opSelect.style.border = "1px solid #cbd5e1";
-
-        ["<", "<=", ">", ">=", "=", "=="].forEach((op) => {
-            const opt = document.createElement("option");
-            opt.value = op;
-            opt.textContent = op;
-            if (op === rule.op) opt.selected = true;
-            opSelect.appendChild(opt);
-        });
-        opSelect.onchange = (e) => {
-            rule.op = e.target.value;
-            renderWorstCellTable();
-        };
-
-        // Nhập giá trị
-        // Nhập giá trị - chỉ filter khi kết thúc nhập (change hoặc Enter)
-        // Nhập giá trị - chỉ filter khi kết thúc nhập (change hoặc Enter)
-        const valInput = document.createElement("input");
-        valInput.type = "number";
-        valInput.step = "any";
-        valInput.style.padding = "4px 6px";
-        valInput.style.width = "90px";
-        valInput.style.borderRadius = "6px";
-        valInput.style.border = "1px solid #cbd5e1";
-
-        // 👉 Gán lại giá trị đang lưu trong rule (nếu có) để hiển thị lên ô input
-        valInput.value = rule.value ?? "";
-
-        // Khi đang gõ thì chỉ lưu value, KHÔNG render lại bảng
-        valInput.oninput = (e) => {
-            rule.value = e.target.value;
-        };
-
-        // Khi người dùng rời khỏi ô (blur/change) thì mới áp dụng filter
-        valInput.onchange = (e) => {
-            rule.value = e.target.value;
-            renderWorstCellTable();
-        };
-
-        // Nhấn Enter cũng áp dụng filter ngay
-        valInput.onkeydown = (ev) => {
-            if (ev.key === "Enter") {
-                ev.preventDefault();
-                valInput.blur();        // cho trigger onchange
+                const firstColKey = worstFilterKpiOptions[0].colKey;
+                worstCellFilterRules.push({
+                    id: Date.now() + "_" + Math.random().toString(16).slice(2),
+                    colKey: firstColKey,
+                    op: "<",
+                    value: ""
+                });
+                renderWorstFilterRules();
                 renderWorstCellTable();
+            };
+
+            // Xóa toàn bộ điều kiện
+            clearBtn.onclick = () => {
+                worstCellFilterRules = [];
+                renderWorstFilterRules();
+                renderWorstCellTable();
+            };
+
+            // 🔍 Province: đổi giá trị hoặc nhấn Enter sẽ filter Worst Cell
+            if (provinceInput) {
+                // khi rời ô
+                provinceInput.addEventListener("change", () => {
+                    renderWorstCellTable();
+                });
+
+                // nhấn Enter
+                provinceInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();      // tránh submit form
+                        renderWorstCellTable();
+                    }
+                });
             }
-        };
 
+            worstFilterUiBound = true;
+        }
 
+        // Tạo danh sách KPI cho combobox filter (từ orderedCols của bảng)
+        function initWorstFilterOptionsFromCols(orderedCols) {
+            initWorstFilterEvents();
 
-        // Nút xóa điều kiện
-        const removeBtn = document.createElement("button");
-        removeBtn.type = "button";
-        removeBtn.textContent = "✕";
-        removeBtn.style.padding = "2px 6px";
-        removeBtn.style.borderRadius = "6px";
-        removeBtn.style.border = "1px solid #ef4444";
-        removeBtn.style.background = "#fee2e2";
-        removeBtn.style.cursor = "pointer";
-        removeBtn.onclick = () => {
-            worstCellFilterRules = worstCellFilterRules.filter((r) => r.id !== rule.id);
+            // KPI: từ cột thứ 5 trở đi (bỏ PO, Province, NRBTS, NRCEL)
+            const metricCols = orderedCols.slice(4);
+
+            worstFilterKpiOptions = metricCols.map((colKey) => ({
+                colKey,
+                label: String(colKey)
+            }));
+
             renderWorstFilterRules();
-            renderWorstCellTable();
-        };
+        }
 
-        rowDiv.appendChild(kpiSelect);
-        rowDiv.appendChild(opSelect);
-        rowDiv.appendChild(valInput);
-        rowDiv.appendChild(removeBtn);
+        // Vẽ lại list điều kiện dưới thanh filter
+        function renderWorstFilterRules() {
+            const container = document.getElementById("worstFilterRules");
+            if (!container) return;
 
-        container.appendChild(rowDiv);
-    });
-}
+            container.innerHTML = "";
+
+            if (!worstCellFilterRules.length) {
+                const p = document.createElement("div");
+                p.style.fontSize = "0.8em";
+                p.style.color = "#6b7280";
+                p.textContent = "Chưa có điều kiện filter.";
+                container.appendChild(p);
+                return;
+            }
+
+            worstCellFilterRules.forEach((rule) => {
+                const rowDiv = document.createElement("div");
+                rowDiv.style.display = "flex";
+                rowDiv.style.gap = "4px";
+                rowDiv.style.alignItems = "center";
+
+                // Chọn KPI
+                const kpiSelect = document.createElement("select");
+                kpiSelect.style.padding = "4px 6px";
+                kpiSelect.style.borderRadius = "6px";
+                kpiSelect.style.border = "1px solid #cbd5e1";
+
+                worstFilterKpiOptions.forEach((optInfo) => {
+                    const opt = document.createElement("option");
+                    opt.value = optInfo.colKey;
+                    opt.textContent = optInfo.label;
+                    if (optInfo.colKey === rule.colKey) opt.selected = true;
+                    kpiSelect.appendChild(opt);
+                });
+                kpiSelect.onchange = (e) => {
+                    rule.colKey = e.target.value;
+                    renderWorstCellTable();
+                };
+
+                // Chọn toán tử
+                const opSelect = document.createElement("select");
+                opSelect.style.padding = "4px 6px";
+                opSelect.style.borderRadius = "6px";
+                opSelect.style.border = "1px solid #cbd5e1";
+
+                ["<", "<=", ">", ">=", "=", "=="].forEach((op) => {
+                    const opt = document.createElement("option");
+                    opt.value = op;
+                    opt.textContent = op;
+                    if (op === rule.op) opt.selected = true;
+                    opSelect.appendChild(opt);
+                });
+                opSelect.onchange = (e) => {
+                    rule.op = e.target.value;
+                    renderWorstCellTable();
+                };
+
+                // Nhập giá trị
+                // Nhập giá trị - chỉ filter khi kết thúc nhập (change hoặc Enter)
+                // Nhập giá trị - chỉ filter khi kết thúc nhập (change hoặc Enter)
+                const valInput = document.createElement("input");
+                valInput.type = "number";
+                valInput.step = "any";
+                valInput.style.padding = "4px 6px";
+                valInput.style.width = "90px";
+                valInput.style.borderRadius = "6px";
+                valInput.style.border = "1px solid #cbd5e1";
+
+                // 👉 Gán lại giá trị đang lưu trong rule (nếu có) để hiển thị lên ô input
+                valInput.value = rule.value ?? "";
+
+                // Khi đang gõ thì chỉ lưu value, KHÔNG render lại bảng
+                valInput.oninput = (e) => {
+                    rule.value = e.target.value;
+                };
+
+                // Khi người dùng rời khỏi ô (blur/change) thì mới áp dụng filter
+                valInput.onchange = (e) => {
+                    rule.value = e.target.value;
+                    renderWorstCellTable();
+                };
+
+                // Nhấn Enter cũng áp dụng filter ngay
+                valInput.onkeydown = (ev) => {
+                    if (ev.key === "Enter") {
+                        ev.preventDefault();
+                        valInput.blur();        // cho trigger onchange
+                        renderWorstCellTable();
+                    }
+                };
 
 
-// Áp dụng danh sách điều kiện vào rowsArr
-// Áp dụng filter Province + các điều kiện KPI
-function applyWorstCellValueFilters(rowsArr, orderedCols) {
+
+                // Nút xóa điều kiện
+                const removeBtn = document.createElement("button");
+                removeBtn.type = "button";
+                removeBtn.textContent = "✕";
+                removeBtn.style.padding = "2px 6px";
+                removeBtn.style.borderRadius = "6px";
+                removeBtn.style.border = "1px solid #ef4444";
+                removeBtn.style.background = "#fee2e2";
+                removeBtn.style.cursor = "pointer";
+                removeBtn.onclick = () => {
+                    worstCellFilterRules = worstCellFilterRules.filter((r) => r.id !== rule.id);
+                    renderWorstFilterRules();
+                    renderWorstCellTable();
+                };
+
+                rowDiv.appendChild(kpiSelect);
+                rowDiv.appendChild(opSelect);
+                rowDiv.appendChild(valInput);
+                rowDiv.appendChild(removeBtn);
+
+                container.appendChild(rowDiv);
+            });
+        }
+
+        // Áp dụng filter Province + các điều kiện KPI
+        function applyWorstCellValueFilters(rowsArr, orderedCols) {
 
     // ===== 1. XÁC ĐỊNH CỘT NRCEL / NRCELL ĐỂ LẤY PROVINCE =====
     const nrCellColKey =
@@ -5112,8 +5169,6 @@ function applyWorstCellValueFilters(rowsArr, orderedCols) {
         return logic === "AND" ? true : okAny;
     });
 }
-
-
 
         function renderWorstCellTable() {
             const worstCard    = document.getElementById("worstCellCard");
@@ -5633,8 +5688,144 @@ if (nonCard && nonTableEl && nonTitleEl) {
 }
 
         }
+        
+        async function renderCqiTable() {
+    const card = document.getElementById("cqiCard");
+    const tableEl = document.getElementById("cqiTable");
+    if (!card || !tableEl) return;
 
-function renderLatestKpiTable() {
+    tableEl.innerHTML = "";
+
+    // Không có dữ liệu => ẩn section
+    if (
+        !workbook &&
+        !(typeof mergedDataPerSheet !== "undefined" && mergedDataPerSheet)
+    ) {
+        card.style.display = "none";
+        return;
+    }
+
+    let rows = [];
+
+    // Ưu tiên dữ liệu đã merge sẵn (nhiều file)
+    if (
+        typeof mergedDataPerSheet !== "undefined" &&
+        mergedDataPerSheet &&
+        mergedDataPerSheet["CQI"]
+    ) {
+        rows = mergedDataPerSheet["CQI"];
+    } else if (workbook && workbook.Sheets && workbook.Sheets["CQI"]) {
+        const sheet = workbook.Sheets["CQI"];
+        rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    }
+
+    if (!rows || !rows.length) {
+        card.style.display = "none";
+        return;
+    }
+
+    // Đảm bảo đã load KPI Threshhold (để có provinceAreaMap & cqiConfigMap)
+    try {
+        await ensureKpiThresholdsLoaded();
+    } catch (e) {
+        console.warn("Không load được KPI Threshhold cho bảng CQI:", e);
+    }
+
+    let html = "";
+    html += '<div style="max-height:800px;overflow:auto;">';
+    html += '<table class="progress-table">';
+    html += "<thead><tr>";
+    html += "<th>PO</th>";
+    html += "<th>Province</th>";
+    html += "<th>Area</th>";
+    html += "<th>LNBTS name</th>";
+    html += "<th>LNCEL name</th>";
+    html += "<th>Config</th>";
+    html += "<th>Average CQI</th>";
+    html += "<th>Target</th>";
+    html += "<th>Đánh giá</th>";
+    html += "</tr></thead><tbody>";
+
+    rows.forEach((r) => {
+        const lnbts = String(
+            r["LNBTS Name"] ??
+            r["LNBTS name"] ??
+            r["Site Name"] ??
+            ""
+        ).trim();
+
+        const lncel = String(
+            r["LNCEL name"] ??
+            r["LNCEL Name"] ??
+            ""
+        ).trim();
+
+        const avgRaw = r["Average CQI"] ?? r["Average CQI "] ?? "";
+        const avgCqi =
+            avgRaw === null || typeof avgRaw === "undefined" ? "" : avgRaw;
+
+        // Province = 3 ký tự cuối LNCEL
+        const province =
+            lncel && lncel.length >= 3
+                ? lncel.slice(-3).toUpperCase()
+                : "";
+
+        // PO = vlookup theo LNBTS từ file tiến độ (CQT-SSV)
+        let po = "";
+        if (typeof getPoFromProgress === "function" && lnbts) {
+            po = getPoFromProgress(lnbts) || "";
+        }
+
+        // Area = vlookup Province -> Area từ KPI Threshhold (sheet "Province Area")
+        let area = "";
+        if (province && provinceAreaMap) {
+            area = provinceAreaMap[province] || "";
+        }
+
+        // ID = mid(LNCEL NAME,10,3)  (vị trí 10-12 => index 9..11)
+        let id = "";
+        if (lncel && lncel.length >= 12) {
+            id = lncel.substring(9, 12).toUpperCase();
+        }
+
+        let config = "";
+        let target = "";
+        if (id && cqiConfigMap && cqiConfigMap[id]) {
+            config = cqiConfigMap[id].config || "";
+            target = cqiConfigMap[id].target;
+        }
+
+        // Đánh giá: Average CQI >= Target => Pass, ngược lại Not Pass
+        let danhGia = "";
+        const avgNum = Number(avgCqi);
+        const targetNum = Number(target);
+        if (!isNaN(avgNum) && !isNaN(targetNum)) {
+            danhGia = avgNum >= targetNum ? "Pass" : "Not Pass";
+        }
+
+        html += "<tr>";
+        html += "<td>" + (po || "") + "</td>";
+        html += "<td>" + (province || "") + "</td>";
+        html += "<td>" + (area || "") + "</td>";
+        html += "<td>" + (lnbts || "") + "</td>";
+        html += "<td>" + (lncel || "") + "</td>";
+        html += "<td>" + (config || "") + "</td>";
+        html += "<td>" + (avgCqi || "") + "</td>";
+        html +=
+            "<td>" +
+            (target !== undefined && target !== null ? target : "") +
+            "</td>";
+        html += "<td>" + (danhGia || "") + "</td>";
+        html += "</tr>";
+    });
+
+    html += "</tbody></table></div>";
+
+    tableEl.innerHTML = html;
+    card.style.display = "block";
+}
+
+        function renderLatestKpiTable() {
     const tableCard = document.getElementById("latestTableCard");
     const tableDiv = document.getElementById("latestTable");
     const titleEl = document.getElementById("latestTableTitle");
@@ -5774,7 +5965,6 @@ function renderLatestKpiTable() {
     tableCard.style.display = "block";
 }
 
-
         async function handleEmailSubmit(e) {
             e.preventDefault();
 
@@ -5856,8 +6046,8 @@ function renderLatestKpiTable() {
         }
 
 
-// Tự động fill nội dung email: chỉ load template (có placeholder), KHÔNG thay bằng số liệu
-function fillDefaultEmailText() {
+        // Tự động fill nội dung email: chỉ load template (có placeholder), KHÔNG thay bằng số liệu
+        function fillDefaultEmailText() {
     const textarea = document.getElementById("emailMessage");
     if (!textarea) return;
 
@@ -5891,83 +6081,83 @@ function fillDefaultEmailText() {
     textarea.value = template;
 }
 
-// ==== ÁP CẤU HÌNH BIỂU ĐỒ TỪ LẦN TRƯỚC ====
+        // ==== ÁP CẤU HÌNH BIỂU ĐỒ TỪ LẦN TRƯỚC ====
 
-// Đọc config (nếu có) một lần
-let savedChartConfig = null;
-try {
-    const rawCfg = localStorage.getItem("chartConfig");
-    savedChartConfig = rawCfg ? JSON.parse(rawCfg) : null;
-} catch (e) {
-    savedChartConfig = null;
-}
-
-const chartsPerRowSelect = document.getElementById("chartsPerRowSelect");
-if (chartsPerRowSelect) {
-    // set theo config cũ nếu có
-    if (savedChartConfig && savedChartConfig.chartsPerRow) {
-        chartsPerRowSelect.value = savedChartConfig.chartsPerRow;
-    }
-
-    chartsPerRowSelect.addEventListener("change", () => {
-        applyChartsPerRow();
-        saveChartConfig();
-    });
-
-    // áp layout ngay
-    applyChartsPerRow();
-}
-
-const daysWindowSelect = document.getElementById("daysWindowSelect");
-if (daysWindowSelect) {
-    function applyDaysWindowFromSelect() {
-        const raw = daysWindowSelect.value;
-
-        if (raw === "ALL") {
-            // Toàn bộ: không cắt bớt labels theo số ngày
-            chartDaysWindow = null;
-        } else {
-            const v = parseInt(raw, 10);
-            chartDaysWindow = isNaN(v) ? 14 : v; // fallback 14 ngày nếu lỗi
+        // Đọc config (nếu có) một lần
+        let savedChartConfig = null;
+        try {
+            const rawCfg = localStorage.getItem("chartConfig");
+            savedChartConfig = rawCfg ? JSON.parse(rawCfg) : null;
+        } catch (e) {
+            savedChartConfig = null;
         }
 
-        renderCharts();
-        saveChartConfig();
-    }
+        const chartsPerRowSelect = document.getElementById("chartsPerRowSelect");
+        if (chartsPerRowSelect) {
+            // set theo config cũ nếu có
+            if (savedChartConfig && savedChartConfig.chartsPerRow) {
+                chartsPerRowSelect.value = savedChartConfig.chartsPerRow;
+            }
 
-    // set theo config cũ nếu có
-    if (savedChartConfig && savedChartConfig.daysWindow) {
-        daysWindowSelect.value = savedChartConfig.daysWindow;
-    }
+            chartsPerRowSelect.addEventListener("change", () => {
+                applyChartsPerRow();
+                saveChartConfig();
+            });
 
-    // áp lần đầu
-    applyDaysWindowFromSelect();
+            // áp layout ngay
+            applyChartsPerRow();
+        }
 
-    // cập nhật khi user đổi combobox
-    daysWindowSelect.addEventListener("change", applyDaysWindowFromSelect);
-}
+        const daysWindowSelect = document.getElementById("daysWindowSelect");
+        if (daysWindowSelect) {
+            function applyDaysWindowFromSelect() {
+                const raw = daysWindowSelect.value;
 
-window.addEventListener("resize", () => {
-    applyStickyKpiColumns();
-    if (typeof applyWorstCellStickyColumns === "function") {
-        applyWorstCellStickyColumns();
-    }
-});
+                if (raw === "ALL") {
+                    // Toàn bộ: không cắt bớt labels theo số ngày
+                    chartDaysWindow = null;
+                } else {
+                    const v = parseInt(raw, 10);
+                    chartDaysWindow = isNaN(v) ? 14 : v; // fallback 14 ngày nếu lỗi
+                }
 
-const funnelSortSelect = document.getElementById("funnelSortSelect");
-if (funnelSortSelect) {
-    // set theo config cũ nếu có
-    if (savedChartConfig && savedChartConfig.funnelSort) {
-        funnelSortSelect.value = savedChartConfig.funnelSort;
-        funnelSortOrder = savedChartConfig.funnelSort || "desc";
-    }
+                renderCharts();
+                saveChartConfig();
+            }
 
-    funnelSortSelect.addEventListener("change", function () {
-        funnelSortOrder = this.value || "desc";   // "asc" hoặc "desc"
-        renderCharts();                           // vẽ lại tất cả chart
-        saveChartConfig();
-    });
-}
+            // set theo config cũ nếu có
+            if (savedChartConfig && savedChartConfig.daysWindow) {
+                daysWindowSelect.value = savedChartConfig.daysWindow;
+            }
+
+            // áp lần đầu
+            applyDaysWindowFromSelect();
+
+            // cập nhật khi user đổi combobox
+            daysWindowSelect.addEventListener("change", applyDaysWindowFromSelect);
+        }
+
+        window.addEventListener("resize", () => {
+            applyStickyKpiColumns();
+            if (typeof applyWorstCellStickyColumns === "function") {
+                applyWorstCellStickyColumns();
+            }
+        });
+
+        const funnelSortSelect = document.getElementById("funnelSortSelect");
+        if (funnelSortSelect) {
+            // set theo config cũ nếu có
+            if (savedChartConfig && savedChartConfig.funnelSort) {
+                funnelSortSelect.value = savedChartConfig.funnelSort;
+                funnelSortOrder = savedChartConfig.funnelSort || "desc";
+            }
+
+            funnelSortSelect.addEventListener("change", function () {
+                funnelSortOrder = this.value || "desc";   // "asc" hoặc "desc"
+                renderCharts();                           // vẽ lại tất cả chart
+                saveChartConfig();
+            });
+        }
 
         // ====== TẠO FILE OUTLOOK (.MSG) TỪ CÁC SECTION ĐANG CHỌN ======
 
@@ -6187,7 +6377,6 @@ if (funnelSortSelect) {
             });
         }
 
-        // ==== SNAPSHOT CHART NGUYÊN CARD (HTML → PNG) ====
         // ==== SNAPSHOT CHART NGUYÊN CARD (HTML → PNG, CÓ SẴN BORDER TRONG ẢNH) ====
         async function getAllChartPNGs() {
             const cards = document.querySelectorAll("#chartsContainer .chart-card");
@@ -6288,33 +6477,32 @@ if (funnelSortSelect) {
             return eml;
         }
 
-function getSectionHtmlByKey(key) {
-    let el = null;
+        function getSectionHtmlByKey(key) {
+            let el = null;
 
-    if (key === "excel") {
-        el = document.getElementById("excelTableCard");
-    } else if (key === "progress") {
-        // card Tiến độ đo kiểm ở trên cùng
-        el = document.getElementById("progressCard");
-    } else if (key === "worst") {
-        el = document.getElementById("worstCellCard");
-    } else if (key === "nonTraffic") {
-        el = document.getElementById("nonTrafficCard");
-    } else if (key === "latest") {
-        el = document.getElementById("latestTableCard");
-    }
+            if (key === "excel") {
+                el = document.getElementById("excelTableCard");
+            } else if (key === "progress") {
+                // card Tiến độ đo kiểm ở trên cùng
+                el = document.getElementById("progressCard");
+            } else if (key === "worst") {
+                el = document.getElementById("worstCellCard");
+            } else if (key === "nonTraffic") {
+                el = document.getElementById("nonTrafficCard");
+            } else if (key === "latest") {
+                el = document.getElementById("latestTableCard");
+            }
 
-    if (el) {
-        const style = window.getComputedStyle(el);
-        if (style.display !== "none") {
-            return el.outerHTML;
+            if (el) {
+                const style = window.getComputedStyle(el);
+                if (style.display !== "none") {
+                    return el.outerHTML;
+                }
+            }
+            return "";
         }
-    }
-    return "";
-}
 
-
-async function captureSectionCardAsPng(key) {
+        async function captureSectionCardAsPng(key) {
     let target = null;
     let titleText = "";
 
@@ -6408,8 +6596,8 @@ async function captureSectionCardAsPng(key) {
 
         // ==== XỬ LÝ KHI BẤM NÚT "Xuất Outlook (.eml) kèm chart" ====
 
-// cho cả TIÊU ĐỀ và NỘI DUNG, nhưng KHÔNG thay trong textbox.
-async function handleExportEmlWithCharts() {
+        // cho cả TIÊU ĐỀ và NỘI DUNG, nhưng KHÔNG thay trong textbox.
+        async function handleExportEmlWithCharts() {
     const statusEl = document.getElementById("emailStatus");
     if (statusEl) {
         statusEl.textContent = "";
@@ -6673,24 +6861,24 @@ async function handleExportEmlWithCharts() {
 }
 
 
-let progressFullData = [];
-let progressSitePoMap = {}; // map Site Name (CQT-SSV) -> PO
+        let progressFullData = [];
+        let progressSitePoMap = {}; // map Site Name (CQT-SSV) -> PO
 
-function normalizeSiteKey(name) {
-    return String(name || "")
-        .trim()
-        .toUpperCase()
-        .replace(/\s+/g, " ");
-}
+        function normalizeSiteKey(name) {
+            return String(name || "")
+                .trim()
+                .toUpperCase()
+                .replace(/\s+/g, " ");
+        }
 
-// Lấy PO từ file Tiến độ đo kiểm dựa vào Site Name
-function getPoFromProgress(siteName) {
-    if (!siteName) return "";
-    const key = normalizeSiteKey(siteName);
-    return progressSitePoMap[key] || "";
-}
+        // Lấy PO từ file Tiến độ đo kiểm dựa vào Site Name
+        function getPoFromProgress(siteName) {
+            if (!siteName) return "";
+            const key = normalizeSiteKey(siteName);
+            return progressSitePoMap[key] || "";
+        }
 
-function initProgressUpload() {
+        function initProgressUpload() {
     const input = document.getElementById("progressFileInput");
     const statusEl = document.getElementById("progressStatus");
     const tableContainer = document.getElementById("progressTable");
@@ -6871,6 +7059,10 @@ if (idxSiteName !== -1) {
                     renderWorstCellTable();
                 }
 
+                if (typeof renderCqiTable === "function") {
+                    renderCqiTable();
+                }
+
                 // Cập nhật lại nội dung email mở đầu theo dữ liệu Tiến độ
                 if (typeof fillDefaultEmailText === "function") {
                     fillDefaultEmailText();
@@ -6899,25 +7091,25 @@ if (idxSiteName !== -1) {
     });
 }
 
-    // Gán sự kiện upload cho phần Tiến Độ Đo Kiểm
-    initProgressUpload();
+        // Gán sự kiện upload cho phần Tiến Độ Đo Kiểm
+        initProgressUpload();
 
-    function renderProgressTable(data) {
-    const tableContainer = document.getElementById("progressTable");
-    if (!tableContainer) return;
+        function renderProgressTable(data) {
+        const tableContainer = document.getElementById("progressTable");
+        if (!tableContainer) return;
 
-    let totalStations = 0;
-    let totalOnair = 0;
-    let totalCqtOk = 0;
-    let totalSsvOk = 0;
-    let totalAtpOk = 0;
+        let totalStations = 0;
+        let totalOnair = 0;
+        let totalCqtOk = 0;
+        let totalSsvOk = 0;
+        let totalAtpOk = 0;
 
-    // helper format %
-    function formatPct(val) {
-        return val === "0.00%" ? "-" : val;
-    }
+        // helper format %
+        function formatPct(val) {
+            return val === "0.00%" ? "-" : val;
+        }
 
-    let html = `
+        let html = `
     <table class="progress-table">
         <thead>
             <tr>
@@ -6942,7 +7134,7 @@ if (idxSiteName !== -1) {
         <tbody>
     `;
 
-    data.forEach((g, idx) => {
+        data.forEach((g, idx) => {
         totalStations += g.total;
         totalOnair += g.onair;
         totalCqtOk += g.cqtOk;
@@ -7093,9 +7285,9 @@ if (idxSiteName !== -1) {
     });
 }
 
-// Cố định 4 cột đầu cho bảng Worst Cell (PO, Province, NRBTS, NRCEL)
-// Cố định 4 cột đầu cho bảng Worst Cell (PO, Province, NRBTS, NRCEL)
-function applyWorstCellStickyColumns() {
+    // Cố định 4 cột đầu cho bảng Worst Cell (PO, Province, NRBTS, NRCEL)
+    // Cố định 4 cột đầu cho bảng Worst Cell (PO, Province, NRBTS, NRCEL)
+    function applyWorstCellStickyColumns() {
     const wrappers = [
         document.getElementById("worstCellTable"),
         document.getElementById("nonTrafficTable"),
@@ -7161,175 +7353,174 @@ function applyWorstCellStickyColumns() {
     });
 }
 
-// Lọc bảng Tiến độ đo kiểm theo PO được chọn
-// Lọc bảng Tiến độ đo kiểm theo PO được chọn
-const poFilterEl = document.getElementById("progressPOFilter");
-if (poFilterEl) {
-    poFilterEl.addEventListener("change", function () {
-        const val = this.value;
+    // Lọc bảng Tiến độ đo kiểm theo PO được chọn
+    const poFilterEl = document.getElementById("progressPOFilter");
+    if (poFilterEl) {
+        poFilterEl.addEventListener("change", function () {
+            const val = this.value;
 
-        // Nếu chọn "Tất cả PO" thì dùng toàn bộ dữ liệu
-        const filtered =
-            val === "ALL"
-                ? progressFullData
-                : progressFullData.filter((g) => g.po === val);
+            // Nếu chọn "Tất cả PO" thì dùng toàn bộ dữ liệu
+            const filtered =
+                val === "ALL"
+                    ? progressFullData
+                    : progressFullData.filter((g) => g.po === val);
 
-        renderProgressTable(filtered);
-        applyProgressColumnToggle();
-
-        // ✅ Áp lại trạng thái checkbox CQT / SSV / ATP
-        if (typeof applyProgressColumnToggle === "function") {
+            renderProgressTable(filtered);
             applyProgressColumnToggle();
-        }
 
-        // Sau khi đổi PO, cập nhật lại nội dung email mở đầu
-        if (typeof fillDefaultEmailText === "function") {
-            fillDefaultEmailText();
-        }
-    });
-}
+            // ✅ Áp lại trạng thái checkbox CQT / SSV / ATP
+            if (typeof applyProgressColumnToggle === "function") {
+                applyProgressColumnToggle();
+            }
 
-
-/* ==========================================================
-    1. SAVE & LOAD CONFIG (Biểu đồ)
-   ========================================================== */
-
-// --- SAVE ---
-function saveChartConfig() {
-    const config = {
-        sheet: document.getElementById("sheetSelect").value,
-        chartsPerRow: document.getElementById("chartsPerRowSelect").value,
-        daysWindow: document.getElementById("daysWindowSelect").value,
-        funnelSort: document.getElementById("funnelSortSelect").value
-    };
-    localStorage.setItem("chartConfig", JSON.stringify(config));
-}
-
-// --- LOAD ---
-function loadChartConfig() {
-    const saved = localStorage.getItem("chartConfig");
-    if (!saved) return;
-
-    const cfg = JSON.parse(saved);
-
-    if (cfg.sheet) document.getElementById("sheetSelect").value = cfg.sheet;
-    if (cfg.chartsPerRow) document.getElementById("chartsPerRowSelect").value = cfg.chartsPerRow;
-    if (cfg.daysWindow) document.getElementById("daysWindowSelect").value = cfg.daysWindow;
-    if (cfg.funnelSort) document.getElementById("funnelSortSelect").value = cfg.funnelSort;
-}
-
-// Gọi save khi user thay đổi config
-["sheetSelect","chartsPerRowSelect","daysWindowSelect","funnelSortSelect"]
-.forEach(id => {
-    document.getElementById(id).addEventListener("change", saveChartConfig);
-});
-
-
-/* ==========================================================
-    2. SAVE & LOAD EMAIL FIELDS
-   ========================================================== */
-
-// --- SAVE ---
-function saveEmailConfig() {
-    const cfg = {
-        to: document.getElementById("emailTo").value,
-        subject: document.getElementById("emailSubject").value,
-        message: document.getElementById("emailMessage").value
-    };
-    localStorage.setItem("emailConfig", JSON.stringify(cfg));
-}
-
-// --- LOAD ---
-function loadEmailConfig() {
-    const saved = localStorage.getItem("emailConfig");
-    if (!saved) return;
-
-    const cfg = JSON.parse(saved);
-
-    if (cfg.to) document.getElementById("emailTo").value = cfg.to;
-    if (cfg.subject) document.getElementById("emailSubject").value = cfg.subject;
-    if (cfg.message) document.getElementById("emailMessage").value = cfg.message;
-}
-
-// Gọi auto-save khi người dùng gõ
-["emailTo","emailSubject","emailMessage"].forEach(id => {
-    document.getElementById(id).addEventListener("input", saveEmailConfig);
-});
-
-
-/* ==========================================================
-    3. TỰ ĐỘNG CHÈN LẠI BIẾN ĐỘNG POx / SỐ TRẠM / NGÀY
-   ========================================================== */
-
-/* ==========================================================
-    3. TỰ ĐỘNG CHÈN LẠI BIẾN ĐỘNG POx / SỐ TRẠM / NGÀY
-   ========================================================== */
-function updateDynamicEmailFields(
-    latestDate,
-    selectedPO,
-    onairCount,
-    totalCount,
-    baseText
-) {
-    const textarea = document.getElementById("emailMessage");
-    if (!textarea) return;
-
-    // Lấy template gốc: ưu tiên baseText, nếu không thì lấy từ textarea
-    let msg =
-        typeof baseText === "string" && baseText.length
-            ? baseText
-            : textarea.value || "";
-
-    // Thay các placeholder bằng giá trị hiện tại
-    msg = msg
-        .replace(/\(ngày gần nhất\)/g, latestDate || "(ngày gần nhất)")
-        .replace(/\(POx\)/g, selectedPO || "(POx)")
-        .replace(/\(Số trạm onair\)/g, onairCount || "(Số trạm onair)")
-        .replace(/\(Tổng số trạm POx\)/g, totalCount || "(Tổng số trạm POx)");
-
-    // Hiển thị lên textarea
-    textarea.value = msg;
-}
-
-
-/* ==========================================================
-    4. Gọi load config khi trang mở lại
-   ========================================================== */
-
-window.addEventListener("DOMContentLoaded", () => {
-    loadChartConfig();
-    loadEmailConfig();
-});
-function updateKpiFolderPath() {
-    const newPath = document.getElementById("kpiFolderInput").value.trim();
-
-    if (!newPath) {
-        alert("Vui lòng nhập đường dẫn hợp lệ (ví dụ: /KPI Scheduler)");
-        return;
+            // Sau khi đổi PO, cập nhật lại nội dung email mở đầu
+            if (typeof fillDefaultEmailText === "function") {
+                fillDefaultEmailText();
+            }
+        });
     }
 
-    // cập nhật đường dẫn vào cấu hình
-    graphKpiConfig.kpiFolderPath = newPath;
 
-    alert("Đã cập nhật đường dẫn OneDrive:\n" + newPath);
-}
+        /* ==========================================================
+            1. SAVE & LOAD CONFIG (Biểu đồ)
+        ========================================================== */
 
-["toggleCQT", "toggleSSV", "toggleATP"].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
+        // --- SAVE ---
+        function saveChartConfig() {
+            const config = {
+                sheet: document.getElementById("sheetSelect").value,
+                chartsPerRow: document.getElementById("chartsPerRowSelect").value,
+                daysWindow: document.getElementById("daysWindowSelect").value,
+                funnelSort: document.getElementById("funnelSortSelect").value
+            };
+            localStorage.setItem("chartConfig", JSON.stringify(config));
+        }
 
-    // 🔹 Khôi phục trạng thái đã lưu
-    const saved = localStorage.getItem(id);
-    if (saved !== null) {
-        el.checked = saved === "true";
-    }
+        // --- LOAD ---
+        function loadChartConfig() {
+            const saved = localStorage.getItem("chartConfig");
+            if (!saved) return;
 
-    // 🔹 Khi người dùng thay đổi → lưu lại
-    el.addEventListener("change", () => {
-        localStorage.setItem(id, el.checked);
-        applyProgressColumnToggle();
-    });
-});
+            const cfg = JSON.parse(saved);
+
+            if (cfg.sheet) document.getElementById("sheetSelect").value = cfg.sheet;
+            if (cfg.chartsPerRow) document.getElementById("chartsPerRowSelect").value = cfg.chartsPerRow;
+            if (cfg.daysWindow) document.getElementById("daysWindowSelect").value = cfg.daysWindow;
+            if (cfg.funnelSort) document.getElementById("funnelSortSelect").value = cfg.funnelSort;
+        }
+
+        // Gọi save khi user thay đổi config
+        ["sheetSelect","chartsPerRowSelect","daysWindowSelect","funnelSortSelect"]
+        .forEach(id => {
+            document.getElementById(id).addEventListener("change", saveChartConfig);
+        });
+
+
+        /* ==========================================================
+            2. SAVE & LOAD EMAIL FIELDS
+        ========================================================== */
+
+        // --- SAVE ---
+        function saveEmailConfig() {
+            const cfg = {
+                to: document.getElementById("emailTo").value,
+                subject: document.getElementById("emailSubject").value,
+                message: document.getElementById("emailMessage").value
+            };
+            localStorage.setItem("emailConfig", JSON.stringify(cfg));
+        }
+
+        // --- LOAD ---
+        function loadEmailConfig() {
+            const saved = localStorage.getItem("emailConfig");
+            if (!saved) return;
+
+            const cfg = JSON.parse(saved);
+
+            if (cfg.to) document.getElementById("emailTo").value = cfg.to;
+            if (cfg.subject) document.getElementById("emailSubject").value = cfg.subject;
+            if (cfg.message) document.getElementById("emailMessage").value = cfg.message;
+        }
+
+        // Gọi auto-save khi người dùng gõ
+        ["emailTo","emailSubject","emailMessage"].forEach(id => {
+            document.getElementById(id).addEventListener("input", saveEmailConfig);
+        });
+
+
+        /* ==========================================================
+            3. TỰ ĐỘNG CHÈN LẠI BIẾN ĐỘNG POx / SỐ TRẠM / NGÀY
+        ========================================================== */
+
+        /* ==========================================================
+            3. TỰ ĐỘNG CHÈN LẠI BIẾN ĐỘNG POx / SỐ TRẠM / NGÀY
+        ========================================================== */
+        function updateDynamicEmailFields(
+            latestDate,
+            selectedPO,
+            onairCount,
+            totalCount,
+            baseText
+        ) {
+            const textarea = document.getElementById("emailMessage");
+            if (!textarea) return;
+
+            // Lấy template gốc: ưu tiên baseText, nếu không thì lấy từ textarea
+            let msg =
+                typeof baseText === "string" && baseText.length
+                    ? baseText
+                    : textarea.value || "";
+
+            // Thay các placeholder bằng giá trị hiện tại
+            msg = msg
+                .replace(/\(ngày gần nhất\)/g, latestDate || "(ngày gần nhất)")
+                .replace(/\(POx\)/g, selectedPO || "(POx)")
+                .replace(/\(Số trạm onair\)/g, onairCount || "(Số trạm onair)")
+                .replace(/\(Tổng số trạm POx\)/g, totalCount || "(Tổng số trạm POx)");
+
+            // Hiển thị lên textarea
+            textarea.value = msg;
+        }
+
+
+        /* ==========================================================
+            4. Gọi load config khi trang mở lại
+        ========================================================== */
+
+        window.addEventListener("DOMContentLoaded", () => {
+            loadChartConfig();
+            loadEmailConfig();
+        });
+        function updateKpiFolderPath() {
+            const newPath = document.getElementById("kpiFolderInput").value.trim();
+
+            if (!newPath) {
+                alert("Vui lòng nhập đường dẫn hợp lệ (ví dụ: /KPI Scheduler)");
+                return;
+            }
+
+            // cập nhật đường dẫn vào cấu hình
+            graphKpiConfig.kpiFolderPath = newPath;
+
+            alert("Đã cập nhật đường dẫn OneDrive:\n" + newPath);
+        }
+
+        ["toggleCQT", "toggleSSV", "toggleATP"].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            // 🔹 Khôi phục trạng thái đã lưu
+            const saved = localStorage.getItem(id);
+            if (saved !== null) {
+                el.checked = saved === "true";
+            }
+
+            // 🔹 Khi người dùng thay đổi → lưu lại
+            el.addEventListener("change", () => {
+                localStorage.setItem(id, el.checked);
+                applyProgressColumnToggle();
+            });
+        });
 
 
 
