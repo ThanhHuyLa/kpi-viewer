@@ -2532,7 +2532,14 @@ function processMultipleFiles(files) {
                     updateCharts();
                     renderWorstCellTable();
 
-                    if (typeof renderCqiTable === "function") {
+                    // ✅ Đảm bảo đã load KPI Threshhold trước khi vẽ CQI
+                    if (typeof ensureKpiThresholdsLoaded === "function") {
+                        ensureKpiThresholdsLoaded().then(() => {
+                            if (typeof renderCqiTable === "function") {
+                                renderCqiTable();
+                            }
+                        });
+                    } else if (typeof renderCqiTable === "function") {
                         renderCqiTable();
                     }
 
@@ -2600,10 +2607,17 @@ function processMultipleFiles(files) {
                     updateCharts();
                     renderWorstCellTable();
 
-                    if (typeof renderCqiTable === "function") {
+                    // ✅ Đảm bảo đã load KPI Threshhold (Province Area, CQI Threshold)
+                    if (typeof ensureKpiThresholdsLoaded === "function") {
+                        ensureKpiThresholdsLoaded().then(() => {
+                            if (typeof renderCqiTable === "function") {
+                                renderCqiTable();
+                            }
+                        });
+                    } else if (typeof renderCqiTable === "function") {
+                        // fallback nếu vì lý do gì đó không có ensureKpiThresholdsLoaded
                         renderCqiTable();
                     }
-
                     document
                         .getElementById("chartsSection")
                         .classList.add("show");
