@@ -2758,20 +2758,37 @@ function processMultipleFiles(files) {
                 const wb = XLSX.read(buf, { type: "array" });
 
                 // ==== MAP PROVINCE -> AREA (sheet "Province Area") ====
+                // Dùng tự phát hiện header để tránh lỗi khoảng trắng / hoa-thường
                 provinceAreaMap = {};
                 const provinceAreaSheet = wb.Sheets["Province Area"];
                 if (provinceAreaSheet) {
                     const paRows = XLSX.utils.sheet_to_json(provinceAreaSheet, { defval: "" });
+
                     paRows.forEach((r) => {
-                        const province = String(r["Province"] || r["PROVINCE"] || "")
+                        if (!r) return;
+
+                        const keys = Object.keys(r);
+
+                        // Tìm key chứa "province" & "area" (bỏ qua hoa-thường, khoảng trắng)
+                        const provinceKey =
+                            keys.find(k => k.toLowerCase().trim() === "province") || "Province";
+                        const areaKey =
+                            keys.find(k => k.toLowerCase().trim() === "area") || "Area";
+
+                        const province = String(r[provinceKey] || "")
                             .trim()
                             .toUpperCase();
-                        const area = String(r["Area"] || r["AREA"] || "").trim();
+                        const area = String(r[areaKey] || "").trim();
+
                         if (province) {
                             provinceAreaMap[province] = area;
                         }
                     });
                 }
+
+                // debug: xem map có đọc được không
+                console.log("Province->Area map loaded:", provinceAreaMap);
+
 
                 // ==== MAP ID -> Config/Threshold cho CQI (sheet "CQI Threshold") ====
                 cqiConfigMap = {};
