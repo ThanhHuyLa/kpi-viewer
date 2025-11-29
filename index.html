@@ -727,6 +727,11 @@
             color: #9ca3af;
             font-size: 0.85em;
         }
+
+        .hide-col {
+            display: none !important;
+        }
+                
     </style>
 </head>
 <body>
@@ -737,7 +742,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.25
+                Version: v1.4.0.27
             </div>
         </div>
 
@@ -947,7 +952,15 @@
                     <option value="ALL">Tất cả PO</option>
                 </select>
             </div>
+            <!-- Bộ lọc bật/tắt cột -->
+            <div style="margin:8px 0; display:flex; gap:12px; font-size:0.9em;">
+                <label><input type="checkbox" id="toggleCQT" checked> CQT</label>
+                <label><input type="checkbox" id="toggleSSV" checked> SSV</label>
+                <label><input type="checkbox" id="toggleATP" checked> ATP report</label>
+            </div>
+
             <div id="progressTable"></div>
+
         </div>
 
 
@@ -6851,6 +6864,7 @@ if (idxSiteName !== -1) {
 
                 // Render bảng lần đầu (tất cả PO)
                 renderProgressTable(groupList);
+                applyProgressColumnToggle();
 
                 // Sau khi đã có progressSitePoMap -> render lại Worst Cell / Non-Traffic
                 if (typeof renderWorstCellTable === "function") {
@@ -6888,7 +6902,7 @@ if (idxSiteName !== -1) {
     // Gán sự kiện upload cho phần Tiến Độ Đo Kiểm
     initProgressUpload();
 
-function renderProgressTable(data) {
+    function renderProgressTable(data) {
     const tableContainer = document.getElementById("progressTable");
     if (!tableContainer) return;
 
@@ -6914,12 +6928,15 @@ function renderProgressTable(data) {
 
                 <th>On-Air</th>
                 <th>Tiến độ On-Air (%)</th>
-                <th>CQT</th>
-                <th>Tiến độ CQT (%)</th>
-                <th>SSV</th>
-                <th>Tiến độ SSV (%)</th>
-                <th>ATP report</th>
-                <th>Tiến độ ATP report</th>
+                <th class="col-cqt">CQT</th>
+                <th class="col-cqt">Tiến độ CQT (%)</th>
+
+                <th class="col-ssv">SSV</th>
+                <th class="col-ssv">Tiến độ SSV (%)</th>
+
+                <th class="col-atp">ATP report</th>
+                <th class="col-atp">Tiến độ ATP report</th>
+
             </tr>
         </thead>
         <tbody>
@@ -6958,12 +6975,15 @@ function renderProgressTable(data) {
 
             <td>${g.onair}</td>
             <td>${onairPct}</td>
-            <td>${g.cqtOk}</td>
-            <td>${cqtPct}</td>
-            <td>${g.ssvOk}</td>
-            <td>${ssvPct}</td>
-            <td>${g.atpReport}</td>
-            <td>${atpPct}</td>
+            <td class="col-cqt">${g.cqtOk}</td>
+            <td class="col-cqt">${cqtPct}</td>
+
+            <td class="col-ssv">${g.ssvOk}</td>
+            <td class="col-ssv">${ssvPct}</td>
+
+            <td class="col-atp">${g.atpReport}</td>
+            <td class="col-atp">${atpPct}</td>
+
         </tr>`;
     });
 
@@ -6993,12 +7013,15 @@ function renderProgressTable(data) {
 
             <td>${totalOnair}</td>
             <td>${totalOnairPct === "0.00%" ? "-" : totalOnairPct}</td>
-            <td>${totalCqtOk}</td>
-            <td>${totalCqtPct === "0.00%" ? "-" : totalCqtPct}</td>
-            <td>${totalSsvOk}</td>
-            <td>${totalSsvPct === "0.00%" ? "-" : totalSsvPct}</td>
-            <td>${totalAtpOk}</td>
-            <td>${totalAtpPct === "0.00%" ? "-" : totalAtpPct}</td>
+            <td class="col-cqt">${totalCqtOk}</td>
+            <td class="col-cqt">${totalCqtPct === "0.00%" ? "-" : totalCqtPct}</td>
+
+            <td class="col-ssv">${totalSsvOk}</td>
+            <td class="col-ssv">${totalSsvPct === "0.00%" ? "-" : totalSsvPct}</td>
+
+            <td class="col-atp">${totalAtpOk}</td>
+            <td class="col-atp">${totalAtpPct === "0.00%" ? "-" : totalAtpPct}</td>
+
         </tr>
     </tbody></table>
     `;
@@ -7010,6 +7033,22 @@ function renderProgressTable(data) {
         applyProgressStickyColumns();
     }
 }
+
+    function applyProgressColumnToggle() {
+        const showCQT = document.getElementById("toggleCQT").checked;
+        const showSSV = document.getElementById("toggleSSV").checked;
+        const showATP = document.getElementById("toggleATP").checked;
+
+        document.querySelectorAll(".col-cqt").forEach(td =>
+            td.classList.toggle("hide-col", !showCQT)
+        );
+        document.querySelectorAll(".col-ssv").forEach(td =>
+            td.classList.toggle("hide-col", !showSSV)
+        );
+        document.querySelectorAll(".col-atp").forEach(td =>
+            td.classList.toggle("hide-col", !showATP)
+        );
+    }
 
     function applyProgressStickyColumns() {
     const table = document.querySelector("#progressTable table");
@@ -7123,6 +7162,7 @@ function applyWorstCellStickyColumns() {
 }
 
 // Lọc bảng Tiến độ đo kiểm theo PO được chọn
+// Lọc bảng Tiến độ đo kiểm theo PO được chọn
 const poFilterEl = document.getElementById("progressPOFilter");
 if (poFilterEl) {
     poFilterEl.addEventListener("change", function () {
@@ -7135,6 +7175,12 @@ if (poFilterEl) {
                 : progressFullData.filter((g) => g.po === val);
 
         renderProgressTable(filtered);
+        applyProgressColumnToggle();
+
+        // ✅ Áp lại trạng thái checkbox CQT / SSV / ATP
+        if (typeof applyProgressColumnToggle === "function") {
+            applyProgressColumnToggle();
+        }
 
         // Sau khi đổi PO, cập nhật lại nội dung email mở đầu
         if (typeof fillDefaultEmailText === "function") {
@@ -7142,6 +7188,7 @@ if (poFilterEl) {
         }
     });
 }
+
 
 /* ==========================================================
     1. SAVE & LOAD CONFIG (Biểu đồ)
@@ -7267,6 +7314,22 @@ function updateKpiFolderPath() {
     alert("Đã cập nhật đường dẫn OneDrive:\n" + newPath);
 }
 
+["toggleCQT", "toggleSSV", "toggleATP"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // 🔹 Khôi phục trạng thái đã lưu
+    const saved = localStorage.getItem(id);
+    if (saved !== null) {
+        el.checked = saved === "true";
+    }
+
+    // 🔹 Khi người dùng thay đổi → lưu lại
+    el.addEventListener("change", () => {
+        localStorage.setItem(id, el.checked);
+        applyProgressColumnToggle();
+    });
+});
 
 
 
