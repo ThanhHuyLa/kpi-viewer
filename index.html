@@ -2493,6 +2493,7 @@ function processMultipleFiles(files) {
                 if (index === 0) {
                     workbook = wb;
                     buildGlobalKpiMetaMap();
+                    loadProvinceAreaFromWorkbook(workbook);
                 }
 
                 wb.SheetNames.forEach((sheetName) => {
@@ -2590,6 +2591,7 @@ function processMultipleFiles(files) {
                     workbook = XLSX.read(data, { type: "array", cellStyles: true });
 
                     buildGlobalKpiMetaMap();
+                    loadProvinceAreaFromWorkbook(workbook);
 
                     loading.classList.remove("show");
                     fileInfo.innerHTML = `
@@ -5525,13 +5527,13 @@ function deduplicateRows(rowsArr) {
 const trafficRowsDedup    = deduplicateRows(trafficRows);
 const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
-function toNumber(val) {
-    if (val === null || val === undefined) return null;
-    const num = parseFloat(String(val).replace(/\s+/g, ""));
-    return isNaN(num) ? null : num;
-}
+    function toNumber(val) {
+        if (val === null || val === undefined) return null;
+        const num = parseFloat(String(val).replace(/\s+/g, ""));
+        return isNaN(num) ? null : num;
+    }
 
-function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
+    function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
     if (!rowsArr.length) {
         titleEl.textContent = baseTitle + " (không có dữ liệu)";
         tableEl.innerHTML = "";
@@ -5701,21 +5703,44 @@ function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
 }
 
 
-const worstTitleText = latestLabel ? `Worst Cell (${latestLabel})` : "Worst Cell";
-worstCard.style.display = "block";
-buildTable(trafficRowsDedup, worstTitleEl, worstTableEl, worstTitleText);
+        const worstTitleText = latestLabel ? `Worst Cell (${latestLabel})` : "Worst Cell";
+        worstCard.style.display = "block";
+        buildTable(trafficRowsDedup, worstTitleEl, worstTableEl, worstTitleText);
 
-if (nonCard && nonTableEl && nonTitleEl) {
-    if (nonTrafficRowsDedup.length) {
-        nonCard.style.display = "block";
-        const nonTitleText = "Cell Non-Traffic";
-        buildTable(nonTrafficRowsDedup, nonTitleEl, nonTableEl, nonTitleText);
-    } else {
-        nonCard.style.display = "none";
-    }
-}
+        if (nonCard && nonTableEl && nonTitleEl) {
+            if (nonTrafficRowsDedup.length) {
+                nonCard.style.display = "block";
+                const nonTitleText = "Cell Non-Traffic";
+                buildTable(nonTrafficRowsDedup, nonTitleEl, nonTableEl, nonTitleText);
+            } else {
+                nonCard.style.display = "none";
+            }
+        }
 
         }
+        
+        function loadProvinceAreaFromWorkbook(wb) {
+            const sheet = wb.Sheets["Province Area"];
+            if (!sheet) {
+                console.warn("Không tìm thấy sheet Province Area");
+                provinceAreaMap = {};
+                return;
+            }
+
+            const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+            provinceAreaMap = {};
+            json.forEach(row => {
+                const province = row["Province"] || row["Tỉnh"] || row["PO"] || "";
+                const area = row["Area"] || row["Vùng"] || "";
+                if (province) {
+                    provinceAreaMap[province.trim()] = area;
+                }
+            });
+
+            console.log("Loaded Province Area:", provinceAreaMap);
+        }
+        
         
         async function renderCqiTable() {
             const card = document.getElementById("cqiCard");
