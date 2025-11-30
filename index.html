@@ -742,7 +742,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.43
+                Version: v1.4.0.47
             </div>
         </div>
 
@@ -5806,6 +5806,10 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             return;
         }
 
+        // Lấy value filter PO hiện tại
+        const poFilterSelect = document.getElementById("cqiPoFilter");
+        const selectedPo = poFilterSelect ? poFilterSelect.value : "ALL";
+
         // Lấy index cột theo header
         const headerCells = table.querySelectorAll("thead tr:last-child th");
         if (!headerCells.length) {
@@ -5819,13 +5823,11 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             idx[name] = i;
         });
 
-        const poIdx     = idx["PO"];
-        const provIdx   = idx["Province"];
-        const areaIdx   = idx["Area"];
-        const avgCqiIdx = idx["Average CQI"];
+        const provIdx = idx["Province"];
+        const areaIdx = idx["Area"];
+        const evalIdx = idx["Evaluate"];
 
-        if ([poIdx, provIdx, areaIdx, avgCqiIdx].some(v => v == null)) {
-            // Không đủ cột cần thiết
+        if ([provIdx, areaIdx, evalIdx].some(v => v == null)) {
             summaryEl.innerHTML = "";
             return;
         }
@@ -5836,24 +5838,21 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             return;
         }
 
+        // Gom nhóm theo Province + Area
         const summaryMap = {};
 
         bodyRows.forEach((tr) => {
             const cells = tr.querySelectorAll("td");
-            if (cells.length <= avgCqiIdx) return;
+            if (cells.length <= evalIdx) return;
 
-            const po       = cells[poIdx].textContent.trim();
             const province = cells[provIdx].textContent.trim();
             const areaCell = cells[areaIdx].textContent.trim();
-            const avgCQI   = parseFloat(cells[avgCqiIdx].textContent.trim());
+            const evalText = cells[evalIdx].textContent.trim();
 
-            if (isNaN(avgCQI)) return;
-
-            const key = province || (po + "||" + areaCell);
+            const key = (province || "") + "||" + (areaCell || "");
 
             if (!summaryMap[key]) {
                 summaryMap[key] = {
-                    po,
                     province,
                     area: areaCell,
                     total: 0,
@@ -5863,7 +5862,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
             const g = summaryMap[key];
             g.total += 1;
-            if (avgCQI < 8) g.poorCount += 1; // cell "poor"
+            if (/not\s*pass/i.test(evalText)) g.poorCount += 1; // cell không đạt
         });
 
         const groups = Object.values(summaryMap);
@@ -5872,9 +5871,8 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             return;
         }
 
-        // Sắp xếp theo PO > Province
+        // Sắp xếp theo Province
         groups.sort((a, b) => {
-            if (a.po !== b.po) return String(a.po).localeCompare(String(b.po));
             return String(a.province).localeCompare(String(b.province));
         });
 
@@ -5885,26 +5883,28 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
         html += "<th>Area</th>";
         html += "<th>Target</th>";
         html += "<th>Total Cell</th>";
+        html += "<th>Bad Cell</th>";       // 🔹 THÊM LẠI CỘT NÀY
         html += "<th>Poor Cell (%)</th>";
         html += "<th>Evaluate</th>";
         html += "</tr></thead><tbody>";
 
         groups.forEach((g) => {
             const total   = g.total || 0;
-            const poorPct = total ? (g.poorCount * 100) / total : 0;
+            const bad     = g.poorCount || 0;
+            const poorPct = total ? (bad * 100) / total : 0;
 
             // Target từ sheet "Province Area"
             let targetRaw   = "";
             let targetValue = null;
 
             if (provinceAreaMap) {
-                const key = (g.province || "").toUpperCase().trim();
-                const entry = provinceAreaMap[key];
+                const keyProv = (g.province || "").toUpperCase().trim();
+                const entry   = provinceAreaMap[keyProv];
                 if (entry) {
                     if (typeof entry === "string") {
-                        targetRaw = entry; // phòng trường hợp file cũ chỉ có 1 cột
+                        targetRaw = entry;
                     } else {
-                        targetRaw = entry.target || "";
+                        targetRaw = entry.target || entry.Target || "";
                     }
                     const match = targetRaw.match(/(\d+(\.\d+)?)\s*%/);
                     if (match) targetValue = parseFloat(match[1]);
@@ -5921,12 +5921,15 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                     ? "color:#b91c1c; font-weight:bold;"
                     : "color:#15803d; font-weight:bold;";
 
+            const poDisplay = selectedPo === "ALL" ? "Tất cả" : selectedPo;
+
             html += "<tr>";
-            html += `<td>${g.po || ""}</td>`;
+            html += `<td>${poDisplay}</td>`;
             html += `<td>${g.province || ""}</td>`;
             html += `<td>${g.area || ""}</td>`;
             html += `<td>${targetRaw || ""}</td>`;
             html += `<td>${total}</td>`;
+            html += `<td>${bad}</td>`;                   // 🔹 GIÁ TRỊ BAD CELL
             html += `<td>${poorPct.toFixed(2)}%</td>`;
             html += `<td style="${evalStyle}">${evaluate}</td>`;
             html += "</tr>";
