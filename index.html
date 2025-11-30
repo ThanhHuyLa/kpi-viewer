@@ -742,7 +742,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.47
+                Version: v1.4.0.48
             </div>
         </div>
 
@@ -952,12 +952,25 @@
                     <option value="ALL">Tất cả PO</option>
                 </select>
             </div>
+
             <!-- Bộ lọc bật/tắt cột -->
-            <div style="margin:8px 0; display:flex; gap:12px; font-size:0.9em;">
-                <label><input type="checkbox" id="toggleCQT" checked> CQT</label>
-                <label><input type="checkbox" id="toggleSSV" checked> SSV</label>
-                <label><input type="checkbox" id="toggleATP" checked> ATP report</label>
+            <div class="email-section-options" style="margin:8px 0;">
+                <label>
+                    <input type="checkbox" id="toggleCQT" checked>
+                    CQT
+                </label>
+
+                <label>
+                    <input type="checkbox" id="toggleSSV" checked>
+                    SSV
+                </label>
+
+                <label>
+                    <input type="checkbox" id="toggleATP" checked>
+                    ATP report
+                </label>
             </div>
+
 
             <div id="progressTable"></div>
 
@@ -1110,14 +1123,12 @@
                     Áp dụng
                 </button>
                 
-                <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85em;">
-                    <input
-                        type="checkbox"
-                        id="thresholdGlobalToggle"
-                        style="accent-color:#4f46e5;"
-                    />
-                    <span>Kích hoạt tùy chỉnh</span>
-                </label>
+                <div class="email-section-options">
+                    <label>
+                        <input type="checkbox" id="thresholdGlobalToggle">
+                        Kích hoạt tùy chỉnh
+                    </label>
+                </div>
 
             </div>
 
@@ -1213,10 +1224,12 @@
                     </label>
 
                     <!-- Checkbox Not Pass -->
-                    <label style="display:flex; align-items:center; gap:6px;">
-                        <input type="checkbox" id="cqiShowNotPassOnly" />
-                        Hiển thị danh sách cell không đạt
-                    </label>
+                    <div class="email-section-options">
+                        <label>
+                            <input type="checkbox" id="showFailed">
+                            Hiển thị danh sách cell không đạt
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Bảng tổng hợp CQI (summary) -->
@@ -6002,29 +6015,68 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
         }
 
         // ===== Tính ngày gần nhất từ dữ liệu CQI =====
+        // ===== Ngày dữ liệu CQI gần nhất từ SHEET "CQI" (file KPI) =====
         let latestDateStr = "";
         let latestDateObj = null;
 
-        rows.forEach(r => {
-            const raw =
-                r["Period start time"] ??
-                r["PERIOD START TIME"] ??
-                r["Period Start Time"] ??
-                r["period start time"] ??
-                "";
+        // Tìm tên cột ngày (ưu tiên có chữ 'period')
+        const firstRow = rows[0] || {};
+        let dateColName = null;
+        Object.keys(firstRow).forEach((k) => {
+            const lower = String(k).toLowerCase();
+            if (!dateColName && lower.includes("period")) {
+                dateColName = k;
+            }
+        });
+        // fallback nếu không tìm được
+        if (!dateColName) {
+            dateColName = "Period start time";
+        }
 
-            if (!raw) return;
+        rows.forEach((r) => {
+            const raw = r[dateColName];
+            if (raw === undefined || raw === null || raw === "") return;
 
-            const d = new Date(raw);
-            if (isNaN(d)) return;
+            let d = null;
 
-            if (!latestDateObj || d > latestDateObj) {
-                latestDateObj = d;
+            if (raw instanceof Date) {
+                d = raw;
+            } else if (typeof raw === "number") {
+                // Excel serial date -> JS Date
+                try {
+                    const parsed = XLSX.SSF.parse_date_code(raw);
+                    if (parsed) {
+                        d = new Date(
+                            parsed.y,
+                            parsed.m - 1,
+                            parsed.d,
+                            parsed.H || 0,
+                            parsed.M || 0,
+                            parsed.S || 0
+                        );
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            } else {
+                const parsed = new Date(raw);
+                if (!isNaN(parsed.getTime())) {
+                    d = parsed;
+                }
+            }
+
+            if (d) {
+                if (!latestDateObj || d.getTime() > latestDateObj.getTime()) {
+                    latestDateObj = d;
+                }
             }
         });
 
         if (latestDateObj) {
-            latestDateStr = latestDateObj.toISOString().slice(0, 10); // yyyy-mm-dd
+            const yyyy = latestDateObj.getFullYear();
+            const mm   = String(latestDateObj.getMonth() + 1).padStart(2, "0");
+            const dd   = String(latestDateObj.getDate()).padStart(2, "0");
+            latestDateStr = `${yyyy}-${mm}-${dd}`;
         }
 
 
