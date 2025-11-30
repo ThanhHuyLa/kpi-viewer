@@ -2771,8 +2771,14 @@ function processMultipleFiles(files) {
 
         // ====== ĐỌC FILE "KPI Threshhold.xlsx" ======
         async function ensureKpiThresholdsLoaded() {
-            // Đã load rồi thì thôi
-            if (kpiThresholdMap !== null) return kpiThresholdMap;
+            // Nếu đã load KPI threshold + provinceAreaMap rồi thì thôi
+            if (
+                kpiThresholdMap !== null &&
+                provinceAreaMap &&
+                Object.keys(provinceAreaMap).length
+            ) {
+                return kpiThresholdMap;
+            }
 
             kpiThresholdMap = {}; // tránh null để không gọi lại nhiều lần
 
@@ -2818,17 +2824,17 @@ function processMultipleFiles(files) {
                 const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
                 rows.forEach((r) => {
-                    const id = String(r["KPI ID"] || "").trim();
+                    const id   = String(r["KPI ID"]   || "").trim();
                     const name = String(r["KPI Name"] || "").trim();
-                    const op = String(r["operator"] || "").trim();   // <, >, =
-                    const thr = parseFloat(r["Threshold"]);
+                    const op   = String(r["operator"] || "").trim();   // <, >, =
+                    const thr  = parseFloat(r["Threshold"]);
 
                     if (!op || isNaN(thr)) return;
 
                     const entry = { op, value: thr };
 
-                    // map theo KPI ID, KPI Name và có thể reuse cho nhiều chỗ
-                    if (id) kpiThresholdMap[id] = entry;
+                    // map theo KPI ID, KPI Name
+                    if (id)   kpiThresholdMap[id]   = entry;
                     if (name) kpiThresholdMap[name] = entry;
                 });
 
@@ -2843,6 +2849,8 @@ function processMultipleFiles(files) {
 
             return kpiThresholdMap;
         }
+
+
 
         function getThresholdForKpiColumn(kpiCol) {
             if (!kpiCol) return null;
@@ -5720,36 +5728,30 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
         }
         
-        // Chỉ load Province Area từ file KPI Threshold
-        function loadProvinceAreaFromThresholdWorkbook(wb) {
-            // Sheet nằm trong file KPI Threshhold
-            const sheet =
-                wb.Sheets["Province Area"] ||
-                wb.Sheets["Province_Area"] ||
-                wb.Sheets["ProvinceArea"];
+function loadProvinceAreaFromThresholdWorkbook(wb) {
+    provinceAreaMap = {};   // reset map
 
-            if (!sheet) {
-                console.warn("❌ Không tìm thấy sheet 'Province Area' trong file KPI Threshhold");
-                provinceAreaMap = {};
-                return;
-            }
+    const paSheet = wb.Sheets["Province Area"];
+    if (!paSheet) {
+        console.warn("Không tìm thấy sheet 'Province Area' trong KPI Threshhold.xlsx");
+        return;
+    }
 
-            const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    const paRows = XLSX.utils.sheet_to_json(paSheet, { defval: "" });
 
-            provinceAreaMap = {};
-            json.forEach((row) => {
-                const province =
-                    row["Province"] || row["Tỉnh"] || row["PO"] || "";
-                const area =
-                    row["Area"] || row["Vùng"] || "";
-                if (province) {
-                    const key = String(province).trim().toUpperCase(); // key chuẩn = mã tỉnh 3 ký tự
-                    provinceAreaMap[key] = String(area || "").trim();
-                }
-            });
+    paRows.forEach((r) => {
+        const prov = String(r["Province"] || r["PROVINCE"] || r["Province Code"] || "").trim();
+        const area = String(r["Area"]     || r["AREA"]     || "").trim();
 
-            console.log("✔ Loaded Province Area từ KPI Threshhold:", provinceAreaMap);
-        }
+        if (!prov) return;
+
+        const key = prov.toUpperCase();
+        provinceAreaMap[key] = area;
+    });
+
+    console.log("Loaded Province Area count =", Object.keys(provinceAreaMap).length);
+}
+
 
         async function renderCqiTable() {
             const card    = document.getElementById("cqiCard");
