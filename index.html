@@ -1406,9 +1406,13 @@
         // Lấy Area theo Province từ provinceAreaMap
         function getAreaFromProvince(province) {
             if (!province) return "";
-            const key = String(province).trim();
-            return provinceAreaMap[key] || "";
+            const key   = String(province).trim().toUpperCase();
+            const entry = provinceAreaMap[key];
+            if (!entry) return "";
+            if (typeof entry === "string") return entry;   // tương thích code cũ
+            return entry.area || "";
         }
+
 
         // Load custom thresholds từ LocalStorage
         function loadCustomThresholds() {
@@ -5765,38 +5769,63 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
         }
         
-function loadProvinceAreaFromThresholdWorkbook(wb) {
-    provinceAreaMap = {};   // reset map
+    function loadProvinceAreaFromThresholdWorkbook(wb) {
+        provinceAreaMap = {};   // reset map
 
-    const paSheet = wb.Sheets["Province Area"];
-    if (!paSheet) {
-        console.warn("Không tìm thấy sheet 'Province Area' trong KPI Threshhold.xlsx");
-        return;
+        const paSheet = wb.Sheets["Province Area"];
+        if (!paSheet) {
+            console.warn("Không tìm thấy sheet 'Province Area' trong KPI Threshhold.xlsx");
+            return;
+        }
+
+        const paRows = XLSX.utils.sheet_to_json(paSheet, { defval: "" });
+
+        paRows.forEach((r) => {
+            const prov   = String(r["Province"] || r["PROVINCE"] || r["Province Code"] || "").trim();
+            const area   = String(r["Area"]     || r["AREA"]     || "").trim();
+            const target = String(r["Target"]   || r["TARGET"]   || "").trim();   // <= thêm
+
+            if (!prov) return;
+
+            const key = prov.toUpperCase();
+            // Lưu cả Area + Target
+            provinceAreaMap[key] = { area, target };
+        });
+
+        console.log("Loaded Province Area count =", Object.keys(provinceAreaMap).length);
     }
-
-    const paRows = XLSX.utils.sheet_to_json(paSheet, { defval: "" });
-
-    paRows.forEach((r) => {
-        const prov = String(r["Province"] || r["PROVINCE"] || r["Province Code"] || "").trim();
-        const area = String(r["Area"]     || r["AREA"]     || "").trim();
-
-        if (!prov) return;
-
-        const key = prov.toUpperCase();
-        provinceAreaMap[key] = area;
-    });
-
-    console.log("Loaded Province Area count =", Object.keys(provinceAreaMap).length);
-}
 
     function buildCqiSummaryFromDom() {
         const summaryEl = document.getElementById("cqiSummaryTable");
         const container = document.getElementById("cqiTable");
-
         if (!summaryEl || !container) return;
 
         const table = container.querySelector("table");
         if (!table) {
+            summaryEl.innerHTML = "";
+            return;
+        }
+
+        // Lấy index cột theo header
+        const headerCells = table.querySelectorAll("thead tr:last-child th");
+        if (!headerCells.length) {
+            summaryEl.innerHTML = "";
+            return;
+        }
+
+        const idx = {};
+        headerCells.forEach((th, i) => {
+            const name = th.textContent.trim();
+            idx[name] = i;
+        });
+
+        const poIdx     = idx["PO"];
+        const provIdx   = idx["Province"];
+        const areaIdx   = idx["Area"];
+        const avgCqiIdx = idx["Average CQI"];
+
+        if ([poIdx, provIdx, areaIdx, avgCqiIdx].some(v => v == null)) {
+            // Không đủ cột cần thiết
             summaryEl.innerHTML = "";
             return;
         }
@@ -5811,28 +5840,30 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
 
         bodyRows.forEach((tr) => {
             const cells = tr.querySelectorAll("td");
-            if (cells.length < 9) return;
+            if (cells.length <= avgCqiIdx) return;
 
-            const po       = cells[0].textContent.trim();
-            const province = cells[1].textContent.trim();
-            const area     = cells[2].textContent.trim();
-            const avgCQI   = parseFloat(cells[6].textContent.trim());
+            const po       = cells[poIdx].textContent.trim();
+            const province = cells[provIdx].textContent.trim();
+            const areaCell = cells[areaIdx].textContent.trim();
+            const avgCQI   = parseFloat(cells[avgCqiIdx].textContent.trim());
 
-            const key = po + "||" + province + "||" + area;
+            if (isNaN(avgCQI)) return;
+
+            const key = province || (po + "||" + areaCell);
 
             if (!summaryMap[key]) {
                 summaryMap[key] = {
                     po,
                     province,
-                    area,
+                    area: areaCell,
                     total: 0,
-                    poorSum: 0,
-                    avgList: []
+                    poorCount: 0
                 };
             }
 
-            summaryMap[key].total += 1;
-            if (!isNaN(avgCQI)) summaryMap[key].avgList.push(avgCQI);
+            const g = summaryMap[key];
+            g.total += 1;
+            if (avgCQI < 8) g.poorCount += 1; // cell "poor"
         });
 
         const groups = Object.values(summaryMap);
@@ -5843,8 +5874,8 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
 
         // Sắp xếp theo PO > Province
         groups.sort((a, b) => {
-            if (a.po !== b.po) return a.po.localeCompare(b.po);
-            return a.province.localeCompare(b.province);
+            if (a.po !== b.po) return String(a.po).localeCompare(String(b.po));
+            return String(a.province).localeCompare(String(b.province));
         });
 
         let html = '<table class="progress-table">';
@@ -5859,35 +5890,45 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
         html += "</tr></thead><tbody>";
 
         groups.forEach((g) => {
-            const total = g.total;
-            const avgPoor = g.avgList.length
-                ? (g.avgList.filter(v => v < 8).length * 100 / total)
-                : 0;
+            const total   = g.total || 0;
+            const poorPct = total ? (g.poorCount * 100) / total : 0;
 
-            // 🔵 Lấy TARGET từ provinceAreaMap
-            let targetRaw = "";
+            // Target từ sheet "Province Area"
+            let targetRaw   = "";
             let targetValue = null;
 
-            if (provinceAreaMap && provinceAreaMap[g.province]) {
-                targetRaw = provinceAreaMap[g.province].Target;    // ví dụ: "<= 5%"
-                const match = targetRaw.match(/(\d+(\.\d+)?)%/);
-                if (match) targetValue = parseFloat(match[1]);      // lấy số % ra
+            if (provinceAreaMap) {
+                const key = (g.province || "").toUpperCase().trim();
+                const entry = provinceAreaMap[key];
+                if (entry) {
+                    if (typeof entry === "string") {
+                        targetRaw = entry; // phòng trường hợp file cũ chỉ có 1 cột
+                    } else {
+                        targetRaw = entry.target || "";
+                    }
+                    const match = targetRaw.match(/(\d+(\.\d+)?)\s*%/);
+                    if (match) targetValue = parseFloat(match[1]);
+                }
             }
 
-            // 🔵 Evaluate dựa trên poor% và target% của tỉnh
             let evaluate = "Pass";
-            if (targetValue !== null && avgPoor >= targetValue) evaluate = "Not Pass";
+            if (targetValue !== null && poorPct >= targetValue) {
+                evaluate = "Not Pass";
+            }
 
-            const evalColor = evaluate === "Not Pass" ? "color:#b91c1c;" : "color:#15803d;";
+            const evalStyle =
+                evaluate === "Not Pass"
+                    ? "color:#b91c1c; font-weight:bold;"
+                    : "color:#15803d; font-weight:bold;";
 
             html += "<tr>";
-            html += `<td>${g.po}</td>`;
-            html += `<td>${g.province}</td>`;
-            html += `<td>${g.area}</td>`;
-            html += `<td>${targetRaw}</td>`;
+            html += `<td>${g.po || ""}</td>`;
+            html += `<td>${g.province || ""}</td>`;
+            html += `<td>${g.area || ""}</td>`;
+            html += `<td>${targetRaw || ""}</td>`;
             html += `<td>${total}</td>`;
-            html += `<td>${avgPoor.toFixed(2)}%</td>`;
-            html += `<td style="font-weight:bold; ${evalColor}">${evaluate}</td>`;
+            html += `<td>${poorPct.toFixed(2)}%</td>`;
+            html += `<td style="${evalStyle}">${evaluate}</td>`;
             html += "</tr>";
         });
 
@@ -6049,20 +6090,24 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
                 return;
             }
 
+
             // Area = vlookup Province -> Area từ KPI Threshhold (sheet "Province Area")
             let area = "";
             if (province && provinceAreaMap && Object.keys(provinceAreaMap).length) {
                 const pKey = province.toUpperCase().trim();
 
-                // tra trực tiếp
-                area = provinceAreaMap[pKey] || "";
+                const direct = provinceAreaMap[pKey];
+                if (direct) {
+                    area = typeof direct === "string" ? direct : (direct.area || "");
+                }
 
-                // fallback: duyệt toàn bộ key, so sánh sau khi trim + upper
+                // fallback: duyệt toàn bộ key
                 if (!area) {
                     for (const k in provinceAreaMap) {
                         if (!Object.prototype.hasOwnProperty.call(provinceAreaMap, k)) continue;
                         if (k.trim().toUpperCase() === pKey) {
-                            area = provinceAreaMap[k];
+                            const e = provinceAreaMap[k];
+                            area = typeof e === "string" ? e : (e.area || "");
                             break;
                         }
                     }
@@ -6158,7 +6203,10 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
                     );
                 });
         }
-        buildCqiSummaryFromDom();
+        if (provinceAreaMap && Object.keys(provinceAreaMap).length) {
+            buildCqiSummaryFromDom();
+        }
+
     }
         
     function renderLatestKpiTable() {
