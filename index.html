@@ -742,7 +742,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.33
+                Version: v1.4.0.43
             </div>
         </div>
 
@@ -1197,10 +1197,29 @@
             <div class="data-table" id="cqiCard" style="margin-top: 16px; display:none;">
 
                 <h3 id="cqiTitle">CQI</h3>
-                <label style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <input type="checkbox" id="cqiShowNotPassOnly" />
-                    Hiển thị danh sách cell không đạt
-                </label>
+
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:20px;
+                    margin-bottom:10px;
+                    flex-wrap:wrap;
+                ">
+                    <!-- Combobox PO -->
+                    <label style="display:flex; align-items:center; gap:6px;">
+                        PO:
+                        <select id="cqiPoFilter" style="padding:4px 8px; border-radius:6px;">
+                            <option value="ALL">Tất cả</option>
+                        </select>
+                    </label>
+
+                    <!-- Checkbox Not Pass -->
+                    <label style="display:flex; align-items:center; gap:6px;">
+                        <input type="checkbox" id="cqiShowNotPassOnly" />
+                        Hiển thị danh sách cell không đạt
+                    </label>
+                </div>
+
                 <div id="cqiTable"></div>
             </div>
 
@@ -5775,7 +5794,7 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
 
         tableEl.innerHTML = "";
 
-        // Gắn listener cho checkbox (chỉ gắn 1 lần)
+        // ===== Checkbox Not Pass: gắn listener 1 lần =====
         const notPassCheckbox = document.getElementById("cqiShowNotPassOnly");
         if (notPassCheckbox && !notPassCheckbox._cqiBound) {
             notPassCheckbox.addEventListener("change", () => {
@@ -5784,6 +5803,16 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
             notPassCheckbox._cqiBound = true;
         }
         const filterNotPass = notPassCheckbox ? notPassCheckbox.checked : false;
+
+        // ===== Combobox filter PO =====
+        const poFilterEl = document.getElementById("cqiPoFilter");
+        if (poFilterEl && !poFilterEl._cqiBound) {
+            poFilterEl.addEventListener("change", () => {
+                renderCqiTable();
+            });
+            poFilterEl._cqiBound = true;
+        }
+        const selectedPo = poFilterEl ? (poFilterEl.value || "ALL") : "ALL";
 
         // Không có dữ liệu => ẩn section
         if (
@@ -5813,6 +5842,47 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
             return;
         }
 
+        // ===== Build danh sách PO cho combobox =====
+        const poSet = new Set();
+        rows.forEach((r) => {
+            const lnbts = String(
+                r["LNBTS Name"] ??
+                r["LNBTS name"] ??
+                r["Site Name"] ??
+                ""
+            ).trim();
+
+            if (!lnbts) return;
+
+            let po = "";
+            if (typeof getPoFromProgress === "function") {
+                po = getPoFromProgress(lnbts) || "";
+            }
+            if (po) poSet.add(po);
+        });
+
+        if (poFilterEl) {
+            const currentVal = selectedPo || "ALL";
+            poFilterEl.innerHTML = '<option value="ALL">Tất cả</option>';
+
+            Array.from(poSet)
+                .sort()
+                .forEach((p) => {
+                    const opt = document.createElement("option");
+                    opt.value = p;
+                    opt.textContent = p;
+                    poFilterEl.appendChild(opt);
+                });
+
+            // Giữ lại lựa chọn trước đó nếu còn tồn tại
+            if (poFilterEl.querySelector(`option[value="${currentVal}"]`)) {
+                poFilterEl.value = currentVal;
+            } else {
+                poFilterEl.value = "ALL";
+            }
+        }
+
+        // ===== Render bảng =====
         let html = "";
         html += '<div style="max-height:700px;overflow:auto;">';
         html += '<table class="progress-table">';
@@ -5863,6 +5933,11 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
             let po = "";
             if (typeof getPoFromProgress === "function" && lnbts) {
                 po = getPoFromProgress(lnbts) || "";
+            }
+
+            // Lọc theo PO nếu combobox chọn khác "ALL"
+            if (selectedPo !== "ALL" && po !== selectedPo) {
+                return;
             }
 
             // Area = vlookup Province -> Area từ KPI Threshhold (sheet "Province Area")
@@ -5975,146 +6050,146 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
                 });
         }
     }
+        
+    function renderLatestKpiTable() {
+        const tableCard = document.getElementById("latestTableCard");
+        const tableDiv = document.getElementById("latestTable");
+        const titleEl = document.getElementById("latestTableTitle");
 
-        function renderLatestKpiTable() {
-    const tableCard = document.getElementById("latestTableCard");
-    const tableDiv = document.getElementById("latestTable");
-    const titleEl = document.getElementById("latestTableTitle");
 
-
-    if (!tableCard || !tableDiv || !titleEl) return;
-    if (!currentData || !currentData.length || !periodColumnName) {
-        tableCard.style.display = "none";
-        return;
-    }
-
-    // Nếu chưa load KPI Threshhold thì trigger load & render lại sau khi xong
-    if (kpiThresholdMap === null) {
-        ensureKpiThresholdsLoaded().then(() => {
-            if (tableCard && tableCard.style.display !== "none") {
-                renderLatestKpiTable();
-            }
-        });
-    }
-
-    const latestLabel = getLatestPeriodLabel(currentData);
-    if (!latestLabel) {
-        tableCard.style.display = "none";
-        return;
-    }
-
-    const activeKpiCols = numericColumns.filter((col) =>
-        selectedKpiColumns.has(col)
-    );
-
-    if (!activeKpiCols.length) {
-        titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có KPI nào được chọn`;
-        tableDiv.innerHTML = "";
-        tableCard.style.display = "block";
-        return;
-    }
-
-    const periodCol = periodColumnName;
-    const wsNameCol = getCellNameColumn(); // 👉 Bảng “KPI thời điểm gần nhất” cũng theo CELL_NAME
-
-    const byWs = {};
-
-    currentData.forEach((row) => {
-        const wsName = row[wsNameCol];
-        const rawPeriod = row[periodCol];
-        if (!wsName || rawPeriod === undefined || rawPeriod === null) return;
-
-        const norm = normalizePeriod(rawPeriod);
-        if (!norm || norm.label !== latestLabel) return;
-
-        const wsStr = String(wsName);
-        const wsLower = wsStr.toLowerCase();
-
-        if (!wsPassesTextFilters(wsLower)) return;
-        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr))
+        if (!tableCard || !tableDiv || !titleEl) return;
+        if (!currentData || !currentData.length || !periodColumnName) {
+            tableCard.style.display = "none";
             return;
+        }
 
-        if (!byWs[wsStr]) byWs[wsStr] = {};
+        // Nếu chưa load KPI Threshhold thì trigger load & render lại sau khi xong
+        if (kpiThresholdMap === null) {
+            ensureKpiThresholdsLoaded().then(() => {
+                if (tableCard && tableCard.style.display !== "none") {
+                    renderLatestKpiTable();
+                }
+            });
+        }
 
-        activeKpiCols.forEach((col) => {
-            const v = row[col];
-            const num = parseFloat(v);
-            if (!isNaN(num)) {
-                const scale = getKpiScaleForColumn(col);
-                byWs[wsStr][col] = num * scale;
-            }
+        const latestLabel = getLatestPeriodLabel(currentData);
+        if (!latestLabel) {
+            tableCard.style.display = "none";
+            return;
+        }
+
+        const activeKpiCols = numericColumns.filter((col) =>
+            selectedKpiColumns.has(col)
+        );
+
+        if (!activeKpiCols.length) {
+            titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có KPI nào được chọn`;
+            tableDiv.innerHTML = "";
+            tableCard.style.display = "block";
+            return;
+        }
+
+        const periodCol = periodColumnName;
+        const wsNameCol = getCellNameColumn(); // 👉 Bảng “KPI thời điểm gần nhất” cũng theo CELL_NAME
+
+        const byWs = {};
+
+        currentData.forEach((row) => {
+            const wsName = row[wsNameCol];
+            const rawPeriod = row[periodCol];
+            if (!wsName || rawPeriod === undefined || rawPeriod === null) return;
+
+            const norm = normalizePeriod(rawPeriod);
+            if (!norm || norm.label !== latestLabel) return;
+
+            const wsStr = String(wsName);
+            const wsLower = wsStr.toLowerCase();
+
+            if (!wsPassesTextFilters(wsLower)) return;
+            if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr))
+                return;
+
+            if (!byWs[wsStr]) byWs[wsStr] = {};
+
+            activeKpiCols.forEach((col) => {
+                const v = row[col];
+                const num = parseFloat(v);
+                if (!isNaN(num)) {
+                    const scale = getKpiScaleForColumn(col);
+                    byWs[wsStr][col] = num * scale;
+                }
+            });
         });
-    });
 
-    const wsList = Object.keys(byWs).sort();
-    if (wsList.length === 0) {
-        titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có dữ liệu khớp bộ lọc`;
-        tableDiv.innerHTML = "";
-        tableCard.style.display = "block";
-        return;
-    }
+        const wsList = Object.keys(byWs).sort();
+        if (wsList.length === 0) {
+            titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel}) – không có dữ liệu khớp bộ lọc`;
+            tableDiv.innerHTML = "";
+            tableCard.style.display = "block";
+            return;
+        }
 
-      titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
+        titleEl.textContent = `Bảng KPI thời điểm gần nhất (${latestLabel})`;
 
-    // Tạo bảng và bọc trong wrapper để có scroll dọc + cố định header/cột 1
-    let html = '<table id="latestKpiTable"><thead><tr>';
-    html +=
-        '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">Name</th>';
-    activeKpiCols.forEach((col) => {
-        html += `<th style="background:#4b5563; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">${col}</th>`;
-    });
-    html += "</tr></thead><tbody>";
-
-    wsList.forEach((ws) => {
-        html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600; white-space:nowrap;">${ws}</td>`;
+        // Tạo bảng và bọc trong wrapper để có scroll dọc + cố định header/cột 1
+        let html = '<table id="latestKpiTable"><thead><tr>';
+        html +=
+            '<th style="background:#1f2937; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">Name</th>';
         activeKpiCols.forEach((col) => {
-            const v = byWs[ws][col];
-            let display = "";
-            if (typeof v === "number" && !isNaN(v)) {
-                display = Math.round(v * 1000) / 1000;
-            }
+            html += `<th style="background:#4b5563; color:#fff; padding:6px 8px; border:1px solid #e5e7eb;">${col}</th>`;
+        });
+        html += "</tr></thead><tbody>";
 
-            // ==== Áp dụng ngưỡng từ KPI Threshhold ====
-            let condStyle = "";
-            if (typeof v === "number" && !isNaN(v) && kpiThresholdMap) {
-                const thr = getThresholdForKpiColumn(col);
-                if (thr) {
-                    const num = v;
-                    const t = thr.value;
-                    const op = thr.op;
-                    let isBad = false;
+        wsList.forEach((ws) => {
+            html += `<tr><td style="padding:6px 8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600; white-space:nowrap;">${ws}</td>`;
+            activeKpiCols.forEach((col) => {
+                const v = byWs[ws][col];
+                let display = "";
+                if (typeof v === "number" && !isNaN(v)) {
+                    display = Math.round(v * 1000) / 1000;
+                }
 
-                    if (op === "<") {
-                        isBad = num < t;
-                    } else if (op === ">") {
-                        isBad = num > t;
-                    } else if (op === "<=") {
-                        isBad = num <= t;
-                    } else if (op === ">=") {
-                        isBad = num >= t;
-                    } else if (op === "=" || op === "==") {
-                        isBad = num === t;
-                    }
+                // ==== Áp dụng ngưỡng từ KPI Threshhold ====
+                let condStyle = "";
+                if (typeof v === "number" && !isNaN(v) && kpiThresholdMap) {
+                    const thr = getThresholdForKpiColumn(col);
+                    if (thr) {
+                        const num = v;
+                        const t = thr.value;
+                        const op = thr.op;
+                        let isBad = false;
 
-                    // Nếu vi phạm điều kiện ⇒ tô đỏ
-                    if (isBad) {
-                        condStyle =
-                            "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                        if (op === "<") {
+                            isBad = num < t;
+                        } else if (op === ">") {
+                            isBad = num > t;
+                        } else if (op === "<=") {
+                            isBad = num <= t;
+                        } else if (op === ">=") {
+                            isBad = num >= t;
+                        } else if (op === "=" || op === "==") {
+                            isBad = num === t;
+                        }
+
+                        // Nếu vi phạm điều kiện ⇒ tô đỏ
+                        if (isBad) {
+                            condStyle =
+                                "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                        }
                     }
                 }
-            }
 
-            const baseStyle =
-                "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
-            html += `<td style="${baseStyle}${condStyle}">${display}</td>`;
+                const baseStyle =
+                    "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+                html += `<td style="${baseStyle}${condStyle}">${display}</td>`;
+            });
+            html += "</tr>";
         });
-        html += "</tr>";
-    });
 
-    html += "</tbody></table>";
-    tableDiv.innerHTML = `<div id="latestTableWrapper">${html}</div>`;
-    tableCard.style.display = "block";
-}
+        html += "</tbody></table>";
+        tableDiv.innerHTML = `<div id="latestTableWrapper">${html}</div>`;
+        tableCard.style.display = "block";
+    }
 
         async function handleEmailSubmit(e) {
             e.preventDefault();
@@ -7221,9 +7296,7 @@ if (idxSiteName !== -1) {
 
 
                 statusEl.textContent =
-                    "Đã đọc " +
-                    dataRows.length +
-                    " dòng từ sheet CQT-SSV trong file " +
+                    "File " +
                     file.name +
                     ".";
             } catch (err) {
