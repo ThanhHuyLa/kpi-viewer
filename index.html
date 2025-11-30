@@ -5768,216 +5768,214 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
 }
 
 
-        async function renderCqiTable() {
-            const card    = document.getElementById("cqiCard");
-            const tableEl = document.getElementById("cqiTable");
-            if (!card || !tableEl) return;
+    async function renderCqiTable() {
+        const card    = document.getElementById("cqiCard");
+        const tableEl = document.getElementById("cqiTable");
+        if (!card || !tableEl) return;
 
-            tableEl.innerHTML = "";
+        tableEl.innerHTML = "";
 
-            // Không có dữ liệu => ẩn section
-            if (
-                !workbook &&
-                !(typeof mergedDataPerSheet !== "undefined" && mergedDataPerSheet)
-            ) {
-                card.style.display = "none";
-                return;
-            }
-
-            let rows = [];
-
-            // Ưu tiên dữ liệu đã merge sẵn (nhiều file)
-            if (
-                typeof mergedDataPerSheet !== "undefined" &&
-                mergedDataPerSheet &&
-                mergedDataPerSheet["CQI"]
-            ) {
-                rows = mergedDataPerSheet["CQI"];
-            } else if (workbook && workbook.Sheets && workbook.Sheets["CQI"]) {
-                const sheet = workbook.Sheets["CQI"];
-                rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-            }
-
-            if (!rows || !rows.length) {
-                card.style.display = "none";
-                return;
-            }
-
-            let html = "";
-            html += '<div style="max-height:800px;overflow:auto;">';
-            html += '<table class="progress-table">';
-            html += "<thead><tr>";
-            html += "<th>PO</th>";
-            html += "<th>Province</th>";
-            html += "<th>Area</th>";
-            html += "<th>LNBTS name</th>";
-            html += "<th>LNCEL name</th>";
-            html += "<th>Config</th>";
-            html += "<th>Average CQI</th>";
-            html += "<th>Target</th>";
-            html += "<th>Evaluate</th>";
-            html += "</tr></thead><tbody>";
-
-            rows.forEach((r) => {
-                const lnbts = String(
-                    r["LNBTS Name"] ??
-                    r["LNBTS name"] ??
-                    r["Site Name"] ??
-                    ""
-                ).trim();
-
-                const lncel = String(
-                    r["LNCEL name"] ??
-                    r["LNCEL Name"] ??
-                    ""
-                ).trim();
-
-                // Average CQI: chỉ lấy dòng có giá trị số, và làm tròn 3 chữ số thập phân
-                const avgRaw    = r["Average CQI"] ?? r["Average CQI "] ?? "";
-                const avgNumRaw = Number(avgRaw);
-                if (isNaN(avgNumRaw)) {
-                    // Bỏ qua các dòng không có Average CQI hợp lệ (hàng tổng / ghi chú...)
-                    return;
-                }
-                const avgNum = Math.round(avgNumRaw * 1000) / 1000;
-                const avgCqi = avgNum.toFixed(3);
-
-                // Province = 3 ký tự cuối LNCEL (sau khi trim để bỏ khoảng trắng)
-                const lncelTrim = (lncel || "").trim();
-                const province =
-                    lncelTrim && lncelTrim.length >= 3
-                        ? lncelTrim.slice(-3).toUpperCase()
-                        : "";
-
-                // PO = vlookup theo LNBTS từ file tiến độ (CQT-SSV)
-                let po = "";
-                if (typeof getPoFromProgress === "function" && lnbts) {
-                    po = getPoFromProgress(lnbts) || "";
-                }
-
-                // Area = vlookup Province -> Area từ KPI Threshhold (sheet "Province Area")
-                let area = "";
-                if (province && provinceAreaMap && Object.keys(provinceAreaMap).length) {
-                    const pKey = province.toUpperCase().trim();
-
-                    // tra trực tiếp
-                    area = provinceAreaMap[pKey] || "";
-
-                    // fallback: duyệt toàn bộ key, so sánh sau khi trim + upper
-                    if (!area) {
-                        for (const k in provinceAreaMap) {
-                            if (!Object.prototype.hasOwnProperty.call(provinceAreaMap, k)) continue;
-                            if (k.trim().toUpperCase() === pKey) {
-                                area = provinceAreaMap[k];
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // debug 1 dòng đầu tiên để chắc ăn
-                if (!window.__cqiAreaDebugLogged && province) {
-                    console.log("CQI row province =", province, " => area =", area);
-                    window.__cqiAreaDebugLogged = true;
-                }
-
-                // ID = mid(LNCEL NAME,10,3)  (vị trí 10-12 => index 9..11)
-                let id = "";
-                if (lncel && lncel.length >= 12) {
-                    id = lncel.substring(9, 12).toUpperCase();
-                }
-
-                let config        = "";
-                let targetNum     = null;
-                let targetDisplay = "";
-
-                if (id && cqiConfigMap && cqiConfigMap[id]) {
-                    config = cqiConfigMap[id].config || "";
-
-                    const rawTarget = cqiConfigMap[id].target;
-                    const tNumRaw   = Number(rawTarget);
-                    if (!isNaN(tNumRaw)) {
-                        targetNum     = Math.round(tNumRaw * 10) / 10;
-                        targetDisplay = targetNum.toFixed(1);
-                    }
-                }
-
-                // Đánh giá: Average CQI >= Target => Pass, ngược lại Not Pass
-                let evaluate = "";
-                let evalStyle = "";
-
-                if (targetNum !== null) {
-                    const isPass = avgNum >= targetNum;
-                    evaluate = isPass ? "Pass" : "Not Pass";
-
-                    if (!isPass) {
-                        evalStyle = "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                    }
-                }
-
-                // Lọc Not Pass nếu checkbox bật
-                const filterNotPass = document.getElementById("cqiShowNotPassOnly")?.checked;
-                if (filterNotPass && evaluate !== "Not Pass") {
-                    return; // bỏ dòng này -> không đưa vào html
-                }
-
-                document.getElementById("cqiShowNotPassOnly").addEventListener("change", () => {
-                    renderCqiTable();
-                });
-
-                
-
-                html += "<tr>";
-                html += "<td>" + (po || "") + "</td>";
-                html += "<td>" + (province || "") + "</td>";
-                html += "<td>" + (area || "") + "</td>";
-                html += "<td>" + (lnbts || "") + "</td>";
-                html += "<td>" + (lncel || "") + "</td>";
-                html += "<td>" + (config || "") + "</td>";
-                html += "<td>" + avgCqi + "</td>";
-                html += "<td>" + (targetDisplay || "") + "</td>";
-                html += `<td style="${evalStyle}">${evaluate}</td>`;
-                html += "</tr>";
+        // Gắn listener cho checkbox (chỉ gắn 1 lần)
+        const notPassCheckbox = document.getElementById("cqiShowNotPassOnly");
+        if (notPassCheckbox && !notPassCheckbox._cqiBound) {
+            notPassCheckbox.addEventListener("change", () => {
+                renderCqiTable();
             });
+            notPassCheckbox._cqiBound = true;
+        }
+        const filterNotPass = notPassCheckbox ? notPassCheckbox.checked : false;
 
-            html += "</tbody></table></div>";
-
-            // Render bảng CQI trước
-            tableEl.innerHTML   = html;
-            card.style.display  = "block";
-
-            // ============================================
-            // SAU KHI render xong bảng CQI mới load Province Area
-            // ============================================
-            const needProvinceArea =
-                !provinceAreaMap || !Object.keys(provinceAreaMap).length;
-
-            if (needProvinceArea && typeof ensureKpiThresholdsLoaded === "function") {
-                ensureKpiThresholdsLoaded()
-                    .then(() => {
-                        // Sau khi load xong KPI Threshhold:
-                        //   - provinceAreaMap đã có dữ liệu
-                        //   - cqiConfigMap, kpiThresholdMap cũng được cập nhật
-                        // Render lại bảng CQI nếu section vẫn đang hiển thị
-                        if (
-                            card &&
-                            card.style.display !== "none" &&
-                            provinceAreaMap &&
-                            Object.keys(provinceAreaMap).length
-                        ) {
-                            renderCqiTable();
-                        }
-                    })
-                    .catch((e) => {
-                        console.warn(
-                            "Không load được KPI Threshhold sau khi render CQI:",
-                            e
-                        );
-                    });
-            }
+        // Không có dữ liệu => ẩn section
+        if (
+            !workbook &&
+            !(typeof mergedDataPerSheet !== "undefined" && mergedDataPerSheet)
+        ) {
+            card.style.display = "none";
+            return;
         }
 
-   
+        let rows = [];
+
+        // Ưu tiên dữ liệu đã merge sẵn (nhiều file)
+        if (
+            typeof mergedDataPerSheet !== "undefined" &&
+            mergedDataPerSheet &&
+            mergedDataPerSheet["CQI"]
+        ) {
+            rows = mergedDataPerSheet["CQI"];
+        } else if (workbook && workbook.Sheets && workbook.Sheets["CQI"]) {
+            const sheet = workbook.Sheets["CQI"];
+            rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        }
+
+        if (!rows || !rows.length) {
+            card.style.display = "none";
+            return;
+        }
+
+        let html = "";
+        html += '<div style="max-height:800px;overflow:auto;">';
+        html += '<table class="progress-table">';
+        html += "<thead><tr>";
+        html += "<th>PO</th>";
+        html += "<th>Province</th>";
+        html += "<th>Area</th>";
+        html += "<th>LNBTS name</th>";
+        html += "<th>LNCEL name</th>";
+        html += "<th>Config</th>";
+        html += "<th>Average CQI</th>";
+        html += "<th>Target</th>";
+        html += "<th>Evaluate</th>";
+        html += "</tr></thead><tbody>";
+
+        rows.forEach((r) => {
+            const lnbts = String(
+                r["LNBTS Name"] ??
+                r["LNBTS name"] ??
+                r["Site Name"] ??
+                ""
+            ).trim();
+
+            const lncel = String(
+                r["LNCEL name"] ??
+                r["LNCEL Name"] ??
+                ""
+            ).trim();
+
+            // Average CQI: chỉ lấy dòng có giá trị số, và làm tròn 3 chữ số thập phân
+            const avgRaw    = r["Average CQI"] ?? r["Average CQI "] ?? "";
+            const avgNumRaw = Number(avgRaw);
+            if (isNaN(avgNumRaw)) {
+                // Bỏ qua các dòng không có Average CQI hợp lệ (hàng tổng / ghi chú...)
+                return;
+            }
+            const avgNum = Math.round(avgNumRaw * 1000) / 1000;
+            const avgCqi = avgNum.toFixed(3);
+
+            // Province = 3 ký tự cuối LNCEL (sau khi trim để bỏ khoảng trắng)
+            const lncelTrim = (lncel || "").trim();
+            const province =
+                lncelTrim && lncelTrim.length >= 3
+                    ? lncelTrim.slice(-3).toUpperCase()
+                    : "";
+
+            // PO = vlookup theo LNBTS từ file tiến độ (CQT-SSV)
+            let po = "";
+            if (typeof getPoFromProgress === "function" && lnbts) {
+                po = getPoFromProgress(lnbts) || "";
+            }
+
+            // Area = vlookup Province -> Area từ KPI Threshhold (sheet "Province Area")
+            let area = "";
+            if (province && provinceAreaMap && Object.keys(provinceAreaMap).length) {
+                const pKey = province.toUpperCase().trim();
+
+                // tra trực tiếp
+                area = provinceAreaMap[pKey] || "";
+
+                // fallback: duyệt toàn bộ key, so sánh sau khi trim + upper
+                if (!area) {
+                    for (const k in provinceAreaMap) {
+                        if (!Object.prototype.hasOwnProperty.call(provinceAreaMap, k)) continue;
+                        if (k.trim().toUpperCase() === pKey) {
+                            area = provinceAreaMap[k];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // debug 1 dòng đầu tiên để chắc ăn
+            if (!window.__cqiAreaDebugLogged && province) {
+                console.log("CQI row province =", province, " => area =", area);
+                window.__cqiAreaDebugLogged = true;
+            }
+
+            // ID = mid(LNCEL NAME,10,3)  (vị trí 10-12 => index 9..11)
+            let id = "";
+            if (lncel && lncel.length >= 12) {
+                id = lncel.substring(9, 12).toUpperCase();
+            }
+
+            let config        = "";
+            let targetNum     = null;
+            let targetDisplay = "";
+
+            if (id && cqiConfigMap && cqiConfigMap[id]) {
+                config = cqiConfigMap[id].config || "";
+
+                const rawTarget = cqiConfigMap[id].target;
+                const tNumRaw   = Number(rawTarget);
+                if (!isNaN(tNumRaw)) {
+                    targetNum     = Math.round(tNumRaw * 10) / 10;
+                    targetDisplay = targetNum.toFixed(1);
+                }
+            }
+
+            // Đánh giá: Average CQI >= Target => Pass, ngược lại Not Pass
+            let evaluate = "";
+            let evalStyle = "";
+
+            if (targetNum !== null) {
+                const isPass = avgNum >= targetNum;
+                evaluate = isPass ? "Pass" : "Not Pass";
+
+                if (!isPass) {
+                    evalStyle = "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                }
+            }
+
+            // Nếu checkbox bật → chỉ giữ Not Pass
+            if (filterNotPass && evaluate !== "Not Pass") {
+                return;
+            }
+
+            html += "<tr>";
+            html += "<td>" + (po || "") + "</td>";
+            html += "<td>" + (province || "") + "</td>";
+            html += "<td>" + (area || "") + "</td>";
+            html += "<td>" + (lnbts || "") + "</td>";
+            html += "<td>" + (lncel || "") + "</td>";
+            html += "<td>" + (config || "") + "</td>";
+            html += "<td>" + avgCqi + "</td>";
+            html += "<td>" + (targetDisplay || "") + "</td>";
+            html += `<td style="${evalStyle}">${evaluate}</td>`;
+            html += "</tr>";
+        });
+
+        html += "</tbody></table></div>";
+
+        // Render bảng CQI
+        tableEl.innerHTML  = html;
+        card.style.display = "block";
+
+        // ============================================
+        // SAU KHI render xong bảng CQI mới load Province Area
+        // ============================================
+        const needProvinceArea =
+            !provinceAreaMap || !Object.keys(provinceAreaMap).length;
+
+        if (needProvinceArea && typeof ensureKpiThresholdsLoaded === "function") {
+            ensureKpiThresholdsLoaded()
+                .then(() => {
+                    if (
+                        card &&
+                        card.style.display !== "none" &&
+                        provinceAreaMap &&
+                        Object.keys(provinceAreaMap).length
+                    ) {
+                        renderCqiTable();
+                    }
+                })
+                .catch((e) => {
+                    console.warn(
+                        "Không load được KPI Threshhold sau khi render CQI:",
+                        e
+                    );
+                });
+        }
+    }
+
         function renderLatestKpiTable() {
     const tableCard = document.getElementById("latestTableCard");
     const tableDiv = document.getElementById("latestTable");
