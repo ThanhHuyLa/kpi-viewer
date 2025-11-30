@@ -1207,7 +1207,6 @@
                 ">
                     <!-- Combobox PO -->
                     <label style="display:flex; align-items:center; gap:6px;">
-                        PO:
                         <select id="cqiPoFilter" style="padding:4px 8px; border-radius:6px;">
                             <option value="ALL">Tất cả</option>
                         </select>
@@ -1220,6 +1219,10 @@
                     </label>
                 </div>
 
+                <!-- Bảng tổng hợp CQI (summary) -->
+                <div id="cqiSummaryTable" style="margin-bottom:8px;"></div>
+
+                <!-- Bảng chi tiết CQI -->
                 <div id="cqiTable"></div>
             </div>
 
@@ -5786,6 +5789,106 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
     console.log("Loaded Province Area count =", Object.keys(provinceAreaMap).length);
 }
 
+        function buildCqiSummaryFromDom() {
+            const summaryEl = document.getElementById("cqiSummaryTable");
+            const container = document.getElementById("cqiTable");
+
+            if (!summaryEl || !container) return;
+
+            const table = container.querySelector("table");
+            if (!table) {
+                summaryEl.innerHTML = "";
+                return;
+            }
+
+            const bodyRows = table.querySelectorAll("tbody tr");
+            if (!bodyRows.length) {
+                summaryEl.innerHTML = "";
+                return;
+            }
+
+            const summaryMap = {};
+
+            bodyRows.forEach((tr) => {
+                const cells = tr.querySelectorAll("td");
+                // Cần đủ 9 cột: PO, Province, Area, LNBTS, LNCEL, Config, Avg, Target, Evaluate
+                if (cells.length < 9) return;
+
+                const po       = cells[0].textContent.trim();
+                const province = cells[1].textContent.trim();
+                const area     = cells[2].textContent.trim();
+                const target   = cells[7].textContent.trim();
+                const evalText = cells[8].textContent.trim();
+
+                const key = po + "||" + province + "||" + area;
+
+                if (!summaryMap[key]) {
+                    summaryMap[key] = {
+                        po,
+                        province,
+                        area,
+                        target,
+                        total: 0,
+                        bad: 0
+                    };
+                }
+
+                summaryMap[key].total += 1;
+                if (/not\s*pass/i.test(evalText)) {
+                    summaryMap[key].bad += 1;
+                }
+            });
+
+            const groups = Object.values(summaryMap);
+            if (!groups.length) {
+                summaryEl.innerHTML = "";
+                return;
+            }
+
+            // Sắp xếp theo PO rồi Province cho đẹp
+            groups.sort((a, b) => {
+                if (a.po !== b.po) return a.po.localeCompare(b.po);
+                return a.province.localeCompare(b.province);
+            });
+
+            let html = '<table class="progress-table">';
+            html += "<thead><tr>";
+            html += "<th>PO</th>";
+            html += "<th>Province</th>";
+            html += "<th>Area</th>";
+            html += "<th>Target</th>";
+            html += "<th>Total Cell</th>";
+            html += "<th>Bad Cell</th>";
+            html += "<th>Poor Cell (%)</th>";
+            html += "<th>Evaluate</th>";
+            html += "</tr></thead><tbody>";
+
+            groups.forEach((g) => {
+                const total   = g.total;
+                const bad     = g.bad;
+                const poorPct = total ? (bad * 100 / total) : 0;
+                const poorStr = total
+                    ? poorPct.toFixed(2) + "%"
+                    : "-";
+                const evalStr = bad > 0 ? "Not Pass" : "Pass";
+                const evalColor = evalStr === "Not Pass" ? "#b91c1c" : "#15803d";
+
+                html += "<tr>";
+                html += `<td>${g.po || ""}</td>`;
+                html += `<td>${g.province || ""}</td>`;
+                html += `<td>${g.area || ""}</td>`;
+                html += `<td>${g.target || ""}</td>`;
+                html += `<td style="text-align:right;">${total}</td>`;
+                html += `<td style="text-align:right;">${bad}</td>`;
+                html += `<td style="text-align:right;">${poorStr}</td>`;
+                html += `<td style="font-weight:bold; color:${evalColor};">${evalStr}</td>`;
+                html += "</tr>";
+            });
+
+            html += "</tbody></table>";
+
+            summaryEl.innerHTML = html;
+        }
 
     async function renderCqiTable() {
         const card    = document.getElementById("cqiCard");
@@ -6049,6 +6152,7 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
                     );
                 });
         }
+        buildCqiSummaryFromDom();
     }
         
     function renderLatestKpiTable() {
