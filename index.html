@@ -742,7 +742,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.48
+                Version: v1.4.0.50
             </div>
         </div>
 
@@ -1344,7 +1344,7 @@
                                 Cell Non-Traffic
                             </label>
                             <label>
-                                <input type="checkbox" class="email-section-checkbox" value="cqi" checked>
+                                <input type="checkbox" class="email-section-checkbox" value="cqiSummary" checked>
                                 CQI Summary
                             </label>
                         </div>
@@ -5197,81 +5197,86 @@ if (showTargetLine) {
         // Áp dụng filter Province + các điều kiện KPI
         function applyWorstCellValueFilters(rowsArr, orderedCols) {
 
-    // ===== 1. XÁC ĐỊNH CỘT NRCEL / NRCELL ĐỂ LẤY PROVINCE =====
-    const nrCellColKey =
-        orderedCols.find((col) => {
-            const lower = String(col).toLowerCase();
-            return lower.includes("nrcel") || lower.includes("nrcell");
-        }) || null;
+        // ===== 1. XÁC ĐỊNH CỘT NRCEL / LNCEL ĐỂ LẤY PROVINCE =====
+            const nrCellColKey =
+                orderedCols.find((col) => {
+                    const lower = String(col).toLowerCase();
+                    return (
+                        lower.includes("nrcel")  ||  // 5G: NRCEL / NRCELL
+                        lower.includes("nrcell") ||
+                        lower.includes("lncel")  ||  // 4G: LNCEL / LNCEL name
+                        lower.includes("lncell")
+                    );
+                }) || null;
 
-    // ===== 2. LỌC PROVINCE =====
-    const provinceRaw =
-        (document.getElementById("worstProvinceFilter")?.value || "")
-            .trim()
-            .toLowerCase();
+            // ===== 2. LỌC PROVINCE =====
+            const provinceRaw =
+                (document.getElementById("worstProvinceFilter")?.value || "")
+                    .trim()
+                    .toLowerCase();
 
-    let filtered = rowsArr;
+            let filtered = rowsArr;
 
-    if (provinceRaw && nrCellColKey) {
-        const provinceList = provinceRaw
-            .split(";")
-            .map((x) => x.trim().toLowerCase())
-            .filter(Boolean);
+            if (provinceRaw && nrCellColKey) {
+                const provinceList = provinceRaw
+                    .split(";")
+                    .map((x) => x.trim().toLowerCase())
+                    .filter(Boolean);
 
-        if (provinceList.length) {
-            // Province trong bảng = 3 ký tự cuối của cột NRCEL
-            filtered = filtered.filter((row) => {
-                const cell = String(row[nrCellColKey] || "").trim();
-                const prov = cell.length >= 3
-                    ? cell.slice(-3).toLowerCase()
-                    : cell.toLowerCase();
-                return provinceList.some((p) => prov.includes(p));
-            });
-        }
-    }
-    // Nếu không tìm thấy cột NRCEL/NRCELL thì bỏ qua filter Province
+                if (provinceList.length) {
+                    // Province trong bảng = 3 ký tự cuối của cột CELL
+                    filtered = filtered.filter((row) => {
+                        const cell = String(row[nrCellColKey] || "").trim();
+                        const prov = cell.length >= 3
+                            ? cell.slice(-3).toLowerCase()
+                            : cell.toLowerCase();
+                        return provinceList.some((p) => prov.includes(p));
+                    });
+                }
+            }
+            // Nếu không tìm thấy cột NRCEL/NRCELL thì bỏ qua filter Province
 
-    // ===== 3. NẾU KHÔNG CÓ KPI RULE → TRẢ VỀ LUÔN =====
-    if (!worstCellFilterRules.length) return filtered;
+            // ===== 3. NẾU KHÔNG CÓ KPI RULE → TRẢ VỀ LUÔN =====
+            if (!worstCellFilterRules.length) return filtered;
 
-    // Lọc rule hợp lệ
-    const rules = worstCellFilterRules.filter(
-        (r) => r.colKey && r.op && r.value !== ""
-    );
-    if (!rules.length) return filtered;
+            // Lọc rule hợp lệ
+            const rules = worstCellFilterRules.filter(
+                (r) => r.colKey && r.op && r.value !== ""
+            );
+            if (!rules.length) return filtered;
 
-    // ===== 4. LỌC THEO KPIs =====
-    const logic = worstCellFilterLogic === "OR" ? "OR" : "AND";
+            // ===== 4. LỌC THEO KPIs =====
+            const logic = worstCellFilterLogic === "OR" ? "OR" : "AND";
 
-    function toNum(v) {
-        if (v === null || v === undefined || v === "") return null;
-        const n = parseFloat(String(v).replace(",", "."));
-        return isNaN(n) ? null : n;
-    }
-
-    return filtered.filter((row) => {
-        let okAny = false;
-
-        for (const r of rules) {
-            const num = toNum(row[r.colKey]);
-            const thr = toNum(r.value);
-
-            let ok = false;
-            if (num !== null && thr !== null) {
-                if (r.op === "<") ok = num < thr;
-                else if (r.op === "<=") ok = num <= thr;
-                else if (r.op === ">") ok = num > thr;
-                else if (r.op === ">=") ok = num >= thr;
-                else if (r.op === "=" || r.op === "==") ok = num === thr;
+            function toNum(v) {
+                if (v === null || v === undefined || v === "") return null;
+                const n = parseFloat(String(v).replace(",", "."));
+                return isNaN(n) ? null : n;
             }
 
-            if (logic === "AND" && !ok) return false;
-            if (logic === "OR" && ok) okAny = true;
-        }
+            return filtered.filter((row) => {
+                let okAny = false;
 
-        return logic === "AND" ? true : okAny;
-    });
-}
+                for (const r of rules) {
+                    const num = toNum(row[r.colKey]);
+                    const thr = toNum(r.value);
+
+                    let ok = false;
+                    if (num !== null && thr !== null) {
+                        if (r.op === "<") ok = num < thr;
+                        else if (r.op === "<=") ok = num <= thr;
+                        else if (r.op === ">") ok = num > thr;
+                        else if (r.op === ">=") ok = num >= thr;
+                        else if (r.op === "=" || r.op === "==") ok = num === thr;
+                    }
+
+                    if (logic === "AND" && !ok) return false;
+                    if (logic === "OR" && ok) okAny = true;
+                }
+
+                return logic === "AND" ? true : okAny;
+            });
+        }
 
         function renderWorstCellTable() {
             const worstCard    = document.getElementById("worstCellCard");
@@ -6679,6 +6684,9 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                     el = document.getElementById("excelTableCard");
                 } else if (key === "charts") {
                     el = document.getElementById("chartsContainer");
+                } else if (key === "cqiSummary") {
+                    // ✅ THÊM: card CQI Summary
+                    el = document.getElementById("cqiCard");
                 } else if (key === "worst") {
                     el = document.getElementById("worstCellCard");
                 } else if (key === "nonTraffic") {
@@ -6968,8 +6976,10 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             if (key === "excel") {
                 el = document.getElementById("excelTableCard");
             } else if (key === "progress") {
-                // card Tiến độ đo kiểm ở trên cùng
                 el = document.getElementById("progressCard");
+            } else if (key === "cqiSummary") {
+                // ✅ THÊM: card CQI Summary
+                el = document.getElementById("cqiCard");
             } else if (key === "worst") {
                 el = document.getElementById("worstCellCard");
             } else if (key === "nonTraffic") {
@@ -6986,6 +6996,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             }
             return "";
         }
+
 
         async function captureSectionCardAsPng(key) {
             let target = null;
@@ -7028,13 +7039,14 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 titleText = t ? t.textContent.trim() : "KPI thời điểm gần nhất";
 
             } else if (key === "cqiSummary") {
-                // ✅ CQI Summary – CHỤP CHÍNH XÁC BẢNG cqiSummaryTable
-                target = document.getElementById("cqiSummaryTable");
+                // ✅ THÊM: Chụp đúng TABLE trong CQI Summary
+                const wrapper = document.getElementById("cqiSummaryTable");
+                const tableEl = wrapper ? wrapper.querySelector("table") : null;
 
-                // nếu bạn có title riêng thì dùng, không thì fallback text mặc định
-                const t =
-                    document.getElementById("cqiSummaryTitle") ||
-                    document.querySelector("#cqiCard h3");
+                // nếu có table thì chụp table, không thì fallback về wrapper
+                target = tableEl || wrapper;
+
+                const t = document.querySelector("#cqiCard h3");
                 titleText = t ? t.textContent.trim() : "CQI Summary";
             }
 
@@ -7092,288 +7104,288 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
         // cho cả TIÊU ĐỀ và NỘI DUNG, nhưng KHÔNG thay trong textbox.
         async function handleExportEmlWithCharts() {
-    const statusEl = document.getElementById("emailStatus");
-    if (statusEl) {
-        statusEl.textContent = "";
-        statusEl.className = "email-status";
-    }
+            const statusEl = document.getElementById("emailStatus");
+            if (statusEl) {
+                statusEl.textContent = "";
+                statusEl.className = "email-status";
+            }
 
-    const to = (document.getElementById("emailTo")?.value || "").trim();
+            const to = (document.getElementById("emailTo")?.value || "").trim();
 
-    // Tiêu đề gốc (có thể chứa placeholder)
-    const subjectRaw =
-        (document.getElementById("emailSubject")?.value || "").trim() ||
-        "KPI Report";
+            // Tiêu đề gốc (có thể chứa placeholder)
+            const subjectRaw =
+                (document.getElementById("emailSubject")?.value || "").trim() ||
+                "KPI Report";
 
-    // ==== 1. Lấy template gốc trong textbox (vẫn còn placeholder) ====
-    const messageRaw = document.getElementById("emailMessage")?.value || "";
+            // ==== 1. Lấy template gốc trong textbox (vẫn còn placeholder) ====
+            const messageRaw = document.getElementById("emailMessage")?.value || "";
 
-    // ==== 2. Tính giá trị động cho placeholder ====
-    let latestStr = "";
-    let latestDateObj = null;
-    if (typeof getLatestDateFromCurrentData === "function") {
-        latestDateObj = getLatestDateFromCurrentData();
-        if (latestDateObj) {
-            latestStr = formatDateDDMMYYYY(latestDateObj);
-        }
-    }
+            // ==== 2. Tính giá trị động cho placeholder ====
+            let latestStr = "";
+            let latestDateObj = null;
+            if (typeof getLatestDateFromCurrentData === "function") {
+                latestDateObj = getLatestDateFromCurrentData();
+                if (latestDateObj) {
+                    latestStr = formatDateDDMMYYYY(latestDateObj);
+                }
+            }
 
-    const poFilterEl = document.getElementById("progressPOFilter");
-    const selectedPo = poFilterEl ? poFilterEl.value : "ALL";
+            const poFilterEl = document.getElementById("progressPOFilter");
+            const selectedPo = poFilterEl ? poFilterEl.value : "ALL";
 
-    let label = "";
-    let total = 0;
-    let onair = 0;
+            let label = "";
+            let total = 0;
+            let onair = 0;
 
-    if (Array.isArray(progressFullData) && progressFullData.length) {
-        if (!selectedPo || selectedPo === "ALL") {
-            // Tất cả PO
-            label = "Dự án";
-            progressFullData.forEach((g) => {
-                total += g.total || 0;
-                onair += g.onair || 0;
-            });
-        } else {
-            // 1 PO cụ thể
-            const filtered = progressFullData.filter((g) => g.po === selectedPo);
-            if (filtered.length) {
-                label = selectedPo;
-                filtered.forEach((g) => {
-                    total += g.total || 0;
-                    onair += g.onair || 0;
+            if (Array.isArray(progressFullData) && progressFullData.length) {
+                if (!selectedPo || selectedPo === "ALL") {
+                    // Tất cả PO
+                    label = "Dự án";
+                    progressFullData.forEach((g) => {
+                        total += g.total || 0;
+                        onair += g.onair || 0;
+                    });
+                } else {
+                    // 1 PO cụ thể
+                    const filtered = progressFullData.filter((g) => g.po === selectedPo);
+                    if (filtered.length) {
+                        label = selectedPo;
+                        filtered.forEach((g) => {
+                            total += g.total || 0;
+                            onair += g.onair || 0;
+                        });
+                    }
+                }
+            }
+
+            const finalDate  = latestStr || "(ngày gần nhất)";
+            const finalLabel = (label || selectedPo || "").trim() || "(POx)";
+            const finalOnair = total > 0 ? String(onair) : "(Số trạm onair)";
+            const finalTotal = total > 0 ? String(total) : "(Tổng số trạm POx)";
+
+            // ==== 3a. Thay placeholder cho TIÊU ĐỀ (chỉ khi xuất .eml) ====
+            let subjectProcessed = subjectRaw
+                .replace(/\(ngày gần nhất\)/g, finalDate)
+                .replace(/\(POx\)/g, finalLabel)
+                .replace(/\(Số trạm onair\)/g, finalOnair)
+                .replace(/\(Tổng số trạm POx\)/g, finalTotal);
+
+            // ==== 3b. Thay placeholder CHO NỘI DUNG SẼ ĐƯA VÀO EML ====
+            let messageProcessed = messageRaw || "";
+            messageProcessed = messageProcessed
+                .replace(/\(ngày gần nhất\)/g, finalDate)
+                .replace(/\(POx\)/g, finalLabel)
+                .replace(/\(Số trạm onair\)/g, finalOnair)
+                .replace(/\(Tổng số trạm POx\)/g, finalTotal);
+
+            // Convert sang HTML (textbox vẫn giữ template gốc)
+            const messageHtml = escapeHtml(messageProcessed).replace(/\r?\n/g, "<br>");
+
+            // ==== 4. Xử lý phần section/bảng/chart giữ nguyên như cũ ====
+            const checked = new Set(
+                Array.from(
+                    document.querySelectorAll(".email-section-checkbox:checked")
+                ).map((cb) => cb.value)
+            );
+
+            const includeCharts = checked.has("charts");
+            const tablesAsImages =
+                document.getElementById("emailTablesAsImages")?.checked || false;
+
+            let charts = [];
+            if (includeCharts) {
+                charts = await getAllChartPNGs();
+                if (!charts.length && statusEl) {
+                    statusEl.textContent = "⚠️ Không tìm thấy chart nào để xuất.";
+                    statusEl.classList.add("error");
+                }
+            }
+
+            let allImages = [...charts];
+
+            let bodyHtml =
+                '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>' +
+                '<body style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:13px;color:#111827;">';
+
+            // phần mở đầu email
+            bodyHtml += "<p>" + messageHtml + "</p>";
+
+            // 2. Tiến độ đo kiểm
+            if (checked.has("progress")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("progress");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "Tiến Độ Đo Kiểm");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const htmlProgress = getSectionHtmlByKey("progress");
+                    if (htmlProgress) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            htmlProgress;
+                    }
+                }
+            }
+
+            // 1. KPI Overview
+            if (checked.has("excel")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("excel");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "KPI Overview");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const htmlExcel = getSectionHtmlByKey("excel");
+                    if (htmlExcel) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            htmlExcel;
+                    }
+                }
+            }
+
+            // 2. Biểu đồ KPI
+            if (includeCharts && charts.length) {
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    '<h3 style="margin:0 0 8px 0;">Biểu đồ KPI</h3>';
+
+                bodyHtml += '<div style="text-align:left;">';
+
+                charts.forEach((c, idx) => {
+                    if (idx % 2 === 0) {
+                        bodyHtml +=
+                            '<div style="white-space:nowrap; margin-bottom:10px;">';
+                    }
+
+                    bodyHtml += `
+                        <img src="cid:${c.cid}"
+                            style="
+                                display:inline-block;
+                                vertical-align:top;
+                                width:520px;
+                                height:auto;
+                            ">
+                    `;
+
+                    if (idx % 2 === 0 && idx + 1 < charts.length) {
+                        bodyHtml += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+                    }
+
+                    if (idx % 2 === 1 || idx === charts.length - 1) {
+                        bodyHtml += "</div>";
+                    }
                 });
-            }
-        }
-    }
 
-    const finalDate  = latestStr || "(ngày gần nhất)";
-    const finalLabel = (label || selectedPo || "").trim() || "(POx)";
-    const finalOnair = total > 0 ? String(onair) : "(Số trạm onair)";
-    const finalTotal = total > 0 ? String(total) : "(Tổng số trạm POx)";
-
-    // ==== 3a. Thay placeholder cho TIÊU ĐỀ (chỉ khi xuất .eml) ====
-    let subjectProcessed = subjectRaw
-        .replace(/\(ngày gần nhất\)/g, finalDate)
-        .replace(/\(POx\)/g, finalLabel)
-        .replace(/\(Số trạm onair\)/g, finalOnair)
-        .replace(/\(Tổng số trạm POx\)/g, finalTotal);
-
-    // ==== 3b. Thay placeholder CHO NỘI DUNG SẼ ĐƯA VÀO EML ====
-    let messageProcessed = messageRaw || "";
-    messageProcessed = messageProcessed
-        .replace(/\(ngày gần nhất\)/g, finalDate)
-        .replace(/\(POx\)/g, finalLabel)
-        .replace(/\(Số trạm onair\)/g, finalOnair)
-        .replace(/\(Tổng số trạm POx\)/g, finalTotal);
-
-    // Convert sang HTML (textbox vẫn giữ template gốc)
-    const messageHtml = escapeHtml(messageProcessed).replace(/\r?\n/g, "<br>");
-
-    // ==== 4. Xử lý phần section/bảng/chart giữ nguyên như cũ ====
-    const checked = new Set(
-        Array.from(
-            document.querySelectorAll(".email-section-checkbox:checked")
-        ).map((cb) => cb.value)
-    );
-
-    const includeCharts = checked.has("charts");
-    const tablesAsImages =
-        document.getElementById("emailTablesAsImages")?.checked || false;
-
-    let charts = [];
-    if (includeCharts) {
-        charts = await getAllChartPNGs();
-        if (!charts.length && statusEl) {
-            statusEl.textContent = "⚠️ Không tìm thấy chart nào để xuất.";
-            statusEl.classList.add("error");
-        }
-    }
-
-    let allImages = [...charts];
-
-    let bodyHtml =
-        '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>' +
-        '<body style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;font-size:13px;color:#111827;">';
-
-    // phần mở đầu email
-    bodyHtml += "<p>" + messageHtml + "</p>";
-
-    // 2. Tiến độ đo kiểm
-    if (checked.has("progress")) {
-        if (tablesAsImages) {
-            const img = await captureSectionCardAsPng("progress");
-            if (img) {
-                allImages.push(img);
-                const titleSafe = escapeHtml(img.title || "Tiến Độ Đo Kiểm");
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
-                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
-            }
-        } else {
-            const htmlProgress = getSectionHtmlByKey("progress");
-            if (htmlProgress) {
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    htmlProgress;
-            }
-        }
-    }
-
-    // 1. KPI Overview
-    if (checked.has("excel")) {
-        if (tablesAsImages) {
-            const img = await captureSectionCardAsPng("excel");
-            if (img) {
-                allImages.push(img);
-                const titleSafe = escapeHtml(img.title || "KPI Overview");
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
-                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
-            }
-        } else {
-            const htmlExcel = getSectionHtmlByKey("excel");
-            if (htmlExcel) {
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    htmlExcel;
-            }
-        }
-    }
-
-    // 2. Biểu đồ KPI
-    if (includeCharts && charts.length) {
-        bodyHtml +=
-            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-            '<h3 style="margin:0 0 8px 0;">Biểu đồ KPI</h3>';
-
-        bodyHtml += '<div style="text-align:left;">';
-
-        charts.forEach((c, idx) => {
-            if (idx % 2 === 0) {
-                bodyHtml +=
-                    '<div style="white-space:nowrap; margin-bottom:10px;">';
-            }
-
-            bodyHtml += `
-                <img src="cid:${c.cid}"
-                    style="
-                        display:inline-block;
-                        vertical-align:top;
-                        width:520px;
-                        height:auto;
-                    ">
-            `;
-
-            if (idx % 2 === 0 && idx + 1 < charts.length) {
-                bodyHtml += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-            }
-
-            if (idx % 2 === 1 || idx === charts.length - 1) {
                 bodyHtml += "</div>";
             }
-        });
 
-        bodyHtml += "</div>";
-    }
-
-    // 3. Worst Cell
-    if (checked.has("worst")) {
-        if (tablesAsImages) {
-            const img = await captureSectionCardAsPng("worst");
-            if (img) {
-                allImages.push(img);
-                const titleSafe = escapeHtml(img.title || "Worst Cell");
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
-                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+            // 3. Worst Cell
+            if (checked.has("worst")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("worst");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "Worst Cell");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const htmlWorst = getSectionHtmlByKey("worst");
+                    if (htmlWorst) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            htmlWorst;
+                    }
+                }
             }
-        } else {
-            const htmlWorst = getSectionHtmlByKey("worst");
-            if (htmlWorst) {
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    htmlWorst;
+
+            // 4. Cell Non-Traffic
+            if (checked.has("nonTraffic")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("nonTraffic");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "Cell Non-Traffic");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const htmlNon = getSectionHtmlByKey("nonTraffic");
+                    if (htmlNon) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            htmlNon;
+                    }
+                }
+            }
+
+            // CQI Summary
+            if (checked.has("cqiSummary")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("cqiSummary");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "CQI Summary");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const el = document.getElementById("cqiSummaryTable");
+                    if (el) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            el.outerHTML;
+                    }
+                }
+            }
+            bodyHtml += "</body></html>";
+
+            // ==== 5. Build multipart/related EML với allImages (chart + bảng PNG) ====
+            const emlContent = buildEmlWithCharts(to, subjectProcessed, bodyHtml, allImages);
+
+            const blob = new Blob([emlContent], { type: "message/rfc822" });
+
+            // ==== 6. Tên file .eml: "KPI Viewer and Report-yyyy-mm-dd" ====
+            let fileDatePart = "";
+            const d = latestDateObj || new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            fileDatePart = `${yyyy}-${mm}-${dd}`;
+
+            const safeName = `KPI Viewer and Report-${fileDatePart}`;
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = safeName + ".eml";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+            if (statusEl) {
+                statusEl.textContent = "✅ Đã tạo file .eml";
+                statusEl.classList.add("success");
             }
         }
-    }
-
-    // 4. Cell Non-Traffic
-    if (checked.has("nonTraffic")) {
-        if (tablesAsImages) {
-            const img = await captureSectionCardAsPng("nonTraffic");
-            if (img) {
-                allImages.push(img);
-                const titleSafe = escapeHtml(img.title || "Cell Non-Traffic");
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
-                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
-            }
-        } else {
-            const htmlNon = getSectionHtmlByKey("nonTraffic");
-            if (htmlNon) {
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    htmlNon;
-            }
-        }
-    }
-
-    // CQI Summary
-    if (checked.has("cqiSummary")) {
-        if (tablesAsImages) {
-            const img = await captureSectionCardAsPng("cqiSummary");
-            if (img) {
-                allImages.push(img);
-                const titleSafe = escapeHtml(img.title || "CQI Summary");
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
-                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
-            }
-        } else {
-            const el = document.getElementById("cqiSummaryTable");
-            if (el) {
-                bodyHtml +=
-                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                    el.outerHTML;
-            }
-        }
-    }
-    bodyHtml += "</body></html>";
-
-    // ==== 5. Build multipart/related EML với allImages (chart + bảng PNG) ====
-    const emlContent = buildEmlWithCharts(to, subjectProcessed, bodyHtml, allImages);
-
-    const blob = new Blob([emlContent], { type: "message/rfc822" });
-
-    // ==== 6. Tên file .eml: "KPI Viewer and Report-yyyy-mm-dd" ====
-    let fileDatePart = "";
-    const d = latestDateObj || new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    fileDatePart = `${yyyy}-${mm}-${dd}`;
-
-    const safeName = `KPI Viewer and Report-${fileDatePart}`;
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = safeName + ".eml";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-    if (statusEl) {
-        statusEl.textContent = "✅ Đã tạo file .eml";
-        statusEl.classList.add("success");
-    }
-}
 
 
         let progressFullData = [];
