@@ -5898,11 +5898,18 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
                 }
 
                 // Đánh giá: Average CQI >= Target => Pass, ngược lại Not Pass
-                let danhGia = "";
-                if (targetNum !== null) {
-                    danhGia = avgNum >= targetNum ? "Pass" : "Not Pass";
-                }
+                // === Evaluate ===
+                let evaluate = "";
+                let evalStyle = "";
+                if (typeof avgNum === "number" && targetNum !== null) {
+                    const isPass = avgNum >= targetNum;
+                    evaluate = isPass ? "Pass" : "Not Pass";
 
+                    if (!isPass) {
+                        evalStyle = "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                    }
+                }
+                
                 html += "<tr>";
                 html += "<td>" + (po || "") + "</td>";
                 html += "<td>" + (province || "") + "</td>";
