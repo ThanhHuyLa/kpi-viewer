@@ -5750,9 +5750,9 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             console.log("✔ Loaded Province Area từ KPI Threshhold:", provinceAreaMap);
             renderCqiTable();
         }
-
+        
         async function renderCqiTable() {
-            const card = document.getElementById("cqiCard");
+            const card    = document.getElementById("cqiCard");
             const tableEl = document.getElementById("cqiTable");
             if (!card || !tableEl) return;
 
@@ -5816,7 +5816,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 ).trim();
 
                 // Average CQI: chỉ lấy dòng có giá trị số, và làm tròn 3 chữ số thập phân
-                const avgRaw   = r["Average CQI"] ?? r["Average CQI "] ?? "";
+                const avgRaw    = r["Average CQI"] ?? r["Average CQI "] ?? "";
                 const avgNumRaw = Number(avgRaw);
                 if (isNaN(avgNumRaw)) {
                     // Bỏ qua các dòng không có Average CQI hợp lệ (hàng tổng / ghi chú...)
@@ -5837,7 +5837,6 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 if (typeof getPoFromProgress === "function" && lnbts) {
                     po = getPoFromProgress(lnbts) || "";
                 }
-
 
                 // Area = vlookup Province -> Area từ KPI Threshhold (sheet "Province Area")
                 let area = "";
@@ -5860,12 +5859,10 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 }
 
                 // debug 1 dòng đầu tiên để chắc ăn
-                // (nếu thấy nhiều log quá có thể xóa dòng này sau khi ok)
                 if (!window.__cqiAreaDebugLogged && province) {
                     console.log("CQI row province =", province, " => area =", area);
                     window.__cqiAreaDebugLogged = true;
                 }
-
 
                 // ID = mid(LNCEL NAME,10,3)  (vị trí 10-12 => index 9..11)
                 let id = "";
@@ -5909,25 +5906,29 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
             html += "</tbody></table></div>";
 
-            tableEl.innerHTML = html;
-            card.style.display = "block";
+            // Render bảng CQI trước
+            tableEl.innerHTML   = html;
+            card.style.display  = "block";
 
-            // Chỉ load Province Area nếu map chưa có
+            // ============================================
+            // SAU KHI render xong bảng CQI mới load Province Area
+            // ============================================
             const needProvinceArea =
-                !provinceAreaMap ||
-                !Object.keys(provinceAreaMap).length;
+                !provinceAreaMap || !Object.keys(provinceAreaMap).length;
 
             if (needProvinceArea && typeof ensureKpiThresholdsLoaded === "function") {
-                // Gọi ensureKpiThresholdsLoaded SAU KHI bảng CQI đã render xong
                 ensureKpiThresholdsLoaded()
                     .then(() => {
-                        // ensureKpiThresholdsLoaded sẽ:
-                        //  - đọc sheet "Province Area" -> provinceAreaMap
-                        //  - đọc sheet "CQI Threshold" -> cqiConfigMap
-                        //  - đọc sheet "KPI Threshold" -> kpiThresholdMap
-
-                        // Sau khi load xong, nếu card vẫn đang hiển thị thì render lại
-                        if (card && card.style.display !== "none") {
+                        // Sau khi load xong KPI Threshhold:
+                        //   - provinceAreaMap đã có dữ liệu
+                        //   - cqiConfigMap, kpiThresholdMap cũng được cập nhật
+                        // Render lại bảng CQI nếu section vẫn đang hiển thị
+                        if (
+                            card &&
+                            card.style.display !== "none" &&
+                            provinceAreaMap &&
+                            Object.keys(provinceAreaMap).length
+                        ) {
                             renderCqiTable();
                         }
                     })
@@ -5938,11 +5939,9 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                         );
                     });
             }
-
-
-
         }
 
+   
         function renderLatestKpiTable() {
     const tableCard = document.getElementById("latestTableCard");
     const tableDiv = document.getElementById("latestTable");
