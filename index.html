@@ -2799,21 +2799,31 @@ function processMultipleFiles(files) {
                 const cqiSheet = wb.Sheets["CQI Threshold"];
                 if (cqiSheet) {
                     const cqiRows = XLSX.utils.sheet_to_json(cqiSheet, { defval: "" });
+
                     cqiRows.forEach((r) => {
-                        const id = String(r["ID"] || r["Id"] || "")
+                        // ID có thể dạng "M41;M42;M43" → tách từng mã riêng
+                        const idRaw = String(r["ID"] || r["Id"] || "")
                             .trim()
                             .toUpperCase();
-                        if (!id) return;
+                        if (!idRaw) return;
 
                         const config = String(r["Config ATP"] || r["Config"] || "").trim();
-                        const thrVal = r["Threshold"];
+                        const thrVal = r["Threshold"];   // giữ nguyên text, ví dụ "<8"
 
-                        cqiConfigMap[id] = {
-                            config,
-                            target: thrVal,
-                        };
+                        const idList = idRaw
+                            .split(";")
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+
+                        idList.forEach((id) => {
+                            cqiConfigMap[id] = {
+                                config,
+                                target: thrVal, // hiển thị đúng như file KPI Threshhold
+                            };
+                        });
                     });
                 }
+
 
                 // 3) Map KPI Threshold cho toàn bộ KPI (sheet "KPI Threshold")
                 const sheet =
