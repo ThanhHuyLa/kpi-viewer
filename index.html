@@ -1343,6 +1343,10 @@
                                 <input type="checkbox" class="email-section-checkbox" value="nonTraffic" checked>
                                 Cell Non-Traffic
                             </label>
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="cqi" checked>
+                                CQI Summary
+                            </label>
                         </div>
 
 
@@ -6984,90 +6988,99 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
         }
 
         async function captureSectionCardAsPng(key) {
-    let target = null;
-    let titleText = "";
+            let target = null;
+            let titleText = "";
 
-    if (key === "excel") {
-        // ✅ CHỈ CHỤP CHÍNH XÁC THẺ <table> BÊN TRONG KPI OVERVIEW
-        const wrapper = document.getElementById("excelTable");
-        const tableEl = wrapper ? wrapper.querySelector("table") : null;
+            if (key === "excel") {
+                // ✅ CHỈ CHỤP CHÍNH XÁC THẺ <table> BÊN TRONG KPI OVERVIEW
+                const wrapper = document.getElementById("excelTable");
+                const tableEl = wrapper ? wrapper.querySelector("table") : null;
 
-        // nếu có table thì chụp table, không thì fallback về wrapper
-        target = tableEl || wrapper;
+                // nếu có table thì chụp table, không thì fallback về wrapper
+                target = tableEl || wrapper;
 
-        const t = document.getElementById("excelTableTitle");
-        titleText = t ? t.textContent.trim() : "KPI Overview";
+                const t = document.getElementById("excelTableTitle");
+                titleText = t ? t.textContent.trim() : "KPI Overview";
 
-    } else if (key === "progress") {
-        // ✅ CHỈ CHỤP TABLE TIẾN ĐỘ ĐO KIỂM → BORDER ÔM SÁT BẢNG
-        const wrapper = document.getElementById("progressTable");
-        const tableEl = wrapper ? wrapper.querySelector("table") : null;
+            } else if (key === "progress") {
+                // ✅ CHỈ CHỤP TABLE TIẾN ĐỘ ĐO KIỂM → BORDER ÔM SÁT BẢNG
+                const wrapper = document.getElementById("progressTable");
+                const tableEl = wrapper ? wrapper.querySelector("table") : null;
 
-        // nếu có table thì chụp table, không thì fallback về wrapper
-        target = tableEl || wrapper;
+                target = tableEl || wrapper;
 
-        const t = document.querySelector("#progressCard h3");
-        titleText = t ? t.textContent.trim() : "Tiến Độ Đo Kiểm";
+                const t = document.querySelector("#progressCard h3");
+                titleText = t ? t.textContent.trim() : "Tiến Độ Đo Kiểm";
 
-    } else if (key === "worst") {
-        target = document.getElementById("worstCellTable");
-        const t = document.getElementById("worstCellTitle");
-        titleText = t ? t.textContent.trim() : "Worst Cell";
+            } else if (key === "worst") {
+                target = document.getElementById("worstCellTable");
+                const t = document.getElementById("worstCellTitle");
+                titleText = t ? t.textContent.trim() : "Worst Cell";
 
-    } else if (key === "nonTraffic") {
-        target = document.getElementById("nonTrafficTable");
-        const t = document.getElementById("nonTrafficTitle");
-        titleText = t ? t.textContent.trim() : "Cell Non-Traffic";
+            } else if (key === "nonTraffic") {
+                target = document.getElementById("nonTrafficTable");
+                const t = document.getElementById("nonTrafficTitle");
+                titleText = t ? t.textContent.trim() : "Cell Non-Traffic";
 
-    } else if (key === "latest") {
-        target = document.getElementById("latestTable");
-        const t = document.getElementById("latestTableTitle");
-        titleText = t ? t.textContent.trim() : "KPI thời điểm gần nhất";
-    }
+            } else if (key === "latest") {
+                target = document.getElementById("latestTable");
+                const t = document.getElementById("latestTableTitle");
+                titleText = t ? t.textContent.trim() : "KPI thời điểm gần nhất";
 
-    if (!target) return null;
+            } else if (key === "cqiSummary") {
+                // ✅ CQI Summary – CHỤP CHÍNH XÁC BẢNG cqiSummaryTable
+                target = document.getElementById("cqiSummaryTable");
 
-    // Nếu bảng chưa render / không có kích thước thì bỏ qua
-    if (!target.offsetWidth || !target.offsetHeight) {
-        return null;
-    }
+                // nếu bạn có title riêng thì dùng, không thì fallback text mặc định
+                const t =
+                    document.getElementById("cqiSummaryTitle") ||
+                    document.querySelector("#cqiCard h3");
+                titleText = t ? t.textContent.trim() : "CQI Summary";
+            }
 
-    // Lưu style cũ
-    const prevBorder   = target.style.border;
-    const prevBg       = target.style.backgroundColor;
-    const prevRadius   = target.style.borderRadius;
-    const prevShadow   = target.style.boxShadow;
-    const prevOverflow = target.style.overflow;
+            if (!target) return null;
 
-    // ✅ Border + nền trắng ngay trên chính cái TABLE → PNG ôm đúng bảng
-    target.style.border          = "2px solid #000000";
-    target.style.backgroundColor = "#ffffff";
-    target.style.borderRadius    = "12px";
-    target.style.boxShadow       = "none";
-    target.style.overflow        = "hidden";
+            // Nếu bảng chưa render / không có kích thước thì bỏ qua
+            if (!target.offsetWidth || !target.offsetHeight) {
+                return null;
+            }
 
-    const canvas = await html2canvas(target, {
-        scale: 1,
-        backgroundColor: "#ffffff",
-    });
+            // Lưu style cũ
+            const prevBorder   = target.style.border;
+            const prevBg       = target.style.backgroundColor;
+            const prevRadius   = target.style.borderRadius;
+            const prevShadow   = target.style.boxShadow;
+            const prevOverflow = target.style.overflow;
 
-    // Khôi phục style cũ
-    target.style.border          = prevBorder;
-    target.style.backgroundColor = prevBg;
-    target.style.borderRadius    = prevRadius;
-    target.style.boxShadow       = prevShadow;
-    target.style.overflow        = prevOverflow;
+            // ✅ Border + nền trắng ngay trên chính cái TABLE → PNG ôm đúng bảng
+            target.style.border          = "2px solid #000000";
+            target.style.backgroundColor = "#ffffff";
+            target.style.borderRadius    = "12px";
+            target.style.boxShadow       = "none";
+            target.style.overflow        = "hidden";
 
-    const dataUrl = canvas.toDataURL("image/png");
-    const base64  = dataUrl.split(",")[1];
-    const cid     = "tbl_" + key;
+            const canvas = await html2canvas(target, {
+                scale: 1,
+                backgroundColor: "#ffffff",
+            });
 
-    return {
-        cid,
-        base64,
-        title: titleText || key,
-    };
-}
+            // Khôi phục style cũ
+            target.style.border          = prevBorder;
+            target.style.backgroundColor = prevBg;
+            target.style.borderRadius    = prevRadius;
+            target.style.boxShadow       = prevShadow;
+            target.style.overflow        = prevOverflow;
+
+            const dataUrl = canvas.toDataURL("image/png");
+            const base64  = dataUrl.split(",")[1];
+            const cid     = "tbl_" + key;
+
+            return {
+                cid,
+                base64,
+                title: titleText || key,
+            };
+        }
 
         function buildEmailIntroBlock(messageHtml) {
             // Bây giờ không tự chèn mẫu nữa,
@@ -7309,6 +7322,27 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
         }
     }
 
+    // CQI Summary
+    if (checked.has("cqiSummary")) {
+        if (tablesAsImages) {
+            const img = await captureSectionCardAsPng("cqiSummary");
+            if (img) {
+                allImages.push(img);
+                const titleSafe = escapeHtml(img.title || "CQI Summary");
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                    `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+            }
+        } else {
+            const el = document.getElementById("cqiSummaryTable");
+            if (el) {
+                bodyHtml +=
+                    '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                    el.outerHTML;
+            }
+        }
+    }
     bodyHtml += "</body></html>";
 
     // ==== 5. Build multipart/related EML với allImages (chart + bảng PNG) ====
