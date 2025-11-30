@@ -5810,7 +5810,7 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
             html += "<th>Config</th>";
             html += "<th>Average CQI</th>";
             html += "<th>Target</th>";
-            html += "<th>Đánh giá</th>";
+            html += "<th>Evaluate</th>";
             html += "</tr></thead><tbody>";
 
             rows.forEach((r) => {
@@ -5892,8 +5892,8 @@ function loadProvinceAreaFromThresholdWorkbook(wb) {
                     const rawTarget = cqiConfigMap[id].target;
                     const tNumRaw   = Number(rawTarget);
                     if (!isNaN(tNumRaw)) {
-                        targetNum     = Math.round(tNumRaw * 1000) / 1000;
-                        targetDisplay = targetNum.toFixed(3);
+                        targetNum     = Math.round(tNumRaw * 10) / 10;
+                        targetDisplay = targetNum.toFixed(1);
                     }
                 }
 
