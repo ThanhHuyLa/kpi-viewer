@@ -6001,6 +6001,33 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             return;
         }
 
+        // ===== Tính ngày gần nhất từ dữ liệu CQI =====
+        let latestDateStr = "";
+        let latestDateObj = null;
+
+        rows.forEach(r => {
+            const raw =
+                r["Period start time"] ??
+                r["PERIOD START TIME"] ??
+                r["Period Start Time"] ??
+                r["period start time"] ??
+                "";
+
+            if (!raw) return;
+
+            const d = new Date(raw);
+            if (isNaN(d)) return;
+
+            if (!latestDateObj || d > latestDateObj) {
+                latestDateObj = d;
+            }
+        });
+
+        if (latestDateObj) {
+            latestDateStr = latestDateObj.toISOString().slice(0, 10); // yyyy-mm-dd
+        }
+
+
         // ===== Build danh sách PO cho combobox =====
         const poSet = new Set();
         rows.forEach((r) => {
@@ -6183,50 +6210,18 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
         html += "</tbody></table></div>";
 
-        // ===== Cập nhật tiêu đề CQI theo ngày mới nhất =====
-        const titleEl = document.getElementById("cqiTitle");
-        if (titleEl && rows.length) {
-            // Tìm index cột Period start time
-            const table = tableEl.querySelector("table");
-            if (table) {
-                const ths = table.querySelectorAll("thead tr:last-child th");
-                let periodIdx = -1;
-
-                ths.forEach((th, i) => {
-                    const name = th.textContent.trim().toLowerCase();
-                    if (name.includes("period") || name.includes("time")) {
-                        periodIdx = i;
-                    }
-                });
-
-                // Lấy ngày mới nhất trong bảng CQI
-                if (periodIdx >= 0) {
-                    const tds = table.querySelectorAll(`tbody tr td:nth-child(${periodIdx + 1})`);
-                    const dates = [];
-
-                    tds.forEach(td => {
-                        const raw = td.textContent.trim();
-                        if (raw) {
-                            const d = new Date(raw);
-                            if (!isNaN(d)) dates.push(d);
-                        }
-                    });
-
-                    if (dates.length) {
-                        // Lấy ngày lớn nhất
-                        const latest = new Date(Math.max.apply(null, dates));
-                        const latestStr = latest.toISOString().slice(0, 10);
-
-                        titleEl.textContent = `CQI (${latestStr})`;
-                    }
-                }
-            }
-        }
-
 
         // Render bảng CQI
         tableEl.innerHTML  = html;
         card.style.display = "block";
+        
+        // Cập nhật tiêu đề section CQI
+        const titleEl = document.getElementById("cqiTitle");
+        if (titleEl) {
+            titleEl.textContent = latestDateStr
+                ? `CQI (${latestDateStr})`
+                : "CQI";
+        }
 
         // ============================================
         // SAU KHI render xong bảng CQI mới load Province Area
