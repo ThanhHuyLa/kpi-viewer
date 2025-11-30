@@ -742,7 +742,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.4.0.50
+                Version: v1.5.0
             </div>
         </div>
 
@@ -7578,7 +7578,8 @@ if (idxSiteName !== -1) {
                 }
 
                 // Render bảng lần đầu (tất cả PO)
-                renderProgressTable(groupList);
+                const initialData = buildProvinceSummary(groupList);
+                renderProgressTable(initialData);
                 applyProgressColumnToggle();
 
                 // Sau khi đã có progressSitePoMap -> render lại Worst Cell / Non-Traffic
@@ -7618,6 +7619,39 @@ if (idxSiteName !== -1) {
 
         // Gán sự kiện upload cho phần Tiến Độ Đo Kiểm
         initProgressUpload();
+        // Gộp dữ liệu Tiến độ theo từng Tỉnh (dùng khi chọn "Tất cả PO")
+        function buildProvinceSummary(list) {
+            const map = {};
+
+            (list || []).forEach((g) => {
+                const province = (g.province || "").trim();
+                if (!province) return;
+
+                if (!map[province]) {
+                    map[province] = {
+                        po: "Tất cả",      // hoặc "" nếu muốn để trống cột PO
+                        province,
+                        total: 0,
+                        onair: 0,
+                        cqtOk: 0,
+                        ssvOk: 0,
+                        atpReport: 0,
+                    };
+                }
+
+                const agg = map[province];
+                agg.total     += g.total     || 0;
+                agg.onair     += g.onair     || 0;
+                agg.cqtOk     += g.cqtOk     || 0;
+                agg.ssvOk     += g.ssvOk     || 0;
+                agg.atpReport += g.atpReport || 0;
+            });
+
+            // Sắp xếp theo tên Tỉnh
+            return Object.values(map).sort((a, b) =>
+                a.province.localeCompare(b.province)
+            );
+        }
 
         function renderProgressTable(data) {
         const tableContainer = document.getElementById("progressTable");
@@ -7878,32 +7912,35 @@ if (idxSiteName !== -1) {
     });
 }
 
-    // Lọc bảng Tiến độ đo kiểm theo PO được chọn
-    const poFilterEl = document.getElementById("progressPOFilter");
-    if (poFilterEl) {
-        poFilterEl.addEventListener("change", function () {
-            const val = this.value;
+        // Lọc bảng Tiến độ đo kiểm theo PO được chọn
+        const poFilterEl = document.getElementById("progressPOFilter");
+        if (poFilterEl) {
+            poFilterEl.addEventListener("change", function () {
+                const val = this.value;
 
-            // Nếu chọn "Tất cả PO" thì dùng toàn bộ dữ liệu
-            const filtered =
-                val === "ALL"
-                    ? progressFullData
-                    : progressFullData.filter((g) => g.po === val);
+                let filtered;
+                if (val === "ALL") {
+                    // 👉 Tất cả PO: gộp lại theo từng Tỉnh
+                    filtered = buildProvinceSummary(progressFullData);
+                } else {
+                    // 👉 1 PO cụ thể: giữ nguyên theo (PO + Tỉnh)
+                    filtered = progressFullData.filter((g) => g.po === val);
+                }
 
-            renderProgressTable(filtered);
-            applyProgressColumnToggle();
+                renderProgressTable(filtered);
 
-            // ✅ Áp lại trạng thái checkbox CQT / SSV / ATP
-            if (typeof applyProgressColumnToggle === "function") {
-                applyProgressColumnToggle();
-            }
+                // ✅ Áp lại trạng thái checkbox CQT / SSV / ATP
+                if (typeof applyProgressColumnToggle === "function") {
+                    applyProgressColumnToggle();
+                }
 
-            // Sau khi đổi PO, cập nhật lại nội dung email mở đầu
-            if (typeof fillDefaultEmailText === "function") {
-                fillDefaultEmailText();
-            }
-        });
-    }
+                // Sau khi đổi PO, cập nhật lại nội dung email mở đầu
+                if (typeof fillDefaultEmailText === "function") {
+                    fillDefaultEmailText();
+                }
+            });
+        }
+
 
 
         /* ==========================================================
