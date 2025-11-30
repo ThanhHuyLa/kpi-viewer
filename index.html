@@ -5748,6 +5748,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             });
 
             console.log("✔ Loaded Province Area từ KPI Threshhold:", provinceAreaMap);
+            renderCqiTable();
         }
 
         async function renderCqiTable() {
@@ -5783,13 +5784,6 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             if (!rows || !rows.length) {
                 card.style.display = "none";
                 return;
-            }
-
-            // Đảm bảo đã load KPI Threshhold (để có provinceAreaMap & cqiConfigMap)
-            try {
-                await ensureKpiThresholdsLoaded();
-            } catch (e) {
-                console.warn("Không load được KPI Threshhold cho bảng CQI:", e);
             }
 
             let html = "";
@@ -5917,6 +5911,36 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
             tableEl.innerHTML = html;
             card.style.display = "block";
+
+            // Chỉ load Province Area nếu map chưa có
+            const needProvinceArea =
+                !provinceAreaMap ||
+                !Object.keys(provinceAreaMap).length;
+
+            if (needProvinceArea && typeof ensureKpiThresholdsLoaded === "function") {
+                // Gọi ensureKpiThresholdsLoaded SAU KHI bảng CQI đã render xong
+                ensureKpiThresholdsLoaded()
+                    .then(() => {
+                        // ensureKpiThresholdsLoaded sẽ:
+                        //  - đọc sheet "Province Area" -> provinceAreaMap
+                        //  - đọc sheet "CQI Threshold" -> cqiConfigMap
+                        //  - đọc sheet "KPI Threshold" -> kpiThresholdMap
+
+                        // Sau khi load xong, nếu card vẫn đang hiển thị thì render lại
+                        if (card && card.style.display !== "none") {
+                            renderCqiTable();
+                        }
+                    })
+                    .catch((e) => {
+                        console.warn(
+                            "Không load được KPI Threshhold sau khi render CQI:",
+                            e
+                        );
+                    });
+            }
+
+
+
         }
 
         function renderLatestKpiTable() {
