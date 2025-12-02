@@ -1987,11 +1987,9 @@ function odPopulateFolderSelectOptions() {
     odBuildGroupMapForCurrentFolder(ALL_FOLDERS_VALUE);
 }
 
-// Build oneDriveGroupMap (nhóm file) theo folder đang chọn
-// Build oneDriveGroupMap (nhóm file) theo folder đang chọn
 function odBuildGroupMapForCurrentFolder(folderName) {
-    const folderSelect = document.getElementById("odFolderSelect");
-    const groupSelect  = document.getElementById("odGroupSelect");
+    const folderSelect  = document.getElementById("odFolderSelect");
+    const groupSelect   = document.getElementById("odGroupSelect");
     if (!groupSelect) return;
 
     let effectiveFolder =
@@ -2005,11 +2003,9 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     let filesInFolder = [];
 
     if (effectiveFolder === ALL_FOLDERS_VALUE) {
-        // 🔁 Gộp tất cả folder NAxx (và bỏ qua các folder khác như Report, Test,…)
         const allFolders = Object.keys(oneDriveFolderFileMap);
         let includeFolders = allFolders.filter(name => /^NA/i.test(name || ""));
 
-        // Nếu không có folder NA nào thì dùng toàn bộ (giữ nguyên behaviour cũ)
         if (!includeFolders.length) {
             includeFolders = allFolders;
         }
@@ -2019,14 +2015,21 @@ function odBuildGroupMapForCurrentFolder(folderName) {
             filesInFolder = filesInFolder.concat(list);
         });
     } else {
-        // Một folder cụ thể
         filesInFolder = oneDriveFolderFileMap[effectiveFolder] || [];
     }
+
+    // 🔹 CHỈ GIỮ FILE TÊN BẮT ĐẦU BẰNG "[S]"
+    filesInFolder = filesInFolder.filter(item => {
+        const n = (item.name || "").trim();
+        return n.startsWith("[S]");
+        // nếu sau này muốn không phân biệt hoa thường:
+        // return /^\[s\]/i.test(n);
+    });
 
     oneDriveGroupMap = {};
 
     filesInFolder.forEach((item) => {
-        const gName = getGroupNameFromFile(item); // dùng cùng logic group như local
+        const gName = getGroupNameFromFile(item); // vẫn group bằng prefix trước dấu '-'
         if (!oneDriveGroupMap[gName]) oneDriveGroupMap[gName] = [];
         oneDriveGroupMap[gName].push(item);
     });
@@ -2034,17 +2037,25 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     const groupNames = Object.keys(oneDriveGroupMap).sort();
 
     groupSelect.innerHTML = "";
+
+    if (!groupNames.length) {
+        // Không có file [S] nào → để combobox rỗng
+        // (nếu muốn báo thì thêm alert ở đây)
+        return;
+    }
+
     groupNames.forEach((g) => {
         const opt = document.createElement("option");
         opt.value = g;
+        // số file hiển thị = số file [S] trong group đó
         opt.textContent = `${g} (${oneDriveGroupMap[g].length} file)`;
         groupSelect.appendChild(opt);
     });
 
-    if (groupNames.length) {
-        groupSelect.value = groupNames[0];
-    }
+    groupSelect.value = groupNames[0];
 }
+
+
 
 // Trả về map: { folderName: [ { itemId, name, downloadUrl, lastModified } ] }
 // Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
