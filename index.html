@@ -6051,16 +6051,56 @@ if (showTargetLine) {
             return !Number.isNaN(num) && num === 0;
         }
 
-        latestRows.forEach(row => {
-            const avail = availCol ? row[availCol] : null;
+        // Tìm cột PDCP SDU Volume, DL / UL
+        const pdcpDlCol = cleanColumns.find(col => {
+            const lower = String(col || "").toLowerCase();
+            return lower.includes("pdcp") &&
+                lower.includes("sdu") &&
+                lower.includes("volume") &&
+                lower.includes("dl");
+        }) || null;
 
-            // 1️⃣ Cell avail = 0 -> Non-Traffic
-            if (availCol && Number(avail) === 0) {
+        const pdcpUlCol = cleanColumns.find(col => {
+            const lower = String(col || "").toLowerCase();
+            return lower.includes("pdcp") &&
+                lower.includes("sdu") &&
+                lower.includes("volume") &&
+                lower.includes("ul");
+        }) || null;
+
+
+        latestRows.forEach(row => {
+            const availRaw = availCol ? row[availCol] : null;
+            const availNum = availCol ? toNumber(availRaw) : null;
+
+            // 1️⃣ Cell Avail < 10 -> Non-Traffic
+            if (availCol && availNum !== null && availNum < 10) {
                 nonTrafficRows.push(row);
                 return;
             }
 
-            // 2️⃣ 2 KPI MAC SDU DL/UL = 0 -> Non-Traffic
+            // 2️⃣ PDCP SDU Volume, DL < 100 hoặc UL < 100 -> Non-Traffic
+            if (pdcpDlCol || pdcpUlCol) {
+                let pdcpDlNum = null;
+                let pdcpUlNum = null;
+
+                if (pdcpDlCol) {
+                    pdcpDlNum = toNumber(row[pdcpDlCol]);
+                }
+                if (pdcpUlCol) {
+                    pdcpUlNum = toNumber(row[pdcpUlCol]);
+                }
+
+                const dlLow = pdcpDlNum !== null && pdcpDlNum < 100;
+                const ulLow = pdcpUlNum !== null && pdcpUlNum < 100;
+
+                if (dlLow || ulLow) {
+                    nonTrafficRows.push(row);
+                    return;
+                }
+            }
+
+            // 3️⃣ 2 KPI MAC SDU DL/UL = 0 -> Non-Traffic (giữ nguyên logic cũ)
             let moveByMac = false;
             if (macDlCol || macUlCol) {
                 const dlVal = macDlCol ? row[macDlCol] : null;
@@ -6081,7 +6121,7 @@ if (showTargetLine) {
                 return;
             }
 
-            // 3️⃣ 5G Total Traffic Volume < 100 -> Non-Traffic
+            // 4️⃣ 5G Total Traffic Volume < 100 -> Non-Traffic (nếu anh vẫn muốn giữ)
             if (traffic5gCol) {
                 const trafficVal = toNumber(row[traffic5gCol]);
                 if (trafficVal !== null && trafficVal < 100) {
