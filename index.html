@@ -44,7 +44,13 @@
             color: #3749a5; /* xanh đậm hiện đại */
             text-shadow: 0 2px 4px rgba(55, 73, 165, 0.15);
         }
-
+        /* Disable hai nút chọn file / thư mục Excel */
+        .upload-sub-btn.disabled-upload {
+            opacity: 0.4;
+            pointer-events: none;
+            box-shadow: none;
+            transform: none;
+        }
         .upload-section {
             background: white;
             border-radius: 16px;
@@ -1741,6 +1747,30 @@ let oneDriveCurrentFolderName = "";
 // Map nhóm file trong thư mục đang chọn
 let oneDriveGroupMap = {}; // { groupName: [{ itemId, name, downloadUrl, lastModified }] }
 
+function setLocalExcelInputsEnabled(enabled) {
+    const fileInput   = document.getElementById("fileInputFiles");
+    const folderInput = document.getElementById("fileInputFolder");
+
+    const fileLabel = fileInput
+        ? fileInput.closest("label.upload-sub-btn")
+        : null;
+    const folderLabel = folderInput
+        ? folderInput.closest("label.upload-sub-btn")
+        : null;
+
+    [fileInput, folderInput].forEach((el) => {
+        if (el) el.disabled = !enabled;
+    });
+
+    [fileLabel, folderLabel].forEach((lbl) => {
+        if (!lbl) return;
+        if (enabled) {
+            lbl.classList.remove("disabled-upload");
+        } else {
+            lbl.classList.add("disabled-upload");
+        }
+    });
+}
 
 // Khởi tạo UI OneDrive: gắn event cho các nút / select
 function initOneDriveGraphUI() {
@@ -1781,11 +1811,17 @@ function initOneDriveGraphUI() {
                 " – Thư mục: " +
                 (graphKpiConfig.kpiFolderPath || "/");
 
+            // ✅ Đã có session OneDrive → cho phép chọn file/folder Excel local
+            setLocalExcelInputsEnabled(true);
+
             // Nếu đã có session đăng nhập → load luôn danh sách nhóm
             odLoadKpiGroupsFromOneDrive();
         } else {
-            statusSpan.textContent = "Chưa đăng nhập";
+            statusSpan.textContent = "Chưa đăng nhập OneDrive";
             if (statusRow) statusRow.style.display = "none";
+
+            // 🔒 Chưa đăng nhập → vẫn khoá
+            setLocalExcelInputsEnabled(false);
         }
     }
 
@@ -1853,7 +1889,6 @@ async function updateKpiFolderPathAndReload() {
 }
 
 // Đăng nhập OneDrive (popup)
-// Đăng nhập OneDrive (popup)
 async function handleOneDriveLogin() {
     const statusSpan = document.getElementById("odStatus");
     const statusRow  = document.getElementById("odGroupBar");
@@ -1875,6 +1910,9 @@ async function handleOneDriveLogin() {
                 (graphKpiConfig.kpiFolderPath || "/");
         }
 
+        // ✅ Login thành công → mở khoá 2 nút Excel local
+        setLocalExcelInputsEnabled(true);
+
         // Sau khi login xong → load danh sách nhóm file trong thư mục KPI Scheduler
         await odLoadKpiGroupsFromOneDrive();
     } catch (err) {
@@ -1883,12 +1921,17 @@ async function handleOneDriveLogin() {
             statusSpan.textContent = "Đăng nhập thất bại";
         }
         if (statusRow) statusRow.style.display = "flex"; // vẫn hiện để thấy lỗi
+
+        // 🔒 Lỗi đăng nhập → tiếp tục khóa
+        setLocalExcelInputsEnabled(false);
+
         alert(
             "Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" +
                 err.message
         );
     }
 }
+
 
 // Lấy access token để gọi Graph
 async function getGraphAccessToken() {
@@ -2470,6 +2513,9 @@ async function odLoadSelectedGroupFromOneDrive() {
 
 // Gắn event cho combobox local + khởi tạo OneDrive
 window.addEventListener("DOMContentLoaded", () => {
+    // 🔒 Mặc định khóa 2 nút Excel local
+    setLocalExcelInputsEnabled(false);
+
     // --- Folder/Group LOCAL (chọn thư mục trên máy) ---
     const folderSelect = document.getElementById("folderSelect");
     const loadBtn = document.getElementById("loadGroupBtn");
@@ -2497,6 +2543,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // --- OneDrive (Graph API) ---
     initOneDriveGraphUI();
 });
+
 
 
 
