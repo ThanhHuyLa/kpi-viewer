@@ -12,10 +12,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- MSAL cho đăng nhập OneDrive (Microsoft Graph) -->
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-
-
-
-
     <style>
         * {
             margin: 0;
@@ -259,145 +255,145 @@
             top: 0;
         }
 
-/* === STYLE BẢNG TIẾN ĐỘ ĐO KIỂM === */
-.progress-table {
-    font-size: 14px;
-    border-collapse: collapse;
-    margin: 8px 0;
-    width: auto;                /* không bắt buộc 100% */
-    table-layout: fixed;        /* để tính left sticky ổn định */
-}
+        /* === STYLE BẢNG TIẾN ĐỘ ĐO KIỂM === */
+        .progress-table {
+            font-size: 14px;
+            border-collapse: collapse;
+            margin: 8px 0;
+            width: auto;                /* không bắt buộc 100% */
+            table-layout: fixed;        /* để tính left sticky ổn định */
+        }
 
-/* header xanh giống Worst Cell */
-.progress-table th {
-    background: #1e3a8a;
-    color: #fff;
-    font-weight: 600;
-    padding: 8px 10px;
-    text-align: center;
-    white-space: nowrap;
-    border: 1px solid #d1d5db;
-}
+        /* header xanh giống Worst Cell */
+        .progress-table th {
+            background: #1e3a8a;
+            color: #fff;
+            font-weight: 600;
+            padding: 8px 10px;
+            text-align: center;
+            white-space: nowrap;
+            border: 1px solid #d1d5db;
+        }
 
-.progress-table td {
-    padding: 6px 10px;
-    text-align: center;
-    white-space: nowrap;
-    border: 1px solid #e5e7eb;
-}
+        .progress-table td {
+            padding: 6px 10px;
+            text-align: center;
+            white-space: nowrap;
+            border: 1px solid #e5e7eb;
+        }
 
-.progress-table tr:hover {
-    background: #f3f4ff;
-}
+        .progress-table tr:hover {
+            background: #f3f4ff;
+        }
 
-/* chiều rộng 4 cột đầu – có thể chỉnh thêm nếu muốn */
-.progress-table th:nth-child(1),
-.progress-table td:nth-child(1) { min-width: 40px; }  /* STT  */
-.progress-table th:nth-child(2),
-.progress-table td:nth-child(2) { min-width: 60px; }  /* PO   */
-.progress-table th:nth-child(3),
-.progress-table td:nth-child(3) { min-width: 80px; }  /* Tỉnh */
-.progress-table th:nth-child(4),
-.progress-table td:nth-child(4) { min-width: 80px; }  /* Số trạm */
+        /* chiều rộng 4 cột đầu – có thể chỉnh thêm nếu muốn */
+        .progress-table th:nth-child(1),
+        .progress-table td:nth-child(1) { min-width: 40px; }  /* STT  */
+        .progress-table th:nth-child(2),
+        .progress-table td:nth-child(2) { min-width: 60px; }  /* PO   */
+        .progress-table th:nth-child(3),
+        .progress-table td:nth-child(3) { min-width: 80px; }  /* Tỉnh */
+        .progress-table th:nth-child(4),
+        .progress-table td:nth-child(4) { min-width: 80px; }  /* Số trạm */
 
-/* Sticky 4 cột đầu: chỉ dùng class .sticky-col do JS gắn */
-.progress-table .sticky-col {
-    z-index: 3;
-}
+        /* Sticky 4 cột đầu: chỉ dùng class .sticky-col do JS gắn */
+        .progress-table .sticky-col {
+            z-index: 3;
+        }
 
-/* Header sticky đè lên body một chút để không bị gãy */
-.progress-table thead .sticky-col {
-    z-index: 4;
-}
-
-
-/* Hàng tổng hợp dưới cùng */
-.progress-summary-row td {
-    background: #fff9c4 !important;
-    font-weight: 600 !important;
-}
+        /* Header sticky đè lên body một chút để không bị gãy */
+        .progress-table thead .sticky-col {
+            z-index: 4;
+        }
 
 
-/* ==== WORST CELL WRAPPER ==== */
-#worstCellWrapper {
-    max-height: 700px;      /* giới hạn chiều cao */
-    overflow-y: auto;       /* scroll dọc */
-    overflow-x: auto;
-    position: relative;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    margin-top: 4px;
-}
-
-/* ==== STICKY HEADER WORST CELL ==== */
-#worstCellWrapper table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 5;                 /* cao hơn body */
-    background: #1e3a8a;        /* đúng màu header Worst Cell */
-    color: #fff;
-}
+        /* Hàng tổng hợp dưới cùng */
+        .progress-summary-row td {
+            background: #fff9c4 !important;
+            font-weight: 600 !important;
+        }
 
 
+        /* ==== WORST CELL WRAPPER ==== */
+        #worstCellWrapper {
+            max-height: 700px;      /* giới hạn chiều cao */
+            overflow-y: auto;       /* scroll dọc */
+            overflow-x: auto;
+            position: relative;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            margin-top: 4px;
+        }
 
-/* === STYLE BẢNG KPI THỜI ĐIỂM GẦN NHẤT === */
-#latestTableWrapper {
-    max-height: 700px;              /* nếu bảng cao hơn sẽ có scroll dọc */
-    overflow-y: auto;
-    overflow-x: auto;
-    position: relative;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    margin-top: 4px;
-}
+        /* ==== STICKY HEADER WORST CELL ==== */
+        #worstCellWrapper table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 5;                 /* cao hơn body */
+            background: #1e3a8a;        /* đúng màu header Worst Cell */
+            color: #fff;
+        }
 
 
 
+        /* === STYLE BẢNG KPI THỜI ĐIỂM GẦN NHẤT === */
+        #latestTableWrapper {
+            max-height: 700px;              /* nếu bảng cao hơn sẽ có scroll dọc */
+            overflow-y: auto;
+            overflow-x: auto;
+            position: relative;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            margin-top: 4px;
+        }
 
-#latestTableWrapper table {
-    width: auto;                    /* auto width theo nội dung */
-    table-layout: auto;
-    border-collapse: collapse;
-}
 
 
 
-/* Cố định cột 1 */
-#latestTableWrapper table th:first-child,
-#latestTableWrapper table td:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 3;
-    background: #f9fafb;
-    white-space: nowrap;
-}
+        #latestTableWrapper table {
+            width: auto;                    /* auto width theo nội dung */
+            table-layout: auto;
+            border-collapse: collapse;
+        }
 
-/* Header nằm trên cùng khi scroll */
-#latestTableWrapper table thead th {
-    top: 0;
-    z-index: 4;
-}
-#latestTableWrapper table thead th:first-child {
-    z-index: 5;
-}
 
-#kpiThresholdPanel select,
-#kpiThresholdPanel input[type="number"] {
-    padding: 6px 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;   /* BO TRÒN */
-    font-size: 0.9em;
-    background: #fff;
-}
 
-.wc-filter-input {
-    padding: 4px 8px !important;
-    height: 30px !important;
-    min-width: 90px !important;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-}
+        /* Cố định cột 1 */
+        #latestTableWrapper table th:first-child,
+        #latestTableWrapper table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            background: #f9fafb;
+            white-space: nowrap;
+        }
+
+        /* Header nằm trên cùng khi scroll */
+        #latestTableWrapper table thead th {
+            top: 0;
+            z-index: 4;
+        }
+        #latestTableWrapper table thead th:first-child {
+            z-index: 5;
+        }
+
+        #kpiThresholdPanel select,
+        #kpiThresholdPanel input[type="number"] {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;   /* BO TRÒN */
+            font-size: 0.9em;
+            background: #fff;
+        }
+
+        .wc-filter-input {
+            padding: 4px 8px !important;
+            height: 30px !important;
+            min-width: 90px !important;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+        }
 
         tr:hover {
             background: #f3f4ff;
@@ -976,6 +972,16 @@
 
         </div>
 
+        <!-- WORST CELL OVERVIEW -->
+        <div class="data-table" id="worstOverviewCard" style="margin-top: 10px; display:none;">
+            <h3>Worst Cell Overview</h3>
+            <div style="margin-bottom:8px;">
+                <select id="worstOverviewPoFilter" style="padding:6px 10px; border-radius:6px; border:1px solid #b0b0b0;">
+                    <option value="ALL">Tất cả PO</option>
+                </select>
+            </div>
+            <div id="worstOverviewTable"></div>
+        </div>
 
 
         <div class="charts-section" id="chartsSection">
@@ -1175,6 +1181,8 @@
                         Xóa filter
                     </button>
 
+
+
                     <label style="display:flex; align-items:center; gap:4px; margin-left:auto;">
                         Province:
                         <input 
@@ -1185,7 +1193,11 @@
                             style="width:120px;"
                         />
                     </label>
-
+                    <div style="margin-bottom:0px;">
+                        <select id="worstPoFilter" style="padding:6px 10px;border-radius:6px;border:1px solid #b0b0b0;">
+                            <option value="ALL">Tất cả PO</option>
+                        </select>
+                    </div>
                     <!-- Danh sách các dòng điều kiện KPI -->
                     <div id="worstFilterRules"
                         style="width:100%; margin-top:4px; display:flex; flex-direction:column; gap:4px;"></div>
@@ -1326,6 +1338,10 @@
                             <label>
                                 <input type="checkbox" class="email-section-checkbox" value="progress" checked>
                                 Tiến độ đo kiểm
+                            </label>
+                            <label>
+                                <input type="checkbox" class="email-section-checkbox" value="worstOverview" checked>
+                                Worst Cell Overview
                             </label>
                             <label>
                                 <input type="checkbox" class="email-section-checkbox" value="excel" checked>
@@ -3175,7 +3191,7 @@ function processMultipleFiles(files) {
             buildThresholdCustomUi();
             renderCharts();
             fillDefaultEmailText();
-
+            recomputeWorstCellOverview();
             // Sau khi xử lý xong KPI, đảm bảo đã load KPI Threshhold (để có Province -> Area & CQI config)
             if (kpiThresholdMap === null) {
                 ensureKpiThresholdsLoaded().then(() => {
@@ -5014,6 +5030,7 @@ if (showTargetLine) {
         let worstCellFilterLogic   = "AND";
         let worstFilterKpiOptions  = [];   // [{colKey, label}]
         let worstFilterUiBound     = false;
+        let worstPoFilterValue = "ALL";
 
         function initWorstFilterEvents() {
             if (worstFilterUiBound) return;
@@ -5022,6 +5039,7 @@ if (showTargetLine) {
             const addBtn        = document.getElementById("worstFilterAddBtn");
             const clearBtn      = document.getElementById("worstFilterClearBtn");
             const provinceInput = document.getElementById("worstProvinceFilter");
+            const poSelect      = document.getElementById("worstPoFilter");
 
             if (!logicSelect || !addBtn || !clearBtn) return;
 
@@ -5066,6 +5084,13 @@ if (showTargetLine) {
                         e.preventDefault();      // tránh submit form
                         renderWorstCellTable();
                     }
+                });
+            }
+
+            // 🔍 PO: đổi giá trị sẽ filter Worst Cell
+            if (poSelect) {
+                poSelect.addEventListener("change", () => {
+                    renderWorstCellTable();
                 });
             }
 
@@ -5219,6 +5244,20 @@ if (showTargetLine) {
                         lower.includes("lncell")
                     );
                 }) || null;
+        
+                // ===== 1b. LỌC THEO PO =====
+            const poValue =
+                (document.getElementById("worstPoFilter")?.value || "ALL").trim();
+
+            let filtered = rowsArr;
+
+            if (poValue && poValue !== "ALL" && typeof getPoProvinceFromRow === "function") {
+                filtered = filtered.filter((row) => {
+                    const info = getPoProvinceFromRow(row);
+                    if (!info || !info.po) return false;
+                    return String(info.po).trim() === poValue;
+                });
+            }
 
             // ===== 2. LỌC PROVINCE =====
             const provinceRaw =
@@ -5226,7 +5265,7 @@ if (showTargetLine) {
                     .trim()
                     .toLowerCase();
 
-            let filtered = rowsArr;
+             filtered = rowsArr;
 
             if (provinceRaw && nrCellColKey) {
                 const provinceList = provinceRaw
@@ -5289,509 +5328,1037 @@ if (showTargetLine) {
             });
         }
 
-        function renderWorstCellTable() {
-            const worstCard    = document.getElementById("worstCellCard");
-            const worstTableEl = document.getElementById("worstCellTable");
-            const worstTitleEl = document.getElementById("worstCellTitle");
+        // === WORST CELL OVERVIEW =======================================
+        let worstOverviewData = [];
 
-            const nonCard      = document.getElementById("nonTrafficCard");
-            const nonTableEl   = document.getElementById("nonTrafficTable");
-            const nonTitleEl   = document.getElementById("nonTrafficTitle");
+        // Lấy data từ một sheet có tên gần giống danh sách "hints"
+        function getSheetDataByHints(hints) {
+            if (!workbook) return [];
 
-            // Load ngưỡng WorstCell threshold (sheet "WorstCell Threshold") nếu chưa load
-            if (worstCellThresholdMap === null) {
-                ensureWorstCellThresholdsLoaded().then(() => {
-                    if (worstCard) {
-                        // Gọi render lại sau khi đã có ngưỡng
-                        renderWorstCellTable();
+            function matchName(name) {
+                const lower = String(name || "").toLowerCase();
+                return hints.some(h => lower.includes(h));
+            }
+
+            let target = null;
+
+            if (mergedDataPerSheet) {
+                for (const name of Object.keys(mergedDataPerSheet)) {
+                    if (matchName(name)) {
+                        target = name;
+                        break;
                     }
-                });
-            }
-
-            if (!worstCard || !worstTableEl || !worstTitleEl) return;
-            if (isHeavyKpiFile && (!selectedKpiColumns || selectedKpiColumns.size === 0)) {
-                worstCard.style.display = "none";
-                worstTableEl.innerHTML = "";
-                if (nonCard && nonTableEl) {
-                    nonCard.style.display = "none";
-                    nonTableEl.innerHTML = "";
                 }
-                return;
+                if (target) return mergedDataPerSheet[target] || [];
             }
 
-            let rows = [];
-
-            // Ưu tiên dữ liệu đã merge sẵn
-            if (typeof mergedDataPerSheet !== "undefined" &&
-                mergedDataPerSheet) {
-
-                const worstRows = mergedDataPerSheet["WorstCell"] || [];
-                const cellRows  = mergedDataPerSheet["Cell"]      || [];
-
-                rows = []
-                    .concat(worstRows)
-                    .concat(cellRows);
-            }
-            // Nếu chưa có mergedDataPerSheet → đọc trực tiếp từ workbook
-            else if (workbook) {
-                const worstSheet = workbook.Sheets["WorstCell"];
-                const cellSheet  = workbook.Sheets["Cell"];
-
-                if (worstSheet) {
-                    const r1 = XLSX.utils.sheet_to_json(worstSheet, { defval: null });
-                    rows = rows.concat(r1);
-                }
-
-                if (cellSheet) {
-                    const r2 = XLSX.utils.sheet_to_json(cellSheet, { defval: null });
-                    rows = rows.concat(r2);
-                }
-            }
-
-            if (!rows || !rows.length) {
-                worstCard.style.display = "none";
-                if (nonCard) nonCard.style.display = "none";
-                return;
-            }
-
-            const columns = Object.keys(rows[0]);
-
-// Loại bỏ các cột rác Excel tự sinh (_EMPTY, __EMPTY, __EMPTY_1, ...)
-const ignorePatterns = ["_empty", "__empty"];
-const cleanColumns = columns.filter(col => {
-    const lower = String(col).toLowerCase();
-    return !ignorePatterns.some(p => lower.includes(p));
-});
-
-            let periodCol = null;
-            for (const col of columns) {
-                const lower = String(col).toLowerCase();
-                if (
-                    lower.includes("period") ||
-                    lower.includes("time") ||
-                    lower.includes("date")
-                ) {
-                    periodCol = col;
+            // fallback: đọc trực tiếp từ workbook
+            for (const name of workbook.SheetNames) {
+                if (matchName(name)) {
+                    target = name;
                     break;
                 }
             }
+            if (!target) return [];
 
-let nrbtsCol  = null;
-let nrCellCol = null;
-let availCol  = null;
-let macDlCol  = null; // MAC SDU data vol trans DL DTCH
-let macUlCol  = null; // MAC SDU data vol rcvd UL DTCH
-let traffic5gCol  = null; // 5G Total Traffic Volume
+            const sheet = workbook.Sheets[target];
+            if (!sheet) return [];
 
-cleanColumns.forEach(col => {
-    const lower = String(col).toLowerCase();
+            return XLSX.utils.sheet_to_json(sheet, { defval: null });
+        }
 
-    // NRBTS / LNBTS
-    if (
-        !nrbtsCol &&
-        (lower.includes("nrbts") || lower.includes("lnbts"))
-    ) {
-        nrbtsCol = col;
-    }
+        // Lấy PO / Tỉnh từ 1 dòng (dùng cho cả progress / WorstCell / NonTraffic)
+        // Lấy PO / Tỉnh từ 1 dòng (dùng cho cả Progress / WorstCell / Non-Traffic)
+        function getPoProvinceFromRow(row) {
+            if (!row) return null;
 
-    // NRCEL / NRCELL / LNCEL / LNCELL
-    if (
-        !nrCellCol &&
-        (
-            lower.includes("nrcel") ||
-            lower.includes("nrcell") ||
-            lower.includes("lncel") ||
-            lower.includes("lncell")
-        )
-    ) {
-        nrCellCol = col;
-    }
+            // 1) Ưu tiên cột PO / Tỉnh có sẵn
+            let po =
+                row["PO"] || row["Po"] || row["po"] ||
+                row["PO "] || row["P0"];
 
-    if (!availCol && lower.includes("cell avail")) availCol = col;
+            let province =
+                row["Tỉnh"] || row["Tinh"] || row["tinh"] ||
+                row["Province"] || row["PROVINCE"] || row["province"];
 
-    if (!macDlCol && lower.startsWith("mac sdu data vol trans dl dtch")) {
-        macDlCol = col;
-    }
-    if (!macUlCol && lower.startsWith("mac sdu data vol rcvd ul dtch")) {
-        macUlCol = col;
-    }
+            // 2) Nếu chưa có PO -> suy từ Site Name (NRBTS) dựa vào file Tiến độ
+            if (!po && typeof getPoFromProgress === "function") {
+                let siteName =
+                    row["NRBTS name"] ||
+                    row["NRBTS Name"] ||
+                    row["NRBTS"] ||
+                    row["Site Name"] ||
+                    row["SITE NAME"];
 
-    if (!traffic5gCol && lower.includes("5g total traffic volume")) {
-        traffic5gCol = col;
-    }
-});
-
-            const highlightedKeys = new Set();
-
-            if (workbook && workbook.Sheets && workbook.Sheets["WorstCell"]) {
-                const sheet = workbook.Sheets["WorstCell"];
-                const ref = sheet["!ref"];
-                if (ref) {
-                    const range = XLSX.utils.decode_range(ref);
-                    const headerRow = range.s.r;
-
-                    let nrbtsIdx = null;
-                    let nrCellIdx = null;
-
-                    for (let C = range.s.c; C <= range.e.c; C++) {
-                        const addr = XLSX.utils.encode_cell({ r: headerRow, c: C });
-                        const cell = sheet[addr];
-                        if (!cell || cell.v == null) continue;
-                        const headerText = String(cell.v).trim();
-                        if (headerText === nrbtsCol)  nrbtsIdx = C;
-                        if (headerText === nrCellCol) nrCellIdx = C;
-                    }
-
-                    for (let R = headerRow + 1; R <= range.e.r; R++) {
-                        let hasColor = false;
-
-                        for (let C = range.s.c; C <= range.e.c; C++) {
-                            const addr = XLSX.utils.encode_cell({ r: R, c: C });
-                            const cell = sheet[addr];
-                            if (!cell || !cell.s || !cell.s.fill) continue;
-
-                            const fill = cell.s.fill;
-                            const fg = fill.fgColor || {};
-                            const bg = fill.bgColor || {};
-
-                            const hasFg =
-                                (fg.rgb && fg.rgb !== "00000000" && fg.rgb !== "FFFFFFFF") ||
-                                fg.theme != null ||
-                                fg.indexed != null;
-                            const hasBg =
-                                (bg.rgb && bg.rgb !== "00000000" && bg.rgb !== "FFFFFFFF") ||
-                                bg.theme != null ||
-                                bg.indexed != null;
-
-                            if (hasFg || hasBg) {
-                                hasColor = true;
-                                break;
-                            }
+                if (!siteName) {
+                    for (const key in row) {
+                        const lower = String(key).toLowerCase();
+                        if (lower.includes("nrbts") || lower.includes("site name")) {
+                            siteName = row[key];
+                            break;
                         }
+                    }
+                }
 
-                        if (!hasColor) continue;
+                if (siteName) {
+                    const mappedPo = getPoFromProgress(siteName);
+                    if (mappedPo) po = mappedPo;
+                }
+            }
 
-                        const nrbtsVal = (nrbtsIdx != null
-                            ? (sheet[XLSX.utils.encode_cell({ r: R, c: nrbtsIdx })] || {}).v
-                            : "") || "";
-                        const nrcelVal = (nrCellIdx != null
-                            ? (sheet[XLSX.utils.encode_cell({ r: R, c: nrCellIdx })] || {}).v
-                            : "") || "";
+            // 3) Nếu chưa có Tỉnh -> lấy từ tên cell (NRCEL / LNCEL): 3 ký tự cuối
+            if (!province) {
+                let cellName = "";
 
-                        const key = `${String(nrbtsVal).trim()}||${String(nrcelVal).trim()}`;
-                        highlightedKeys.add(key);
+                for (const key in row) {
+                    const lower = String(key).toLowerCase();
+                    if (
+                        lower.includes("nrcel") ||
+                        lower.includes("nrcell") ||
+                        lower.includes("lncel") ||
+                        lower.includes("lncell")
+                    ) {
+                        cellName = row[key];
+                        if (cellName != null && cellName !== "") break;
+                    }
+                }
+
+                if (cellName != null) {
+                    const s = String(cellName).trim();
+                    if (s) {
+                        province = s.length >= 3 ? s.slice(-3) : s;
                     }
                 }
             }
 
-            function makeRowKey(row) {
-                const nrbtsVal = nrbtsCol ? (row[nrbtsCol] || "") : "";
-                const nrcelVal = nrCellCol ? (row[nrCellCol] || "") : "";
-                return `${String(nrbtsVal).trim()}||${String(nrcelVal).trim()}`;
+            if (!po || !province) return null;
+
+            return {
+                po: String(po).trim(),
+                province: String(province).trim()
+            };
+        }
+
+
+
+        function getStationsFromProgressRow(row) {
+            if (!row) return { soTram: 0, onAir: 0 };
+
+            // Ưu tiên dùng dữ liệu đã gộp: total / onair từ groupList
+            const soTram =
+                Number(row.total) ||
+                Number(row["Tổng trạm"]) ||
+                Number(row["Tong tram"]) ||
+                Number(row["Số trạm"]) ||
+                Number(row["So tram"]) ||
+                Number(row["Site"]) ||
+                0;
+
+            const onAir =
+                Number(row.onair) ||
+                Number(row["On Air"]) ||
+                Number(row["OnAir"]) ||
+                Number(row["On_air"]) ||
+                Number(row["Trạm đo kiểm"]) ||
+                0;
+
+            return {
+                soTram: isNaN(soTram) ? 0 : soTram,
+                onAir: isNaN(onAir) ? 0 : onAir
+            };
+        }
+
+
+        // Tính toán lại toàn bộ Worst Cell Overview
+        function recomputeWorstCellOverview() {
+            const map = new Map(); // key = PO||Tỉnh
+
+            function ensureRow(po, province) {
+                const key = po + "||" + province;
+                let obj = map.get(key);
+                if (!obj) {
+                    obj = {
+                        po,
+                        province,
+                        soTram: 0,
+                        onAir: 0,             // 🔹 sẽ là "Số Cell On-Air"
+                        worstCssrCount: 0,
+                        worstDcrCount: 0,
+                        nonTrafficCount: 0
+                    };
+                    map.set(key, obj);
+                }
+                return obj;
             }
 
-            function isNumericLike(v) {
-                if (v === null || v === undefined) return false;
-                const s = String(v).trim().replace(/\s+/g, "");
-                return /^-?\d+(\.\d+)?$/.test(s);
+            // 1️⃣ Tiến độ đo kiểm: CHỈ lấy Số trạm, KHÔNG dùng On-Air nữa
+            if (typeof progressFullData !== "undefined" && Array.isArray(progressFullData)) {
+                progressFullData.forEach((r) => {
+                    const info = getPoProvinceFromRow(r);
+                    if (!info) return;
+
+                    const agg = ensureRow(info.po, info.province);
+                    const s   = getStationsFromProgressRow(r);
+
+                    agg.soTram += s.soTram || 0;
+                    // ❌ KHÔNG cộng onAir từ tiến độ nữa
+                    // agg.onAir  += s.onAir || 0;
+                });
             }
 
-            function formatNumberSmart(v) {
-                const num = parseFloat(String(v).trim().replace(/\s+/g, ""));
-                if (isNaN(num)) return v ?? "";
-                const rounded = Math.round(num * 1000) / 1000;
-                return Number.isInteger(rounded)
-                    ? String(rounded)
-                    : rounded.toFixed(3);
+            // Helper: ép kiểu số
+            function toNum(v) {
+                if (v === null || v === undefined) return NaN;
+                const n = parseFloat(String(v).replace(/\s+/g, ""));
+                return isNaN(n) ? NaN : n;
             }
 
-            let latestLabel = null;
-            let latestSort  = -Infinity;
+            // 2️⃣ Worst Cell: dùng để đếm "Số Cell On-Air" + CSSR<95, DCR>3
+            let worstRows = [];
+            if (Array.isArray(window._latestWorstTrafficRows) && window._latestWorstTrafficRows.length) {
+                // Ưu tiên dùng đúng dataset vừa render cho bảng Worst Cell
+                worstRows = window._latestWorstTrafficRows;
+            } else {
+                // Fallback: đọc trực tiếp từ sheet WorstCell nếu chưa có
+                worstRows = getSheetDataByHints(["worstcell", "worst cell"]);
+            }
 
-            if (periodCol) {
-                rows.forEach(r => {
-                    const raw = r[periodCol];
-                    if (!raw) return;
-                    const norm = normalizePeriod(raw);
-                    if (!norm) return;
-                    if (norm.sortValue > latestSort) {
-                        latestSort  = norm.sortValue;
-                        latestLabel = norm.label;
+            worstRows.forEach((r) => {
+                const info = getPoProvinceFromRow(r);
+                if (!info) return;
+
+                const agg = ensureRow(info.po, info.province);
+
+                // ✅ MỖI DÒNG (MỖI CELL) TRONG BẢNG "Worst Cell" = 1 "Cell On-Air"
+                agg.onAir = (agg.onAir || 0) + 1;
+
+                const cssr =
+                    r["NSA call access"] ||
+                    r["NSA Call access"] ||
+                    r["NSA CALL ACCESS"];
+
+                const dcr =
+                    r["NSA Active ERAB drop UserR"] ||
+                    r["NSA active ERAB drop UserR"] ||
+                    r["NSA ACTIVE ERAB DROP USERR"];
+
+                const cssrNum = toNum(cssr);
+                const dcrNum  = toNum(dcr);
+
+                if (!isNaN(cssrNum) && cssrNum < 95) agg.worstCssrCount++;
+                if (!isNaN(dcrNum)  && dcrNum  > 3)  agg.worstDcrCount++;
+            });
+
+            // 3️⃣ Non-Traffic: đếm số cell + cộng vào Số Cell On-Air
+            let nonRows = [];
+            if (Array.isArray(window._latestWorstNonTrafficRows) && window._latestWorstNonTrafficRows.length) {
+                nonRows = window._latestWorstNonTrafficRows;
+            } else {
+                nonRows = getSheetDataByHints([
+                    "cell non traffic",
+                    "cell_non_traffic",
+                    "non-traffic"
+                ]);
+            }
+
+            nonRows.forEach((r) => {
+                const info = getPoProvinceFromRow(r);
+                if (!info) return;
+                const agg = ensureRow(info.po, info.province);
+
+                // ✅ Cell non-traffic cũng tính là 1 "Cell On-Air"
+                agg.onAir = (agg.onAir || 0) + 1;
+
+                // Vẫn giữ riêng số lượng non-traffic
+                agg.nonTrafficCount++;
+            });
+
+
+            // 4️⃣ Chuyển map -> array & sort theo PO rồi Tỉnh
+            worstOverviewData = Array.from(map.values()).sort((a, b) => {
+                if (a.po === b.po) {
+                    return a.province.localeCompare(b.province, "vi");
+                }
+                return a.po.localeCompare(b.po, "vi");
+            });
+
+            // ==== FILL COMBOBOX PO CHO WORST CELL OVERVIEW ====
+            const poFilter = document.getElementById("worstOverviewPoFilter");
+            if (poFilter) {
+                const prevValue = poFilter.value || "ALL";
+
+                // Xóa & fill lại option
+                poFilter.innerHTML = '<option value="ALL">Tất cả PO</option>';
+
+                const uniquePO = [...new Set(
+                    (worstOverviewData || [])
+                        .map(r => (r.po || "").trim())
+                        .filter(Boolean)
+                )];
+
+                uniquePO.forEach((po) => {
+                    const opt = document.createElement("option");
+                    opt.value = po;
+                    opt.textContent = po;
+                    poFilter.appendChild(opt);
+                });
+
+                // Giữ lại lựa chọn cũ nếu còn tồn tại
+                if (prevValue !== "ALL" && uniquePO.includes(prevValue)) {
+                    poFilter.value = prevValue;
+                } else {
+                    poFilter.value = "ALL";
+                }
+
+                // Gắn event change 1 lần
+                if (!poFilter._bound) {
+                    poFilter.addEventListener("change", () => {
+                        renderWorstCellOverviewTable();
+                    });
+                    poFilter._bound = true;
+                }
+            }
+
+            renderWorstCellOverviewTable();
+
+        }
+
+
+
+        // Vẽ bảng ra HTML
+    function renderWorstCellOverviewTable() {
+        const card     = document.getElementById("worstOverviewCard");
+        const tableDiv = document.getElementById("worstOverviewTable");
+        const poSelect = document.getElementById("worstOverviewPoFilter");
+
+        if (!card || !tableDiv || !Array.isArray(worstOverviewData)) return;
+
+        const selectedPo = poSelect ? poSelect.value || "ALL" : "ALL";
+
+        // ===== Chuẩn bị dữ liệu theo PO đang chọn =====
+        let rows = [];
+
+        if (selectedPo === "ALL") {
+            // Gộp theo TỈNH, PO hiển thị "Tất cả PO"
+            const map = new Map(); // key = province
+
+            worstOverviewData.forEach((r) => {
+                const prov = r.province || "";
+                let agg = map.get(prov);
+                if (!agg) {
+                    agg = {
+                        po: "Tất cả",
+                        province: prov,
+                        soTram: 0,
+                        onAir: 0,
+                        worstCssrCount: 0,
+                        worstDcrCount: 0,
+                        nonTrafficCount: 0,
+                    };
+                    map.set(prov, agg);
+                }
+
+                agg.soTram          += r.soTram          || 0;
+                agg.onAir           += r.onAir           || 0;
+                agg.worstCssrCount  += r.worstCssrCount  || 0;
+                agg.worstDcrCount   += r.worstDcrCount   || 0;
+                agg.nonTrafficCount += r.nonTrafficCount || 0;
+            });
+
+            rows = Array.from(map.values());
+        } else {
+            // Lọc đúng 1 PO, vẫn hiển thị từng tỉnh riêng
+            rows = worstOverviewData.filter((r) => r.po === selectedPo);
+        }
+
+        if (!rows.length) {
+            card.style.display = "none";
+            tableDiv.innerHTML = "";
+            return;
+        }
+
+        // Sắp xếp theo tỉnh
+        rows.sort((a, b) => {
+            const pa = (a.province || "").toString();
+            const pb = (b.province || "").toString();
+            return pa.localeCompare(pb);
+        });
+
+        card.style.display = "block";
+
+        // ===== Helper format % =====
+        function pctStr(num, den) {
+            if (!den) return "-";
+            const v = (num / den) * 100;
+            return v.toFixed(2) + "%";
+        }
+
+        let totalStations = 0;
+        let totalOnAir    = 0;
+        let totalCssr     = 0;
+        let totalDcr      = 0;
+        let totalNon      = 0;
+
+        let html = `
+            <table class="progress-table">
+                <thead>
+                    <tr>
+                        <th>PO</th>
+                        <th>Tỉnh</th>
+                        <th>Số trạm</th>
+                        <th>Số Cell On-Air</th>
+
+                        <th>Worst Cell CSSR &lt; 95%</th>
+                        <th>% Worst Cell CSSR &lt; 95%</th>
+
+                        <th>Worst Cell DCR &gt; 3%</th>
+                        <th>% Worst Cell DCR &gt; 3%</th>
+
+                        <th>Non-Traffic Cell</th>
+                        <th>% Non-Traffic</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        rows.forEach((r) => {
+            totalStations += r.soTram          || 0;
+            totalOnAir    += r.onAir           || 0;
+            totalCssr     += r.worstCssrCount  || 0;
+            totalDcr      += r.worstDcrCount   || 0;
+            totalNon      += r.nonTrafficCount || 0;
+
+            const cssrPct = pctStr(r.worstCssrCount,  r.onAir);
+            const dcrPct  = pctStr(r.worstDcrCount,   r.onAir);
+            const nonPct  = pctStr(r.nonTrafficCount, r.onAir);
+
+            html += `
+                <tr>
+                    <td>${r.po || ""}</td>
+                    <td>${r.province || ""}</td>
+                    <td>${r.soTram || 0}</td>
+                    <td>${r.onAir || 0}</td>
+
+                    <td>${r.worstCssrCount || 0}</td>
+                    <td>${cssrPct}</td>
+
+                    <td>${r.worstDcrCount || 0}</td>
+                    <td>${dcrPct}</td>
+
+                    <td>${r.nonTrafficCount || 0}</td>
+                    <td>${nonPct}</td>
+                </tr>
+            `;
+        });
+
+        // ===== Dòng TỔNG =====
+        const totalCssrPct = pctStr(totalCssr, totalOnAir);
+        const totalDcrPct  = pctStr(totalDcr,  totalOnAir);
+        const totalNonPct  = pctStr(totalNon,  totalOnAir);
+
+        html += `
+            <tr style="font-weight:600; background:#f3f4ff;">
+                <td></td>
+                <td>TỔNG</td>
+                <td>${totalStations}</td>
+                <td>${totalOnAir}</td>
+
+                <td>${totalCssr}</td>
+                <td>${totalCssrPct}</td>
+
+                <td>${totalDcr}</td>
+                <td>${totalDcrPct}</td>
+
+                <td>${totalNon}</td>
+                <td>${totalNonPct}</td>
+            </tr>
+        `;
+
+        html += "</tbody></table>";
+
+        tableDiv.innerHTML = html;
+    }
+
+        function fillWorstOverviewPO() {
+            const poSelect = document.getElementById("worstOverviewPoFilter");
+            if (!poSelect) return;
+
+            // Lấy danh sách PO từ worstCellFullRows (đã có PO cập nhật từ tiến độ)
+            const uniquePO = [...new Set(worstCellFullRows.map(r => r.__PO).filter(Boolean))];
+
+            poSelect.innerHTML = `<option value="ALL">Tất cả PO</option>`;
+            uniquePO.forEach(po => {
+                const opt = document.createElement("option");
+                opt.value = po;
+                opt.textContent = po;
+                poSelect.appendChild(opt);
+            });
+        }
+
+    function renderWorstCellTable() {
+        const worstCard    = document.getElementById("worstCellCard");
+        const worstTableEl = document.getElementById("worstCellTable");
+        const worstTitleEl = document.getElementById("worstCellTitle");
+
+        const nonCard      = document.getElementById("nonTrafficCard");
+        const nonTableEl   = document.getElementById("nonTrafficTable");
+        const nonTitleEl   = document.getElementById("nonTrafficTitle");
+
+        // Load ngưỡng WorstCell threshold (sheet "WorstCell Threshold") nếu chưa load
+        if (worstCellThresholdMap === null) {
+            ensureWorstCellThresholdsLoaded().then(() => {
+                if (worstCard) {
+                    // Gọi render lại sau khi đã có ngưỡng
+                    renderWorstCellTable();
+                }
+            });
+        }
+
+        if (!worstCard || !worstTableEl || !worstTitleEl) return;
+        if (isHeavyKpiFile && (!selectedKpiColumns || selectedKpiColumns.size === 0)) {
+            worstCard.style.display = "none";
+            worstTableEl.innerHTML = "";
+            if (nonCard && nonTableEl) {
+                nonCard.style.display = "none";
+                nonTableEl.innerHTML = "";
+            }
+            return;
+        }
+
+        let rows = [];
+
+        // Ưu tiên dữ liệu đã merge sẵn
+        if (typeof mergedDataPerSheet !== "undefined" && mergedDataPerSheet) {
+            const worstRows = mergedDataPerSheet["WorstCell"] || [];
+            const cellRows  = mergedDataPerSheet["Cell"]      || [];
+
+            rows = []
+                .concat(worstRows)
+                .concat(cellRows);
+        }
+        // Nếu chưa có mergedDataPerSheet → đọc trực tiếp từ workbook
+        else if (workbook) {
+            const worstSheet = workbook.Sheets["WorstCell"];
+            const cellSheet  = workbook.Sheets["Cell"];
+
+            if (worstSheet) {
+                const r1 = XLSX.utils.sheet_to_json(worstSheet, { defval: null });
+                rows = rows.concat(r1);
+            }
+
+            if (cellSheet) {
+                const r2 = XLSX.utils.sheet_to_json(cellSheet, { defval: null });
+                rows = rows.concat(r2);
+            }
+        }
+
+        if (!rows || !rows.length) {
+            worstCard.style.display = "none";
+            if (nonCard) nonCard.style.display = "none";
+            return;
+        }
+
+        const columns = Object.keys(rows[0]);
+
+        // Loại bỏ các cột rác Excel tự sinh (_EMPTY, __EMPTY, __EMPTY_1, ...)
+        const ignorePatterns = ["_empty", "__empty"];
+        const cleanColumns = columns.filter(col => {
+            const lower = String(col).toLowerCase();
+            return !ignorePatterns.some(p => lower.includes(p));
+        });
+
+        let periodCol = null;
+        for (const col of columns) {
+            const lower = String(col).toLowerCase();
+            if (
+                lower.includes("period") ||
+                lower.includes("time") ||
+                lower.includes("date")
+            ) {
+                periodCol = col;
+                break;
+            }
+        }
+
+        let nrbtsCol      = null;
+        let nrCellCol     = null;
+        let availCol      = null;
+        let macDlCol      = null; // MAC SDU data vol trans DL DTCH
+        let macUlCol      = null; // MAC SDU data vol rcvd UL DTCH
+        let traffic5gCol  = null; // 5G Total Traffic Volume
+
+        cleanColumns.forEach(col => {
+            const lower = String(col).toLowerCase();
+
+            // NRBTS / LNBTS
+            if (!nrbtsCol && (lower.includes("nrbts") || lower.includes("lnbts"))) {
+                nrbtsCol = col;
+            }
+
+            // NRCEL / NRCELL / LNCEL / LNCELL
+            if (
+                !nrCellCol &&
+                (
+                    lower.includes("nrcel")  ||
+                    lower.includes("nrcell") ||
+                    lower.includes("lncel")  ||
+                    lower.includes("lncell")
+                )
+            ) {
+                nrCellCol = col;
+            }
+
+            if (!availCol && lower.includes("cell avail")) availCol = col;
+
+            if (!macDlCol && lower.startsWith("mac sdu data vol trans dl dtch")) {
+                macDlCol = col;
+            }
+            if (!macUlCol && lower.startsWith("mac sdu data vol rcvd ul dtch")) {
+                macUlCol = col;
+            }
+
+            if (!traffic5gCol && lower.includes("5g total traffic volume")) {
+                traffic5gCol = col;
+            }
+        });
+
+        const highlightedKeys = new Set();
+
+        // Đánh dấu các dòng được tô màu trong sheet WorstCell gốc (Excel)
+        if (workbook && workbook.Sheets && workbook.Sheets["WorstCell"]) {
+            const sheet = workbook.Sheets["WorstCell"];
+            const ref = sheet["!ref"];
+            if (ref) {
+                const range = XLSX.utils.decode_range(ref);
+                const headerRow = range.s.r;
+
+                let nrbtsIdx = null;
+                let nrCellIdx = null;
+
+                for (let C = range.s.c; C <= range.e.c; C++) {
+                    const addr = XLSX.utils.encode_cell({ r: headerRow, c: C });
+                    const cell = sheet[addr];
+                    if (!cell || cell.v == null) continue;
+                    const headerText = String(cell.v).trim();
+                    if (headerText === nrbtsCol)  nrbtsIdx = C;
+                    if (headerText === nrCellCol) nrCellIdx = C;
+                }
+
+                for (let R = headerRow + 1; R <= range.e.r; R++) {
+                    let hasColor = false;
+
+                    for (let C = range.s.c; C <= range.e.c; C++) {
+                        const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                        const cell = sheet[addr];
+                        if (!cell || !cell.s || !cell.s.fill) continue;
+
+                        const fill = cell.s.fill;
+                        const fg = fill.fgColor || {};
+                        const bg = fill.bgColor || {};
+
+                        const hasFg =
+                            (fg.rgb && fg.rgb !== "00000000" && fg.rgb !== "FFFFFFFF") ||
+                            fg.theme != null ||
+                            fg.indexed != null;
+                        const hasBg =
+                            (bg.rgb && bg.rgb !== "00000000" && bg.rgb !== "FFFFFFFF") ||
+                            bg.theme != null ||
+                            bg.indexed != null;
+
+                        if (hasFg || hasBg) {
+                            hasColor = true;
+                            break;
+                        }
                     }
-                });
-            }
 
-            let latestRows = rows;
-            if (periodCol && latestLabel) {
-                latestRows = rows.filter(r => {
-                    const raw = r[periodCol];
-                    if (!raw) return false;
-                    const norm = normalizePeriod(raw);
-                    return norm && norm.label === latestLabel;
-                });
-            }
+                    if (!hasColor) continue;
 
-            if (!latestRows.length) {
-                worstCard.style.display = "none";
-                if (nonCard) nonCard.style.display = "none";
+                    const nrbtsVal = (nrbtsIdx != null
+                        ? (sheet[XLSX.utils.encode_cell({ r: R, c: nrbtsIdx })] || {}).v
+                        : "") || "";
+                    const nrcelVal = (nrCellIdx != null
+                        ? (sheet[XLSX.utils.encode_cell({ r: R, c: nrCellIdx })] || {}).v
+                        : "") || "";
+
+                    const key = `${String(nrbtsVal).trim()}||${String(nrcelVal).trim()}`;
+                    highlightedKeys.add(key);
+                }
+            }
+        }
+
+        function makeRowKey(row) {
+            const nrbtsVal = nrbtsCol ? (row[nrbtsCol] || "") : "";
+            const nrcelVal = nrCellCol ? (row[nrCellCol] || "") : "";
+            return `${String(nrbtsVal).trim()}||${String(nrcelVal).trim()}`;
+        }
+
+        function isNumericLike(v) {
+            if (v === null || v === undefined) return false;
+            const s = String(v).trim().replace(/\s+/g, "");
+            return /^-?\d+(\.\d+)?$/.test(s);
+        }
+
+        function formatNumberSmart(v) {
+            const num = parseFloat(String(v).trim().replace(/\s+/g, ""));
+            if (isNaN(num)) return v ?? "";
+            const rounded = Math.round(num * 1000) / 1000;
+            return Number.isInteger(rounded)
+                ? String(rounded)
+                : rounded.toFixed(3);
+        }
+
+        // Xác định kỳ gần nhất
+        let latestLabel = null;
+        let latestSort  = -Infinity;
+
+        if (periodCol) {
+            rows.forEach(r => {
+                const raw = r[periodCol];
+                if (!raw) return;
+                const norm = normalizePeriod(raw);
+                if (!norm) return;
+                if (norm.sortValue > latestSort) {
+                    latestSort  = norm.sortValue;
+                    latestLabel = norm.label;
+                }
+            });
+        }
+
+        let latestRows = rows;
+        if (periodCol && latestLabel) {
+            latestRows = rows.filter(r => {
+                const raw = r[periodCol];
+                if (!raw) return false;
+                const norm = normalizePeriod(raw);
+                return norm && norm.label === latestLabel;
+            });
+        }
+
+        if (!latestRows.length) {
+            worstCard.style.display = "none";
+            if (nonCard) nonCard.style.display = "none";
+            return;
+        }
+
+        // ===== Phân loại Traffic / Non-Traffic =====
+        const trafficRows    = [];
+        const nonTrafficRows = [];
+
+        // check MAC SDU = 0
+        function isZeroMac(val) {
+            if (val === null || val === undefined || val === "") return false;
+            const num = parseFloat(String(val).replace(/\s+/g, "").replace(",", "."));
+            return !Number.isNaN(num) && num === 0;
+        }
+
+        latestRows.forEach(row => {
+            const avail = availCol ? row[availCol] : null;
+
+            // 1️⃣ Cell avail = 0 -> Non-Traffic
+            if (availCol && Number(avail) === 0) {
+                nonTrafficRows.push(row);
                 return;
             }
 
-const trafficRows    = [];
-const nonTrafficRows = [];
+            // 2️⃣ 2 KPI MAC SDU DL/UL = 0 -> Non-Traffic
+            let moveByMac = false;
+            if (macDlCol || macUlCol) {
+                const dlVal = macDlCol ? row[macDlCol] : null;
+                const ulVal = macUlCol ? row[macUlCol] : null;
 
-// check MAC SDU = 0
-function isZeroMac(val) {
-    if (val === null || val === undefined || val === "") return false;
-    const num = parseFloat(String(val).replace(/\s+/g, "").replace(",", "."));
-    return !Number.isNaN(num) && num === 0;
-}
-
-latestRows.forEach(row => {
-    const avail = availCol ? row[availCol] : null;
-
-    // 1️⃣ Cell avail = 0 -> Non-Traffic
-    if (availCol && Number(avail) === 0) {
-        nonTrafficRows.push(row);
-        return;
-    }
-
-    // 2️⃣ 2 KPI MAC SDU DL/UL = 0 -> Non-Traffic
-    let moveByMac = false;
-    if (macDlCol || macUlCol) {
-        const dlVal = macDlCol ? row[macDlCol] : null;
-        const ulVal = macUlCol ? row[macUlCol] : null;
-
-        if (macDlCol && macUlCol) {
-            // cả DL & UL = 0
-            if (isZeroMac(dlVal) && isZeroMac(ulVal)) moveByMac = true;
-        } else if (macDlCol) {
-            if (isZeroMac(dlVal)) moveByMac = true;
-        } else if (macUlCol) {
-            if (isZeroMac(ulVal)) moveByMac = true;
-        }
-    }
-
-    if (moveByMac) {
-        nonTrafficRows.push(row);
-        return;
-    }
-
-    // 3️⃣ 5G Total Traffic Volume < 100 -> Non-Traffic
-    if (traffic5gCol) {
-        const trafficVal = toNumber(row[traffic5gCol]);
-        if (trafficVal !== null && trafficVal < 100) {
-            nonTrafficRows.push(row);
-            return;
-        }
-    }
-
-    const hasData = cleanColumns.some(col => {
-        if (col === periodCol || col === nrbtsCol || col === nrCellCol || col === availCol) return false;
-        const v = row[col];
-        return v !== null && v !== "" && !Number.isNaN(parseFloat(v));
-    });
-
-    if (!hasData) nonTrafficRows.push(row);
-    else trafficRows.push(row);
-});
-
-// Remove duplicate theo NRBTS + NRCEL
-function deduplicateRows(rowsArr) {
-    const seen = new Set();
-    const result = [];
-    rowsArr.forEach(row => {
-        const key = makeRowKey(row); // đã định nghĩa ở trên
-        if (!key) {
-            result.push(row);
-            return;
-        }
-        if (seen.has(key)) return;
-        seen.add(key);
-        result.push(row);
-    });
-    return result;
-}
-
-const trafficRowsDedup    = deduplicateRows(trafficRows);
-const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
-
-    function toNumber(val) {
-        if (val === null || val === undefined) return null;
-        const num = parseFloat(String(val).replace(/\s+/g, ""));
-        return isNaN(num) ? null : num;
-    }
-
-    function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
-    if (!rowsArr.length) {
-        titleEl.textContent = baseTitle + " (không có dữ liệu)";
-        tableEl.innerHTML = "";
-        return;
-    }
-
-    const otherCols = cleanColumns.filter(col => {
-        const lower = String(col).toLowerCase();
-        if (col === periodCol) return false;
-        if (col === nrbtsCol) return false;
-        if (col === nrCellCol) return false;
-        if (col === availCol)  return false;
-        if (lower.includes("mrbts")) return false;
-        return true;
-    });
-
-    const orderedCols = ["__PO", "__province"];
-    if (nrbtsCol)  orderedCols.push(nrbtsCol);
-    if (nrCellCol) orderedCols.push(nrCellCol);
-    if (availCol)  orderedCols.push(availCol);
-    orderedCols.push(...otherCols);
-
-    // 🔥 NEW: nếu là bảng Worst Cell thì apply filter giá trị
-    let effectiveRows = rowsArr;
-    if (baseTitle.startsWith("Worst Cell")) {
-        initWorstFilterOptionsFromCols(orderedCols);
-        effectiveRows = applyWorstCellValueFilters(rowsArr, orderedCols);
-
-        if (!effectiveRows.length) {
-            titleEl.textContent = baseTitle + " – không có dòng nào khớp filter";
-            tableEl.innerHTML = "";
-            return;
-        }
-    }
-
-    const kpiAccessName    = "NSA call access";
-    const kpiDropName      = "NSA Active ERAB drop UserR";
-    const kpiAvailName     = "Cell avail R";
-    const kpiSnChangeName  = "SN Init Change Intra-freq SR src gNB";
-
-    function findColKeyByName(displayName) {
-        const target = displayName.toLowerCase();
-        return orderedCols.find(colKey =>
-            colKey !== "__province" &&
-            String(colKey).toLowerCase() === target
-        );
-    }
-
-    const kpiAccessColKey   = findColKeyByName(kpiAccessName);
-    const kpiDropColKey     = findColKeyByName(kpiDropName);
-    const kpiAvailColKey    = findColKeyByName(kpiAvailName);
-    const kpiSnChangeColKey = findColKeyByName(kpiSnChangeName);
-
-    const sortedRows = [...effectiveRows].sort((a, b) => {
-        const aCell = nrCellCol ? String(a[nrCellCol] ?? "") : "";
-        const bCell = nrCellCol ? String(b[nrCellCol] ?? "") : "";
-        const provA = aCell.slice(-3);
-        const provB = bCell.slice(-3);
-        return provA.localeCompare(provB);
-    });
-
-    let html = "<table><thead><tr>";
-    orderedCols.forEach((colKey, idx) => {
-        const isFirst4 = idx < 4;
-
-        let title = colKey;
-        if (colKey === "__PO")       title = "PO";
-        if (colKey === "__province") title = "Province";
-
-        const thStyle =
-            "background:#203864; color:#fff; padding:6px 8px; " +
-            "border:1px solid #cbd5e1; text-align:center;" +
-            (isFirst4 ? "white-space:nowrap;" : "");
-        html += `<th style="${thStyle}">${title}</th>`;
-    });
-    html += "</tr></thead><tbody>";
-
-    sortedRows.forEach(row => {
-        const rowKey = makeRowKey(row);
-        const isHighlighted = highlightedKeys.has(rowKey);
-        const trStyle = isHighlighted ? ' style="background:#fef3c7;"' : "";
-
-        html += `<tr${trStyle}>`;
-
-        orderedCols.forEach((colKey, idx) => {
-            const isFirst4 = idx < 4;
-            let value;
-
-            if (colKey === "__province") {
-                const cellVal = nrCellCol ? row[nrCellCol] : "";
-                const str = cellVal == null ? "" : String(cellVal).trim();
-                value = str.length >= 3 ? str.slice(-3) : str;
-            } else if (colKey === "__PO") {
-                const siteName = nrbtsCol ? row[nrbtsCol] : "";
-                value = getPoFromProgress(siteName);
-            } else {
-                value = row[colKey];
-            }
-
-            let display = value == null ? "" : value;
-            if (idx >= 4 && isNumericLike(display)) {
-                display = formatNumberSmart(display);
-            }
-
-            let condStyle = "";
-
-            // Ưu tiên dùng file cấu hình sheet "WorstCell Threshold" nếu có
-            if (worstCellThresholdMap && Object.keys(worstCellThresholdMap).length) {
-                let kpiDisplayName = colKey;
-                if (colKey === "__PO")       kpiDisplayName = "PO";
-                else if (colKey === "__province") kpiDisplayName = "Province";
-
-                const thr = getWorstCellThresholdByName(kpiDisplayName);
-
-                if (thr && isNumericLike(value)) {
-                    const num = toNumber(value);
-                    const t   = thr.value;
-                    const op  = thr.op;
-                    let isBad = false;
-
-                    if (num !== null) {
-                        if      (op === "<")  isBad = num <  t;
-                        else if (op === ">")  isBad = num >  t;
-                        else if (op === "<=") isBad = num <= t;
-                        else if (op === ">=") isBad = num >= t;
-                        else if (op === "=" || op === "==") isBad = num === t;
-                    }
-
-                    if (isBad) {
-                        condStyle =
-                            "background:#fee2e2; color:#b91c1c; font-weight:700;";
-                    }
+                if (macDlCol && macUlCol) {
+                    // cả DL & UL = 0
+                    if (isZeroMac(dlVal) && isZeroMac(ulVal)) moveByMac = true;
+                } else if (macDlCol) {
+                    if (isZeroMac(dlVal)) moveByMac = true;
+                } else if (macUlCol) {
+                    if (isZeroMac(ulVal)) moveByMac = true;
                 }
             }
 
-            // Style ô dữ liệu: giống file chuẩn (nền xanh nhạt + đậm 4 cột đầu)
-            const baseCell =
-                "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
-            const extraCell = isFirst4
-                ? " background:#d9e1f2; font-weight:600; white-space:nowrap; text-align:left;"
-                : "";
+            if (moveByMac) {
+                nonTrafficRows.push(row);
+                return;
+            }
 
-            const finalStyle = baseCell + extraCell + condStyle;
+            // 3️⃣ 5G Total Traffic Volume < 100 -> Non-Traffic
+            if (traffic5gCol) {
+                const trafficVal = toNumber(row[traffic5gCol]);
+                if (trafficVal !== null && trafficVal < 100) {
+                    nonTrafficRows.push(row);
+                    return;
+                }
+            }
 
-            html += `<td style="${finalStyle}">${display}</td>`;
+            const hasData = cleanColumns.some(col => {
+                if (col === periodCol || col === nrbtsCol || col === nrCellCol || col === availCol) return false;
+                const v = row[col];
+                return v !== null && v !== "" && !Number.isNaN(parseFloat(v));
+            });
+
+            if (!hasData) nonTrafficRows.push(row);
+            else trafficRows.push(row);
         });
 
-        html += "</tr>";
-    });
+        // Remove duplicate theo NRBTS + NRCEL
+        function deduplicateRows(rowsArr) {
+            const seen = new Set();
+            const result = [];
+            rowsArr.forEach(row => {
+                const key = makeRowKey(row); // đã định nghĩa ở trên
+                if (!key) {
+                    result.push(row);
+                    return;
+                }
+                if (seen.has(key)) return;
+                seen.add(key);
+                result.push(row);
+            });
+            return result;
+        }
 
-    html += "</tbody></table>";
-    tableEl.innerHTML = `
-        <div style="min-width:100%; max-height:700px; overflow:auto;">
-            ${html}
-        </div>
-    `;
-    titleEl.textContent = baseTitle;
+        // Bản đầy đủ (dùng cho Overview)
+        const trafficRowsDedupAll    = deduplicateRows(trafficRows);
+        const nonTrafficRowsDedupAll = deduplicateRows(nonTrafficRows);
 
-    // Sau khi vẽ xong → cố định 4 cột đầu cho Worst Cell & Cell Non-Traffic
-    if (
-        (baseTitle.startsWith("Worst Cell") ||
-         baseTitle.startsWith("Cell Non-Traffic")) &&
-        typeof applyWorstCellStickyColumns === "function"
-    ) {
-        setTimeout(applyWorstCellStickyColumns, 0);
-    }
-}
+        // ===== Cập nhật combobox PO từ toàn bộ dữ liệu =====
+        (function updateWorstPoFilterOptions() {
+            const poSelect = document.getElementById("worstPoFilter");
+            if (!poSelect || !nrbtsCol) return;
 
+            const poSet = new Set();
+            const allRows = trafficRowsDedupAll.concat(nonTrafficRowsDedupAll);
 
+            allRows.forEach((row) => {
+                const siteName = row[nrbtsCol] || "";
+                const po = typeof getPoFromProgress === "function"
+                    ? getPoFromProgress(siteName)
+                    : "";
+                if (po) poSet.add(String(po));
+            });
+
+            const prevValue = poSelect.value || "ALL";
+
+            poSelect.innerHTML = '<option value="ALL">Tất cả PO</option>';
+            Array.from(poSet).sort().forEach((po) => {
+                const opt = document.createElement("option");
+                opt.value = po;
+                opt.textContent = po;
+                poSelect.appendChild(opt);
+            });
+
+            if (prevValue !== "ALL" && poSet.has(prevValue)) {
+                poSelect.value = prevValue;
+            } else {
+                poSelect.value = "ALL";
+            }
+
+            // gắn event change một lần
+            if (!poSelect._worstBound) {
+                poSelect.addEventListener("change", () => {
+                    renderWorstCellTable();
+                });
+                poSelect._worstBound = true;
+            }
+        })();
+
+        // ===== Áp dụng filter theo PO (chỉ ảnh hưởng bảng hiển thị) =====
+        function applyPoFilter(rowsArr) {
+            const poSelect = document.getElementById("worstPoFilter");
+            if (!poSelect || !nrbtsCol) return rowsArr;
+
+            const selectedPo = poSelect.value || "ALL";
+            if (!selectedPo || selectedPo === "ALL") return rowsArr;
+
+            return rowsArr.filter((row) => {
+                const siteName = row[nrbtsCol] || "";
+                const po = typeof getPoFromProgress === "function"
+                    ? getPoFromProgress(siteName)
+                    : "";
+                return po === selectedPo;
+            });
+        }
+
+        let trafficRowsDedup    = applyPoFilter(trafficRowsDedupAll);
+        let nonTrafficRowsDedup = applyPoFilter(nonTrafficRowsDedupAll);
+
+        function toNumber(val) {
+            if (val === null || val === undefined) return null;
+            const num = parseFloat(String(val).replace(/\s+/g, ""));
+            return isNaN(num) ? null : num;
+        }
+
+        function buildTable(rowsArr, titleEl, tableEl, baseTitle) {
+            if (!rowsArr.length) {
+                titleEl.textContent = baseTitle + " (không có dữ liệu)";
+                tableEl.innerHTML = "";
+                return;
+            }
+
+            const otherCols = cleanColumns.filter(col => {
+                const lower = String(col).toLowerCase();
+                if (col === periodCol) return false;
+                if (col === nrbtsCol) return false;
+                if (col === nrCellCol) return false;
+                if (col === availCol)  return false;
+                if (lower.includes("mrbts")) return false;
+                return true;
+            });
+
+            const orderedCols = ["__PO", "__province"];
+            if (nrbtsCol)  orderedCols.push(nrbtsCol);
+            if (nrCellCol) orderedCols.push(nrCellCol);
+            if (availCol)  orderedCols.push(availCol);
+            orderedCols.push(...otherCols);
+
+            // 🔥 NEW: nếu là bảng Worst Cell thì apply filter giá trị (KPI + Province)
+            let effectiveRows = rowsArr;
+            if (baseTitle.startsWith("Worst Cell")) {
+                initWorstFilterOptionsFromCols(orderedCols);
+                effectiveRows = applyWorstCellValueFilters(rowsArr, orderedCols);
+
+                if (!effectiveRows.length) {
+                    titleEl.textContent = baseTitle + " – không có dòng nào khớp filter";
+                    tableEl.innerHTML = "";
+                    return;
+                }
+            }
+
+            const kpiAccessName    = "NSA call access";
+            const kpiDropName      = "NSA Active ERAB drop UserR";
+            const kpiAvailName     = "Cell avail R";
+            const kpiSnChangeName  = "SN Init Change Intra-freq SR src gNB";
+
+            function findColKeyByName(displayName) {
+                const target = displayName.toLowerCase();
+                return orderedCols.find(colKey =>
+                    colKey !== "__province" &&
+                    String(colKey).toLowerCase() === target
+                );
+            }
+
+            const kpiAccessColKey   = findColKeyByName(kpiAccessName);
+            const kpiDropColKey     = findColKeyByName(kpiDropName);
+            const kpiAvailColKey    = findColKeyByName(kpiAvailName);
+            const kpiSnChangeColKey = findColKeyByName(kpiSnChangeName);
+
+            const sortedRows = [...effectiveRows].sort((a, b) => {
+                const aCell = nrCellCol ? String(a[nrCellCol] ?? "") : "";
+                const bCell = nrCellCol ? String(b[nrCellCol] ?? "") : "";
+                const provA = aCell.slice(-3);
+                const provB = bCell.slice(-3);
+                return provA.localeCompare(provB);
+            });
+
+            let html = "<table><thead><tr>";
+            orderedCols.forEach((colKey, idx) => {
+                const isFirst4 = idx < 4;
+
+                let title = colKey;
+                if (colKey === "__PO")       title = "PO";
+                if (colKey === "__province") title = "Province";
+
+                const thStyle =
+                    "background:#203864; color:#fff; padding:6px 8px; " +
+                    "border:1px solid #cbd5e1; text-align:center;" +
+                    (isFirst4 ? "white-space:nowrap;" : "");
+                html += `<th style="${thStyle}">${title}</th>`;
+            });
+            html += "</tr></thead><tbody>";
+
+            sortedRows.forEach(row => {
+                const rowKey = makeRowKey(row);
+                const isHighlighted = highlightedKeys.has(rowKey);
+                const trStyle = isHighlighted ? ' style="background:#fef3c7;"' : "";
+
+                html += `<tr${trStyle}>`;
+
+                orderedCols.forEach((colKey, idx) => {
+                    const isFirst4 = idx < 4;
+                    let value;
+
+                    if (colKey === "__province") {
+                        const cellVal = nrCellCol ? row[nrCellCol] : "";
+                        const str = cellVal == null ? "" : String(cellVal).trim();
+                        value = str.length >= 3 ? str.slice(-3) : str;
+                    } else if (colKey === "__PO") {
+                        const siteName = nrbtsCol ? row[nrbtsCol] : "";
+                        value = typeof getPoFromProgress === "function"
+                            ? getPoFromProgress(siteName)
+                            : "";
+                    } else {
+                        value = row[colKey];
+                    }
+
+                    let display = value == null ? "" : value;
+                    if (idx >= 4 && isNumericLike(display)) {
+                        display = formatNumberSmart(display);
+                    }
+
+                    let condStyle = "";
+
+                    // Ưu tiên dùng file cấu hình sheet "WorstCell Threshold" nếu có
+                    if (worstCellThresholdMap && Object.keys(worstCellThresholdMap).length) {
+                        let kpiDisplayName = colKey;
+                        if (colKey === "__PO")            kpiDisplayName = "PO";
+                        else if (colKey === "__province") kpiDisplayName = "Province";
+
+                        const thr = getWorstCellThresholdByName(kpiDisplayName);
+
+                        if (thr && isNumericLike(value)) {
+                            const num = toNumber(value);
+                            const t   = thr.value;
+                            const op  = thr.op;
+                            let isBad = false;
+
+                            if (num !== null) {
+                                if      (op === "<")  isBad = num <  t;
+                                else if (op === ">")  isBad = num >  t;
+                                else if (op === "<=") isBad = num <= t;
+                                else if (op === ">=") isBad = num >= t;
+                                else if (op === "=" || op === "==") isBad = num === t;
+                            }
+
+                            if (isBad) {
+                                condStyle =
+                                    "background:#fee2e2; color:#b91c1c; font-weight:700;";
+                            }
+                        }
+                    }
+
+                    const baseCell =
+                        "padding:6px 8px; border:1px solid #e5e7eb; text-align:center;";
+                    const extraCell = isFirst4
+                        ? " background:#d9e1f2; font-weight:600; white-space:nowrap; text-align:left;"
+                        : "";
+
+                    const finalStyle = baseCell + extraCell + condStyle;
+
+                    html += `<td style="${finalStyle}">${display}</td>`;
+                });
+
+                html += "</tr>";
+            });
+
+            html += "</tbody></table>";
+            tableEl.innerHTML = `
+                <div style="min-width:100%; max-height:700px; overflow:auto;">
+                    ${html}
+                </div>
+            `;
+            titleEl.textContent = baseTitle;
+
+            // Sau khi vẽ xong → cố định 4 cột đầu cho Worst Cell & Cell Non-Traffic
+            if (
+                (baseTitle.startsWith("Worst Cell") ||
+                baseTitle.startsWith("Cell Non-Traffic")) &&
+                typeof applyWorstCellStickyColumns === "function"
+            ) {
+                setTimeout(applyWorstCellStickyColumns, 0);
+            }
+        }
+
+        // ===== Render 2 bảng: Worst Cell & Non-Traffic =====
         const worstTitleText = latestLabel ? `Worst Cell (${latestLabel})` : "Worst Cell";
         worstCard.style.display = "block";
         buildTable(trafficRowsDedup, worstTitleEl, worstTableEl, worstTitleText);
@@ -5806,8 +6373,16 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             }
         }
 
+        // 🔁 Sau khi Worst Cell / Non-Traffic đã cập nhật đầy đủ PO – Tỉnh (FULL, không filter PO)
+        // -> lưu lại & cập nhật bảng Worst Cell Overview
+        window._latestWorstTrafficRows    = trafficRowsDedupAll;
+        window._latestWorstNonTrafficRows = nonTrafficRowsDedupAll;
+        if (typeof recomputeWorstCellOverview === "function") {
+            recomputeWorstCellOverview();
         }
-        
+    }
+
+
     function loadProvinceAreaFromThresholdWorkbook(wb) {
         provinceAreaMap = {};   // reset map
 
@@ -6693,10 +7268,11 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
                 if (key === "excel") {
                     el = document.getElementById("excelTableCard");
+                } else if (key === "worstOverview") {
+                    el = document.getElementById("worstOverviewCard");                    
                 } else if (key === "charts") {
                     el = document.getElementById("chartsContainer");
                 } else if (key === "cqiSummary") {
-                    // ✅ THÊM: card CQI Summary
                     el = document.getElementById("cqiCard");
                 } else if (key === "worst") {
                     el = document.getElementById("worstCellCard");
@@ -6986,10 +7562,11 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
 
             if (key === "excel") {
                 el = document.getElementById("excelTableCard");
-            } else if (key === "progress") {
-                el = document.getElementById("progressCard");
+            } else if (key === "worstOverview") {
+                el = document.getElementById("worstOverviewCard");
+            } else if (key === "charts") {
+                el = document.getElementById("chartsContainer");
             } else if (key === "cqiSummary") {
-                // ✅ THÊM: card CQI Summary
                 el = document.getElementById("cqiCard");
             } else if (key === "worst") {
                 el = document.getElementById("worstCellCard");
@@ -7017,23 +7594,27 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 // ✅ CHỈ CHỤP CHÍNH XÁC THẺ <table> BÊN TRONG KPI OVERVIEW
                 const wrapper = document.getElementById("excelTable");
                 const tableEl = wrapper ? wrapper.querySelector("table") : null;
-
-                // nếu có table thì chụp table, không thì fallback về wrapper
                 target = tableEl || wrapper;
-
                 const t = document.getElementById("excelTableTitle");
                 titleText = t ? t.textContent.trim() : "KPI Overview";
-
-            } else if (key === "progress") {
-                // ✅ CHỈ CHỤP TABLE TIẾN ĐỘ ĐO KIỂM → BORDER ÔM SÁT BẢNG
-                const wrapper = document.getElementById("progressTable");
+            
+            } else if (key === "worstOverview") {
+                const wrapper = document.getElementById("worstOverviewTable");
                 const tableEl = wrapper ? wrapper.querySelector("table") : null;
 
                 target = tableEl || wrapper;
 
+                const t = document.querySelector("#worstOverviewCard h3");
+                titleText = t ? t.textContent.trim() : "Worst Cell Overview";
+            
+            } else if (key === "progress") {
+                // ✅ CHỈ CHỤP TABLE TIẾN ĐỘ ĐO KIỂM → BORDER ÔM SÁT BẢNG
+                const wrapper = document.getElementById("progressTable");
+                const tableEl = wrapper ? wrapper.querySelector("table") : null;
+                target = tableEl || wrapper;
                 const t = document.querySelector("#progressCard h3");
                 titleText = t ? t.textContent.trim() : "Tiến Độ Đo Kiểm";
-
+            
             } else if (key === "worst") {
                 target = document.getElementById("worstCellTable");
                 const t = document.getElementById("worstCellTitle");
@@ -7221,7 +7802,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
             // phần mở đầu email
             bodyHtml += "<p>" + messageHtml + "</p>";
 
-            // 2. Tiến độ đo kiểm
+            // 1. Tiến độ đo kiểm
             if (checked.has("progress")) {
                 if (tablesAsImages) {
                     const img = await captureSectionCardAsPng("progress");
@@ -7242,8 +7823,28 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                     }
                 }
             }
-
-            // 1. KPI Overview
+            // 2. Worst Cell Overview
+            if (checked.has("worstOverview")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("worstOverview");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "Worst Cell Overview");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const htmlWO = getSectionHtmlByKey("worstOverview");
+                    if (htmlWO) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            htmlWO;
+                    }
+                }
+            }
+            // 3. KPI Overview
             if (checked.has("excel")) {
                 if (tablesAsImages) {
                     const img = await captureSectionCardAsPng("excel");
@@ -7265,7 +7866,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 }
             }
 
-            // 2. Biểu đồ KPI
+            // 4. Biểu đồ KPI
             if (includeCharts && charts.length) {
                 bodyHtml +=
                     '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
@@ -7301,7 +7902,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 bodyHtml += "</div>";
             }
 
-            // 3. Worst Cell
+            // 5. Worst Cell
             if (checked.has("worst")) {
                 if (tablesAsImages) {
                     const img = await captureSectionCardAsPng("worst");
@@ -7323,7 +7924,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 }
             }
 
-            // 4. Cell Non-Traffic
+            // 6. Cell Non-Traffic
             if (checked.has("nonTraffic")) {
                 if (tablesAsImages) {
                     const img = await captureSectionCardAsPng("nonTraffic");
@@ -7345,7 +7946,7 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
                 }
             }
 
-            // CQI Summary
+            // 7. CQI Summary
             if (checked.has("cqiSummary")) {
                 if (tablesAsImages) {
                     const img = await captureSectionCardAsPng("cqiSummary");
@@ -7417,101 +8018,101 @@ const nonTrafficRowsDedup = deduplicateRows(nonTrafficRows);
         }
 
         function initProgressUpload() {
-    const input = document.getElementById("progressFileInput");
-    const statusEl = document.getElementById("progressStatus");
-    const tableContainer = document.getElementById("progressTable");
-    const poFilter = document.getElementById("progressPOFilter");
+            const input = document.getElementById("progressFileInput");
+            const statusEl = document.getElementById("progressStatus");
+            const tableContainer = document.getElementById("progressTable");
+            const poFilter = document.getElementById("progressPOFilter");
 
-    if (!input || !statusEl || !tableContainer) return;
+            if (!input || !statusEl || !tableContainer) return;
 
-    input.addEventListener("change", function (e) {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
+            input.addEventListener("change", function (e) {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
 
-        statusEl.textContent = "Đang đọc file: " + file.name + "...";
+                statusEl.textContent = "Đang đọc file: " + file.name + "...";
 
-        const reader = new FileReader();
-        reader.onload = function (evt) {
-            try {
-                const data = new Uint8Array(evt.target.result);
-                const wb = XLSX.read(data, { type: "array" });
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                    try {
+                        const data = new Uint8Array(evt.target.result);
+                        const wb = XLSX.read(data, { type: "array" });
 
-                // Lấy sheet CQT-SSV
-                const sheetName = "CQT-SSV";
-                const ws =
-                    wb.Sheets[sheetName] ||
-                    wb.Sheets[wb.SheetNames[0]];
+                        // Lấy sheet CQT-SSV
+                        const sheetName = "CQT-SSV";
+                        const ws =
+                            wb.Sheets[sheetName] ||
+                            wb.Sheets[wb.SheetNames[0]];
 
-                if (!ws) {
-                    statusEl.textContent =
-                        'Không tìm thấy sheet "CQT-SSV" trong file Excel.';
-                    tableContainer.innerHTML = "";
-                    return;
-                }
+                        if (!ws) {
+                            statusEl.textContent =
+                                'Không tìm thấy sheet "CQT-SSV" trong file Excel.';
+                            tableContainer.innerHTML = "";
+                            return;
+                        }
 
-                const allRows = XLSX.utils.sheet_to_json(ws, {
-                    header: 1,
-                    defval: "",
-                });
+                        const allRows = XLSX.utils.sheet_to_json(ws, {
+                            header: 1,
+                            defval: "",
+                        });
 
-                if (allRows.length < 4) {
-                    statusEl.textContent =
-                        "Sheet CQT-SSV không đủ dòng dữ liệu.";
-                    tableContainer.innerHTML = "";
-                    return;
-                }
+                        if (allRows.length < 4) {
+                            statusEl.textContent =
+                                "Sheet CQT-SSV không đủ dòng dữ liệu.";
+                            tableContainer.innerHTML = "";
+                            return;
+                        }
 
-                // Row 2: header thật
-                const headerRow = allRows[1];
-                // Dữ liệu từ row 4 trở đi
-                const dataRows = allRows.slice(3);
+                        // Row 2: header thật
+                        const headerRow = allRows[1];
+                        // Dữ liệu từ row 4 trở đi
+                        const dataRows = allRows.slice(3);
 
-                const headers = headerRow.map((h) =>
-                    String(h || "").trim()
-                );
-                const headersLower = headers.map((h) =>
-                    h.toLowerCase()
-                );
+                        const headers = headerRow.map((h) =>
+                            String(h || "").trim()
+                        );
+                        const headersLower = headers.map((h) =>
+                            h.toLowerCase()
+                        );
 
-// ==== XÁC ĐỊNH CÁC CỘT CẦN DÙNG ====
-const idxPO = headersLower.indexOf("po");
-const idxProvince = headersLower.indexOf("province");
-const idxSiteName = headersLower.indexOf("site name"); // để map với NRBTS
+        // ==== XÁC ĐỊNH CÁC CỘT CẦN DÙNG ====
+        const idxPO = headersLower.indexOf("po");
+        const idxProvince = headersLower.indexOf("province");
+        const idxSiteName = headersLower.indexOf("site name"); // để map với NRBTS
 
-const idxOnair = headersLower.findIndex((h) =>
-    h.includes("onair")
-);
-const idxCqtDate = headersLower.findIndex((h) =>
-    h.includes("ngày đo cqt")
-);
-const idxSsvDate = headersLower.findIndex((h) =>
-    h.includes("ngày đo ssv/cluster")
-);
-const idxAtpDate = headersLower.findIndex((h) =>
-    h.includes("ngày gửi report atp")
-);
+        const idxOnair = headersLower.findIndex((h) =>
+            h.includes("onair")
+        );
+        const idxCqtDate = headersLower.findIndex((h) =>
+            h.includes("ngày đo cqt")
+        );
+        const idxSsvDate = headersLower.findIndex((h) =>
+            h.includes("ngày đo ssv/cluster")
+        );
+        const idxAtpDate = headersLower.findIndex((h) =>
+            h.includes("ngày gửi report atp")
+        );
 
-if (idxPO === -1 || idxProvince === -1) {
-    statusEl.textContent =
-        'Không tìm thấy cột "PO" / "Province" trong sheet CQT-SSV.';
-    tableContainer.innerHTML = "";
-    return;
-}
-
-// ==== BUILD MAP Site Name -> PO CHO WORST CELL / NON-TRAFFIC ====
-progressSitePoMap = {};
-if (idxSiteName !== -1) {
-    dataRows.forEach((row) => {
-        const po = String(row[idxPO] || "").trim();
-        const siteName = String(row[idxSiteName] || "").trim();
-        if (!po || !siteName) return;
-
-        const key = normalizeSiteKey(siteName);
-        if (!progressSitePoMap[key]) {
-            progressSitePoMap[key] = po;
+        if (idxPO === -1 || idxProvince === -1) {
+            statusEl.textContent =
+                'Không tìm thấy cột "PO" / "Province" trong sheet CQT-SSV.';
+            tableContainer.innerHTML = "";
+            return;
         }
-    });
-}
+
+        // ==== BUILD MAP Site Name -> PO CHO WORST CELL / NON-TRAFFIC ====
+        progressSitePoMap = {};
+        if (idxSiteName !== -1) {
+            dataRows.forEach((row) => {
+                const po = String(row[idxPO] || "").trim();
+                const siteName = String(row[idxSiteName] || "").trim();
+                if (!po || !siteName) return;
+
+                const key = normalizeSiteKey(siteName);
+                if (!progressSitePoMap[key]) {
+                    progressSitePoMap[key] = po;
+                }
+            });
+        }
 
 
 
@@ -7593,6 +8194,7 @@ if (idxSiteName !== -1) {
                 renderProgressTable(initialData);
                 applyProgressColumnToggle();
 
+
                 // Sau khi đã có progressSitePoMap -> render lại Worst Cell / Non-Traffic
                 if (typeof renderWorstCellTable === "function") {
                     renderWorstCellTable();
@@ -7606,6 +8208,12 @@ if (idxSiteName !== -1) {
                 if (typeof fillDefaultEmailText === "function") {
                     fillDefaultEmailText();
                 }
+
+                // ➕ Cập nhật Worst Cell Overview theo dữ liệu Tiến độ mới
+                if (typeof recomputeWorstCellOverview === "function") {
+                    recomputeWorstCellOverview();
+                }
+
 
 
                 statusEl.textContent =
