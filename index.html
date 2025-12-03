@@ -738,7 +738,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.5.0
+                Version: v1.5.5
             </div>
         </div>
 
@@ -5481,7 +5481,7 @@ if (showTargetLine) {
                         po,
                         province,
                         soTram: 0,
-                        onAir: 0,             // 🔹 sẽ là "Số Cell On-Air"
+                        onAir: 0,             // 🔹 "Số Cell On-Air"
                         worstCssrCount: 0,
                         worstDcrCount: 0,
                         nonTrafficCount: 0
@@ -5532,6 +5532,7 @@ if (showTargetLine) {
                 // ✅ MỖI DÒNG (MỖI CELL) TRONG BẢNG "Worst Cell" = 1 "Cell On-Air"
                 agg.onAir = (agg.onAir || 0) + 1;
 
+                // --- Các KPI dùng cho điều kiện ---
                 const cssr =
                     r["NSA call access"] ||
                     r["NSA Call access"] ||
@@ -5542,11 +5543,35 @@ if (showTargetLine) {
                     r["NSA active ERAB drop UserR"] ||
                     r["NSA ACTIVE ERAB DROP USERR"];
 
-                const cssrNum = toNum(cssr);
-                const dcrNum  = toNum(dcr);
+                // ⭐ KPI mới: E-UTRAN Init E-RAB acc < 95
+                const erabInitAcc =
+                    r["E-UTRAN Init E-RAB acc"] ||
+                    r["E-utran Init E-RAB acc"] ||
+                    r["E-UTRAN INIT E-RAB ACC"];
 
-                if (!isNaN(cssrNum) && cssrNum < 95) agg.worstCssrCount++;
-                if (!isNaN(dcrNum)  && dcrNum  > 3)  agg.worstDcrCount++;
+                // ⭐ KPI mới: E-RAB DR RAN > 3
+                const erabDrRan =
+                    r["E-RAB DR RAN"] ||
+                    r["E-rab DR RAN"] ||
+                    r["E-RAB Dr RAN"];
+
+                const cssrNum      = toNum(cssr);
+                const dcrNum       = toNum(dcr);
+                const erabInitNum  = toNum(erabInitAcc);
+                const erabDrRanNum = toNum(erabDrRan);
+
+                // 🔹 Điều kiện tổng hợp cho CSSR
+                const cssrFail =
+                    (!isNaN(cssrNum)     && cssrNum     < 95) ||
+                    (!isNaN(erabInitNum) && erabInitNum < 95);   // thêm điều kiện mới
+
+                // 🔹 Điều kiện tổng hợp cho DCR
+                const dcrFail =
+                    (!isNaN(dcrNum)       && dcrNum       > 3) ||
+                    (!isNaN(erabDrRanNum) && erabDrRanNum > 3);  // thêm điều kiện mới
+
+                if (cssrFail) agg.worstCssrCount++;
+                if (dcrFail)  agg.worstDcrCount++;
             });
 
             // 3️⃣ Non-Traffic: đếm số cell + cộng vào Số Cell On-Air
@@ -5572,7 +5597,6 @@ if (showTargetLine) {
                 // Vẫn giữ riêng số lượng non-traffic
                 agg.nonTrafficCount++;
             });
-
 
             // 4️⃣ Chuyển map -> array & sort theo PO rồi Tỉnh
             worstOverviewData = Array.from(map.values()).sort((a, b) => {
@@ -5620,9 +5644,7 @@ if (showTargetLine) {
             }
 
             renderWorstCellOverviewTable();
-
         }
-
 
 
         // Vẽ bảng ra HTML
