@@ -8469,19 +8469,22 @@ if (showTargetLine) {
 
     const totalOnairPct =
         totalStations > 0
-            ? ((totalOnair / totalStations) * 100).toFixed(2) + "%"
+            ? formatPct(((totalOnair / totalStations) * 100).toFixed(2) + "%")
             : "-";
     const totalCqtPct =
         totalStations > 0
-            ? ((totalCqtOk / totalOnair) * 100).toFixed(2) + "%"
+            ? formatPct(((totalCqtOk / totalOnair) * 100).toFixed(2) + "%")
+            
             : "-";
     const totalSsvPct =
         totalStations > 0
-            ? ((totalSsvOk / totalOnair) * 100).toFixed(2) + "%"
+            ? formatPct(((totalSsvOk / totalOnair) * 100).toFixed(2) + "%")
+            
             : "-";
     const totalAtpPct =
         totalStations > 0
-            ? ((totalAtpOk / totalOnair) * 100).toFixed(2) + "%"
+            ? formatPct(((totalAtpOk / totalOnair) * 100).toFixed(2) + "%")
+            
             : "-";
 
     html += `
