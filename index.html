@@ -5777,11 +5777,11 @@ if (showTargetLine) {
                         <th>Số trạm</th>
                         <th>Số Cell On-Air</th>
 
-                        <th>Worst Cell CSSR &lt; 95%</th>
-                        <th>% Worst Cell CSSR &lt; 95%</th>
+                        <th>Worst Cell CSSR</th>
+                        <th>% Worst Cell CSSR</th>
 
-                        <th>Worst Cell DCR &gt; 3%</th>
-                        <th>% Worst Cell DCR &gt; 3%</th>
+                        <th>Worst Cell DCR</th>
+                        <th>% Worst Cell DCR</th>
 
                         <th>Non-Traffic Cell</th>
                         <th>% Non-Traffic</th>
@@ -7932,27 +7932,7 @@ if (showTargetLine) {
                     }
                 }
             }
-            // 2. Worst Cell Overview
-            if (checked.has("worstOverview")) {
-                if (tablesAsImages) {
-                    const img = await captureSectionCardAsPng("worstOverview");
-                    if (img) {
-                        allImages.push(img);
-                        const titleSafe = escapeHtml(img.title || "Worst Cell Overview");
-                        bodyHtml +=
-                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
-                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
-                    }
-                } else {
-                    const htmlWO = getSectionHtmlByKey("worstOverview");
-                    if (htmlWO) {
-                        bodyHtml +=
-                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
-                            htmlWO;
-                    }
-                }
-            }
+
             // 3. KPI Overview
             if (checked.has("excel")) {
                 if (tablesAsImages) {
@@ -7975,6 +7955,27 @@ if (showTargetLine) {
                 }
             }
 
+            // 2. Worst Cell Overview
+            if (checked.has("worstOverview")) {
+                if (tablesAsImages) {
+                    const img = await captureSectionCardAsPng("worstOverview");
+                    if (img) {
+                        allImages.push(img);
+                        const titleSafe = escapeHtml(img.title || "Worst Cell Overview");
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            `<h3 style="margin:0 0 8px 0;">${titleSafe}</h3>` +
+                            `<div><img src="cid:${img.cid}" style="max-width:100%;height:auto;"></div>`;
+                    }
+                } else {
+                    const htmlWO = getSectionHtmlByKey("worstOverview");
+                    if (htmlWO) {
+                        bodyHtml +=
+                            '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />' +
+                            htmlWO;
+                    }
+                }
+            }
             // 4. Biểu đồ KPI
             if (includeCharts && charts.length) {
                 bodyHtml +=
@@ -8393,33 +8394,33 @@ if (showTargetLine) {
 
         // helper format %
         function formatPct(val) {
-            return val === "0.00%" ? "-" : val;
+            // ẩn cả 0.00% và NaN%
+            return (val === "0.00%" || val === "NaN%") ? "-" : val;
         }
-
         let html = `
-    <table class="progress-table">
-        <thead>
-            <tr>
-                <th>STT</th>
-                <th>PO</th>
-                <th>Tỉnh</th>
-                <th>Số trạm</th>
+            <table class="progress-table">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>PO</th>
+                        <th>Tỉnh</th>
+                        <th>Số trạm</th>
 
-                <th>On-Air</th>
-                <th>Tiến độ On-Air (%)</th>
-                <th class="col-cqt">CQT</th>
-                <th class="col-cqt">Tiến độ CQT (%)</th>
+                        <th>On-Air</th>
+                        <th>Tiến độ On-Air (%)</th>
+                        <th class="col-cqt">CQT</th>
+                        <th class="col-cqt">Tiến độ CQT (%)</th>
 
-                <th class="col-ssv">SSV</th>
-                <th class="col-ssv">Tiến độ SSV (%)</th>
+                        <th class="col-ssv">SSV</th>
+                        <th class="col-ssv">Tiến độ SSV (%)</th>
 
-                <th class="col-atp">ATP report</th>
-                <th class="col-atp">Tiến độ ATP report</th>
+                        <th class="col-atp">ATP report</th>
+                        <th class="col-atp">Tiến độ ATP report</th>
 
-            </tr>
-        </thead>
-        <tbody>
-    `;
+                    </tr>
+                </thead>
+                <tbody>
+            `;
 
         data.forEach((g, idx) => {
         totalStations += g.total;
@@ -8434,15 +8435,15 @@ if (showTargetLine) {
                 : "-";
         const cqtPct =
             g.total > 0
-                ? formatPct(((g.cqtOk / g.total) * 100).toFixed(2) + "%")
+                ? formatPct(((g.cqtOk / g.onair) * 100).toFixed(2) + "%")
                 : "-";
         const ssvPct =
             g.total > 0
-                ? formatPct(((g.ssvOk / g.total) * 100).toFixed(2) + "%")
+                ? formatPct(((g.ssvOk / g.onair) * 100).toFixed(2) + "%")
                 : "-";
         const atpPct =
             g.total > 0
-                ? formatPct(((g.atpReport / g.total) * 100).toFixed(2) + "%")
+                ? formatPct(((g.atpReport / g.onair) * 100).toFixed(2) + "%")
                 : "-";
 
         html += `
@@ -8472,15 +8473,15 @@ if (showTargetLine) {
             : "-";
     const totalCqtPct =
         totalStations > 0
-            ? ((totalCqtOk / totalStations) * 100).toFixed(2) + "%"
+            ? ((totalCqtOk / totalOnair) * 100).toFixed(2) + "%"
             : "-";
     const totalSsvPct =
         totalStations > 0
-            ? ((totalSsvOk / totalStations) * 100).toFixed(2) + "%"
+            ? ((totalSsvOk / totalOnair) * 100).toFixed(2) + "%"
             : "-";
     const totalAtpPct =
         totalStations > 0
-            ? ((totalAtpOk / totalStations) * 100).toFixed(2) + "%"
+            ? ((totalAtpOk / totalOnair) * 100).toFixed(2) + "%"
             : "-";
 
     html += `
