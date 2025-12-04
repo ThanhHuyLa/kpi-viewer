@@ -6782,6 +6782,53 @@ if (showTargetLine) {
             const dd   = String(latestDateObj.getDate()).padStart(2, "0");
             latestDateStr = `${yyyy}-${mm}-${dd}`;
         }
+        // 🔹 LỌC rows chỉ giữ các dòng của ngày gần nhất
+        if (latestDateObj && dateColName) {
+            const latestY = latestDateObj.getFullYear();
+            const latestM = latestDateObj.getMonth();
+            const latestD = latestDateObj.getDate();
+
+            rows = rows.filter((r) => {
+                const raw = r[dateColName];
+                if (raw === undefined || raw === null || raw === "") return false;
+
+                let d = null;
+
+                if (raw instanceof Date) {
+                    d = raw;
+                } else if (typeof raw === "number") {
+                    // Excel serial date -> JS Date
+                    try {
+                        const parsed = XLSX.SSF.parse_date_code(raw);
+                        if (parsed) {
+                            d = new Date(
+                                parsed.y,
+                                parsed.m - 1,
+                                parsed.d,
+                                parsed.H || 0,
+                                parsed.M || 0,
+                                parsed.S || 0
+                            );
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                } else {
+                    const parsed = new Date(raw);
+                    if (!isNaN(parsed.getTime())) {
+                        d = parsed;
+                    }
+                }
+
+                if (!d) return false;
+
+                return (
+                    d.getFullYear() === latestY &&
+                    d.getMonth()    === latestM &&
+                    d.getDate()     === latestD
+                );
+            });
+        }
 
 
         // ===== Build danh sách PO cho combobox =====
