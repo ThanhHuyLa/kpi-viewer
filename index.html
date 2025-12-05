@@ -6518,6 +6518,30 @@ if (showTargetLine) {
         console.log("Loaded Province Area count =", Object.keys(provinceAreaMap).length);
     }
 
+    // Lấy "On Air" của file tiến độ đo kiểm theo PO + Tỉnh
+    function getOnAirFromProgress(poFilter, province) {
+        if (!Array.isArray(progressFullData) || !province) return 0;
+
+        let onAirSites = 0;
+
+        progressFullData.forEach((row) => {
+            const info = getPoProvinceFromRow(row);
+            if (!info) return;
+
+            // Lọc theo PO nếu có chọn
+            if (poFilter && poFilter !== "ALL") {
+                if (String(info.po).trim() !== String(poFilter).trim()) return;
+            }
+
+            if (String(info.province).trim() !== String(province).trim()) return;
+
+            const s = getStationsFromProgressRow(row);
+            onAirSites += s.onAir || 0;
+        });
+
+        return onAirSites;
+    }    
+
     function buildCqiSummaryFromDom() {
         const summaryEl = document.getElementById("cqiSummaryTable");
         const container = document.getElementById("cqiTable");
@@ -6532,6 +6556,63 @@ if (showTargetLine) {
         // Lấy value filter PO hiện tại
         const poFilterSelect = document.getElementById("cqiPoFilter");
         const selectedPo = poFilterSelect ? poFilterSelect.value : "ALL";
+
+        // 🔹 Helper: lấy On-Air từ progressFullData theo Province + PO
+        function getOnAirFromProgress(province, po) {
+            if (
+                typeof progressFullData === "undefined" ||
+                !Array.isArray(progressFullData) ||
+                !progressFullData.length
+            ) {
+                return null;
+            }
+
+            const provKey = (province || "").trim().toUpperCase();
+            const poKey =
+                !po || po === "ALL"
+                    ? null
+                    : String(po).trim();
+
+            let onairSum = 0;
+            let hasMatch = false;
+
+            progressFullData.forEach((g) => {
+                const gProv =
+                    (g.province ||
+                        g.Province ||
+                        g["Tỉnh"] ||
+                        g["Tinh"] ||
+                        g["PROVINCE"]) || "";
+                const gProvKey = String(gProv).trim().toUpperCase();
+
+                const gPo =
+                    (g.po ||
+                        g.PO ||
+                        g["Po"]) || "";
+                const gPoKey = String(gPo).trim();
+
+                // Lọc theo Province + (PO nếu có chọn PO cụ thể)
+                if (gProvKey === provKey) {
+                    if (!poKey || gPoKey === poKey) {
+                        const onairVal =
+                            Number(g.onair) ||
+                            Number(g.OnAir) ||
+                            Number(g["On Air"]) ||
+                            Number(g["On_air"]) ||
+                            Number(g["Trạm đo kiểm"]) ||
+                            0;
+
+                        if (!isNaN(onairVal)) {
+                            hasMatch = true;
+                            onairSum += onairVal;
+                        }
+                    }
+                }
+            });
+
+            if (!hasMatch) return null;
+            return onairSum;
+        }
 
         // Lấy index cột theo header
         const headerCells = table.querySelectorAll("thead tr:last-child th");
@@ -6550,7 +6631,7 @@ if (showTargetLine) {
         const areaIdx = idx["Area"];
         const evalIdx = idx["Evaluate"];
 
-        if ([provIdx, areaIdx, evalIdx].some(v => v == null)) {
+        if ([provIdx, areaIdx, evalIdx].some((v) => v == null)) {
             summaryEl.innerHTML = "";
             return;
         }
@@ -6578,13 +6659,13 @@ if (showTargetLine) {
                 summaryMap[key] = {
                     province,
                     area: areaCell,
-                    total: 0,
+                    totalRowCount: 0,   // số dòng CQI (dùng backup)
                     poorCount: 0
                 };
             }
 
             const g = summaryMap[key];
-            g.total += 1;
+            g.totalRowCount += 1;
             if (/not\s*pass/i.test(evalText)) g.poorCount += 1; // cell không đạt
         });
 
@@ -6606,23 +6687,30 @@ if (showTargetLine) {
         html += "<th>Area</th>";
         html += "<th>Target</th>";
         html += "<th>Total Cell</th>";
-        html += "<th>Bad Cell</th>";       // 🔹 THÊM LẠI CỘT NÀY
+        html += "<th>Bad Cell</th>";
         html += "<th>Poor Cell (%)</th>";
         html += "<th>Evaluate</th>";
         html += "</tr></thead><tbody>";
 
         groups.forEach((g) => {
-            const total   = g.total || 0;
-            const bad     = g.poorCount || 0;
+            // 🔹 Lấy On-Air từ file tiến độ đo kiểm
+            const onAirProgress = getOnAirFromProgress(g.province, selectedPo);
+            // Total Cell = On-Air * 3 (nếu có dữ liệu), nếu không thì fallback dùng số dòng CQI
+            const total =
+                onAirProgress !== null
+                    ? onAirProgress * 3
+                    : g.totalRowCount || 0;
+
+            const bad = g.poorCount || 0;
             const poorPct = total ? (bad * 100) / total : 0;
 
             // Target từ sheet "Province Area"
-            let targetRaw   = "";
+            let targetRaw = "";
             let targetValue = null;
 
             if (provinceAreaMap) {
                 const keyProv = (g.province || "").toUpperCase().trim();
-                const entry   = provinceAreaMap[keyProv];
+                const entry = provinceAreaMap[keyProv];
                 if (entry) {
                     if (typeof entry === "string") {
                         targetRaw = entry;
@@ -6652,7 +6740,7 @@ if (showTargetLine) {
             html += `<td>${g.area || ""}</td>`;
             html += `<td>${targetRaw || ""}</td>`;
             html += `<td>${total}</td>`;
-            html += `<td>${bad}</td>`;                   // 🔹 GIÁ TRỊ BAD CELL
+            html += `<td>${bad}</td>`;
             html += `<td>${poorPct.toFixed(2)}%</td>`;
             html += `<td style="${evalStyle}">${evaluate}</td>`;
             html += "</tr>";
@@ -6662,6 +6750,7 @@ if (showTargetLine) {
 
         summaryEl.innerHTML = html;
     }
+
 
     async function renderCqiTable() {
         const card    = document.getElementById("cqiCard");
