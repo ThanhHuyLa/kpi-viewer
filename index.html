@@ -6540,8 +6540,8 @@ if (showTargetLine) {
         });
 
         return onAirSites;
-    }    
-
+    }   
+     
     function buildCqiSummaryFromDom() {
         const summaryEl = document.getElementById("cqiSummaryTable");
         const container = document.getElementById("cqiTable");
@@ -6627,6 +6627,7 @@ if (showTargetLine) {
             idx[name] = i;
         });
 
+        const poIdx   = idx["PO"];        // 🔹 lấy thêm index cột PO
         const provIdx = idx["Province"];
         const areaIdx = idx["Area"];
         const evalIdx = idx["Evaluate"];
@@ -6652,6 +6653,10 @@ if (showTargetLine) {
             const province = cells[provIdx].textContent.trim();
             const areaCell = cells[areaIdx].textContent.trim();
             const evalText = cells[evalIdx].textContent.trim();
+            const poText =
+                poIdx != null && cells.length > poIdx
+                    ? cells[poIdx].textContent.trim()
+                    : "";
 
             const key = (province || "") + "||" + (areaCell || "");
 
@@ -6659,14 +6664,18 @@ if (showTargetLine) {
                 summaryMap[key] = {
                     province,
                     area: areaCell,
-                    totalRowCount: 0,   // số dòng CQI (dùng backup)
-                    poorCount: 0
+                    totalRowCount: 0,   // số dòng CQI (backup)
+                    poorCount: 0        // Bad Cell
                 };
             }
 
             const g = summaryMap[key];
             g.totalRowCount += 1;
-            if (/not\s*pass/i.test(evalText)) g.poorCount += 1; // cell không đạt
+
+            // 🔸 Bad Cell: chỉ count nếu Not Pass VÀ PO có giá trị
+            if (/not\s*pass/i.test(evalText) && poText) {
+                g.poorCount += 1;
+            }
         });
 
         const groups = Object.values(summaryMap);
@@ -6750,7 +6759,6 @@ if (showTargetLine) {
 
         summaryEl.innerHTML = html;
     }
-
 
     async function renderCqiTable() {
         const card    = document.getElementById("cqiCard");
