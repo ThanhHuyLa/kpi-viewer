@@ -6564,7 +6564,6 @@ if (showTargetLine) {
         return "";
     }
 
-    
     function buildCqiSummaryFromDom() {
         const summaryEl = document.getElementById("cqiSummaryTable");
         const container = document.getElementById("cqiTable");
@@ -6580,8 +6579,42 @@ if (showTargetLine) {
         const poFilterSelect = document.getElementById("cqiPoFilter");
         const selectedPo = poFilterSelect ? poFilterSelect.value : "ALL";
 
-        // 🔹 Helper: lấy Province từ progressFullData theo PO
-        function getProvinceFromProgress(po) {
+        // 🔹 Helper: đọc PO/Province chuẩn từ 1 dòng tiến độ (dùng lại logic chung)
+        function safeGetPoProvince(row) {
+            if (typeof getPoProvinceFromRow === "function") {
+                return getPoProvinceFromRow(row) || {};
+            }
+            // fallback nếu thiếu helper
+            return {
+                po:
+                    row.po || row.PO || row["Po"] || "",
+                province:
+                    row.province ||
+                    row.Province ||
+                    row["Tỉnh"] ||
+                    row["Tinh"] ||
+                    row["PROVINCE"] ||
+                    ""
+            };
+        }
+
+        // 🔹 Helper: đọc On-Air chuẩn từ 1 dòng tiến độ
+        function safeGetStations(row) {
+            if (typeof getStationsFromProgressRow === "function") {
+                return getStationsFromProgressRow(row) || { soTram: 0, onAir: 0 };
+            }
+            const val =
+                Number(row.onair) ||
+                Number(row.OnAir) ||
+                Number(row["On Air"]) ||
+                Number(row["On_air"]) ||
+                Number(row["Trạm đo kiểm"]) ||
+                0;
+            return { soTram: 0, onAir: isNaN(val) ? 0 : val };
+        }
+
+        // 🔹 Helper: lấy Province từ progressFullData theo PO + (gợi ý province từ CQI, nếu có)
+        function getProvinceFromProgress(po, provinceHint) {
             if (
                 typeof progressFullData === "undefined" ||
                 !Array.isArray(progressFullData) ||
@@ -6591,32 +6624,36 @@ if (showTargetLine) {
             }
 
             const poKey = String(po || "").trim().toUpperCase();
-            if (!poKey) return "";
+            const hintKey = provinceHint
+                ? String(provinceHint).trim().toUpperCase()
+                : null;
+
+            let fallback = "";
 
             for (const row of progressFullData) {
-                const rPo =
-                    row.po ||
-                    row.PO ||
-                    row["Po"] ||
-                    "";
-                const rPoKey = String(rPo).trim().toUpperCase();
-                if (!rPoKey || rPoKey !== poKey) continue;
+                const info = safeGetPoProvince(row);
+                const rPoKey = String(info.po || "").trim().toUpperCase();
+                const rProv = info.province || "";
+                const rProvKey = String(rProv).trim().toUpperCase();
 
-                const rProv =
-                    row.province ||
-                    row.Province ||
-                    row["Tỉnh"] ||
-                    row["Tinh"] ||
-                    row["PROVINCE"] ||
-                    "";
+                if (poKey && rPoKey !== poKey) continue;
 
-                if (rProv) return String(rProv).trim();
+                // Nếu có hint (từ CQI) thì ưu tiên match đúng
+                if (hintKey) {
+                    if (rProvKey === hintKey) {
+                        return rProv; // ✅ Province lấy trực tiếp từ file tiến độ
+                    }
+                } else {
+                    if (!fallback) fallback = rProv;
+                }
             }
-            return "";
+
+            // Nếu không khớp gì trong tiến độ thì trả về fallback (PO đầu tiên) hoặc rỗng
+            return fallback;
         }
 
-        // 🔹 Helper: lấy On-Air từ progressFullData theo Province + PO filter
-        function getOnAirFromProgress(province, po) {
+        // 🔹 Helper: lấy tổng On-Air từ file tiến độ theo Province + PO filter
+        function getOnAirFromProgress(province, poFilter) {
             if (
                 typeof progressFullData === "undefined" ||
                 !Array.isArray(progressFullData) ||
@@ -6625,51 +6662,31 @@ if (showTargetLine) {
                 return null;
             }
 
-            const provKey = (province || "").trim().toUpperCase();
-            const poKey =
-                !po || po === "ALL"
+            const provKey = String(province || "").trim().toUpperCase();
+            const poFilterKey =
+                !poFilter || poFilter === "ALL"
                     ? null
-                    : String(po).trim();
+                    : String(poFilter).trim().toUpperCase();
 
             let onairSum = 0;
             let hasMatch = false;
 
-            progressFullData.forEach((g) => {
-                const gProv =
-                    (g.province ||
-                        g.Province ||
-                        g["Tỉnh"] ||
-                        g["Tinh"] ||
-                        g["PROVINCE"]) || "";
-                const gProvKey = String(gProv).trim().toUpperCase();
+            progressFullData.forEach((row) => {
+                const info = safeGetPoProvince(row);
+                const rowPoKey = String(info.po || "").trim().toUpperCase();
+                const rowProvKey = String(info.province || "").trim().toUpperCase();
 
-                const gPo =
-                    (g.po ||
-                        g.PO ||
-                        g["Po"]) || "";
-                const gPoKey = String(gPo).trim();
+                if (!rowProvKey || rowProvKey !== provKey) return;
+                if (poFilterKey && rowPoKey !== poFilterKey) return;
 
-                // Lọc theo Province + (PO nếu có chọn PO cụ thể)
-                if (gProvKey === provKey) {
-                    if (!poKey || gPoKey === poKey) {
-                        const onairVal =
-                            Number(g.onair) ||
-                            Number(g.OnAir) ||
-                            Number(g["On Air"]) ||
-                            Number(g["On_air"]) ||
-                            Number(g["Trạm đo kiểm"]) ||
-                            0;
+                const s = safeGetStations(row);
+                if (!s || typeof s.onAir !== "number") return;
 
-                        if (!isNaN(onairVal)) {
-                            hasMatch = true;
-                            onairSum += onairVal;
-                        }
-                    }
-                }
+                hasMatch = true;
+                onairSum += s.onAir;
             });
 
-            if (!hasMatch) return null;
-            return onairSum;
+            return hasMatch ? onairSum : null;
         }
 
         // Lấy index cột theo header
@@ -6685,12 +6702,11 @@ if (showTargetLine) {
             idx[name] = i;
         });
 
-        const poIdx   = idx["PO"];        // cột PO (bắt buộc)
-        const provIdx = idx["Province"];  // có thể không dùng / backup
+        const poIdx   = idx["PO"];        // bắt buộc
+        const provIdx = idx["Province"];  // chỉ dùng làm hint, không làm nguồn chính
         const areaIdx = idx["Area"];
         const evalIdx = idx["Evaluate"];
 
-        // Province lấy từ tiến độ, nên chỉ cần PO, Area, Evaluate
         if ([poIdx, areaIdx, evalIdx].some((v) => v == null)) {
             summaryEl.innerHTML = "";
             return;
@@ -6702,7 +6718,7 @@ if (showTargetLine) {
             return;
         }
 
-        // Gom nhóm theo Province + Area
+        // Gom nhóm theo Province (lấy từ TIẾN ĐỘ) + Area
         const summaryMap = {};
 
         bodyRows.forEach((tr) => {
@@ -6714,12 +6730,13 @@ if (showTargetLine) {
                     ? cells[poIdx].textContent.trim()
                     : "";
 
-            // Province thực lấy theo bảng tiến độ đo kiểm
-            let province = getProvinceFromProgress(poText);
-            // backup: nếu không tìm thấy trong tiến độ, dùng province từ bảng CQI (nếu có)
-            if (!province && provIdx != null && cells.length > provIdx) {
-                province = cells[provIdx].textContent.trim();
-            }
+            const cqiProvText =
+                provIdx != null && cells.length > provIdx
+                    ? cells[provIdx].textContent.trim()
+                    : "";
+
+            // Province thực: chỉ lấy từ file tiến độ
+            const province = getProvinceFromProgress(poText, cqiProvText);
 
             const areaCell =
                 areaIdx != null && cells.length > areaIdx
@@ -6772,8 +6789,11 @@ if (showTargetLine) {
         html += "</tr></thead><tbody>";
 
         groups.forEach((g) => {
-            // 🔹 Lấy On-Air từ file tiến độ đo kiểm
-            const onAirProgress = getOnAirFromProgress(g.province, selectedPo);
+            // 🔹 Lấy On-Air từ file tiến độ đo kiểm (theo Province đã lấy từ tiến độ)
+            const onAirProgress = g.province
+                ? getOnAirFromProgress(g.province, selectedPo)
+                : null;
+
             // Total Cell = On-Air * 3 (nếu có dữ liệu), nếu không thì fallback dùng số dòng CQI
             const total =
                 onAirProgress !== null
@@ -6787,8 +6807,10 @@ if (showTargetLine) {
             let targetRaw = "";
             let targetValue = null;
 
-            if (provinceAreaMap) {
-                const keyProv = (g.province || "").toUpperCase().trim();
+            if (provinceAreaMap && g.province) {
+                const keyProv = String(g.province || "")
+                    .toUpperCase()
+                    .trim();
                 const entry = provinceAreaMap[keyProv];
                 if (entry) {
                     if (typeof entry === "string") {
