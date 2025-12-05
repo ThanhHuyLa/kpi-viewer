@@ -6542,6 +6542,29 @@ if (showTargetLine) {
         return onAirSites;
     }   
      
+    function getProvinceFromProgress(po) {
+        if (!Array.isArray(progressFullData)) return "";
+
+        const key = String(po || "").trim().toUpperCase();
+        if (!key) return "";
+
+        for (const row of progressFullData) {
+            const p = row.po || row.PO || row["Po"] || "";
+            if (String(p).trim().toUpperCase() === key) {
+                // trả về province gốc từ tiến độ
+                return (
+                    row.province ||
+                    row.Province ||
+                    row["Tỉnh"] ||
+                    row["Tinh"] ||
+                    ""
+                );
+            }
+        }
+        return "";
+    }
+
+    
     function buildCqiSummaryFromDom() {
         const summaryEl = document.getElementById("cqiSummaryTable");
         const container = document.getElementById("cqiTable");
@@ -6557,7 +6580,42 @@ if (showTargetLine) {
         const poFilterSelect = document.getElementById("cqiPoFilter");
         const selectedPo = poFilterSelect ? poFilterSelect.value : "ALL";
 
-        // 🔹 Helper: lấy On-Air từ progressFullData theo Province + PO
+        // 🔹 Helper: lấy Province từ progressFullData theo PO
+        function getProvinceFromProgress(po) {
+            if (
+                typeof progressFullData === "undefined" ||
+                !Array.isArray(progressFullData) ||
+                !progressFullData.length
+            ) {
+                return "";
+            }
+
+            const poKey = String(po || "").trim().toUpperCase();
+            if (!poKey) return "";
+
+            for (const row of progressFullData) {
+                const rPo =
+                    row.po ||
+                    row.PO ||
+                    row["Po"] ||
+                    "";
+                const rPoKey = String(rPo).trim().toUpperCase();
+                if (!rPoKey || rPoKey !== poKey) continue;
+
+                const rProv =
+                    row.province ||
+                    row.Province ||
+                    row["Tỉnh"] ||
+                    row["Tinh"] ||
+                    row["PROVINCE"] ||
+                    "";
+
+                if (rProv) return String(rProv).trim();
+            }
+            return "";
+        }
+
+        // 🔹 Helper: lấy On-Air từ progressFullData theo Province + PO filter
         function getOnAirFromProgress(province, po) {
             if (
                 typeof progressFullData === "undefined" ||
@@ -6627,12 +6685,13 @@ if (showTargetLine) {
             idx[name] = i;
         });
 
-        const poIdx   = idx["PO"];        // 🔹 lấy thêm index cột PO
-        const provIdx = idx["Province"];
+        const poIdx   = idx["PO"];        // cột PO (bắt buộc)
+        const provIdx = idx["Province"];  // có thể không dùng / backup
         const areaIdx = idx["Area"];
         const evalIdx = idx["Evaluate"];
 
-        if ([provIdx, areaIdx, evalIdx].some((v) => v == null)) {
+        // Province lấy từ tiến độ, nên chỉ cần PO, Area, Evaluate
+        if ([poIdx, areaIdx, evalIdx].some((v) => v == null)) {
             summaryEl.innerHTML = "";
             return;
         }
@@ -6650,13 +6709,24 @@ if (showTargetLine) {
             const cells = tr.querySelectorAll("td");
             if (cells.length <= evalIdx) return;
 
-            const province = cells[provIdx].textContent.trim();
-            const areaCell = cells[areaIdx].textContent.trim();
-            const evalText = cells[evalIdx].textContent.trim();
             const poText =
                 poIdx != null && cells.length > poIdx
                     ? cells[poIdx].textContent.trim()
                     : "";
+
+            // Province thực lấy theo bảng tiến độ đo kiểm
+            let province = getProvinceFromProgress(poText);
+            // backup: nếu không tìm thấy trong tiến độ, dùng province từ bảng CQI (nếu có)
+            if (!province && provIdx != null && cells.length > provIdx) {
+                province = cells[provIdx].textContent.trim();
+            }
+
+            const areaCell =
+                areaIdx != null && cells.length > areaIdx
+                    ? cells[areaIdx].textContent.trim()
+                    : "";
+
+            const evalText = cells[evalIdx].textContent.trim();
 
             const key = (province || "") + "||" + (areaCell || "");
 
@@ -6759,6 +6829,7 @@ if (showTargetLine) {
 
         summaryEl.innerHTML = html;
     }
+
 
     async function renderCqiTable() {
         const card    = document.getElementById("cqiCard");
