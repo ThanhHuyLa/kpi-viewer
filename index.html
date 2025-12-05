@@ -6701,16 +6701,59 @@ if (showTargetLine) {
 
         let rows = [];
 
-        // Ưu tiên dữ liệu đã merge sẵn (nhiều file)
-        if (
-            typeof mergedDataPerSheet !== "undefined" &&
-            mergedDataPerSheet &&
-            mergedDataPerSheet["CQI"]
-        ) {
-            rows = mergedDataPerSheet["CQI"];
-        } else if (workbook && workbook.Sheets && workbook.Sheets["CQI"]) {
-            const sheet = workbook.Sheets["CQI"];
-            rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        // 1️⃣ Nếu có helper getSheetDataByHints (đã dùng cho WorstCell Overview)
+        if (typeof getSheetDataByHints === "function") {
+            // Ưu tiên sheet có tên chứa "worstcell" hoặc "worst cell"
+            rows = getSheetDataByHints(["worstcell", "worst cell"]);
+
+            // Nếu không có -> thử sheet chứa chữ "cell"
+            if (!rows || !rows.length) {
+                rows = getSheetDataByHints(["cell"]);
+            }
+
+            // Nếu vẫn không có -> fallback như cũ sang sheet CQI
+            if (!rows || !rows.length) {
+                if (
+                    typeof mergedDataPerSheet !== "undefined" &&
+                    mergedDataPerSheet &&
+                    mergedDataPerSheet["CQI"]
+                ) {
+                    rows = mergedDataPerSheet["CQI"];
+                } else if (workbook && workbook.Sheets && workbook.Sheets["CQI"]) {
+                    const sheet = workbook.Sheets["CQI"];
+                    rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                }
+            }
+        } else {
+            // 2️⃣ Trường hợp không có getSheetDataByHints (fallback an toàn)
+            if (
+                typeof mergedDataPerSheet !== "undefined" &&
+                mergedDataPerSheet &&
+                (mergedDataPerSheet["WorstCell"] || mergedDataPerSheet["Cell"])
+            ) {
+                rows =
+                    mergedDataPerSheet["WorstCell"] ||
+                    mergedDataPerSheet["Cell"] ||
+                    [];
+            } else if (workbook && workbook.Sheets) {
+                if (workbook.Sheets["WorstCell"]) {
+                    rows = XLSX.utils.sheet_to_json(
+                        workbook.Sheets["WorstCell"],
+                        { defval: "" }
+                    );
+                } else if (workbook.Sheets["Cell"]) {
+                    rows = XLSX.utils.sheet_to_json(
+                        workbook.Sheets["Cell"],
+                        { defval: "" }
+                    );
+                } else if (workbook.Sheets["CQI"]) {
+                    // fallback cuối cùng
+                    rows = XLSX.utils.sheet_to_json(
+                        workbook.Sheets["CQI"],
+                        { defval: "" }
+                    );
+                }
+            }
         }
 
         if (!rows || !rows.length) {
