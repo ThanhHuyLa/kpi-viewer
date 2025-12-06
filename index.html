@@ -415,6 +415,97 @@
             overflow-y: auto;
         }
 
+        /* Nút nổi gọi popup WS/SITE/CELL_NAME */
+        .ws-floating-btn {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: #111827;
+            color: #f9fafb;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+            cursor: pointer;
+            z-index: 1200;
+            display: none;         /* chỉ hiện khi scroll xuống */
+            align-items: center;
+            gap: 6px;
+            opacity: 0.9;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .ws-floating-btn:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+        }
+
+        /* Overlay tối toàn màn hình */
+        .ws-popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;               /* bật/tắt bằng class .show */
+            align-items: center;
+            justify-content: center;
+            z-index: 1300;
+        }
+
+        /* Khi mở popup */
+        .ws-popup-overlay.show {
+            display: flex;
+        }
+
+        /* Hộp popup chính */
+        .ws-popup {
+            width: min(600px, 92vw);
+            max-height: 80vh;
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header popup */
+        .ws-popup-header {
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .ws-popup-close {
+            border: none;
+            background: transparent;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 4px;
+            color: #6b7280;
+        }
+
+        .ws-popup-close:hover {
+            color: #111827;
+        }
+
+        /* Thân popup: chứa #wsFilterContainer được di chuyển vào đây */
+        .ws-popup-body {
+            padding: 10px 12px;
+            overflow: auto;
+            max-height: calc(80vh - 44px);
+        }
+
+        /* Cho #wsFilterContainer khi nằm trong popup đỡ dính sát mép */
+        .ws-popup-body #wsFilterContainer {
+            max-height: 60vh;
+        }
+
+
         #kpiFilterContainer {
             background: #f8fafc;
             border-radius: 10px;
@@ -9353,9 +9444,97 @@ function processMultipleFiles(files) {
             });
         });
 
+        // ===== Popup chọn WS/SITE/CELL_NAME =====
+        document.addEventListener("DOMContentLoaded", () => {
+            const floatBtn      = document.getElementById("wsFloatingBtn");
+            const overlay       = document.getElementById("wsPopupOverlay");
+            const popupCloseBtn = document.getElementById("wsPopupClose");
+            const popupContent  = document.getElementById("wsPopupContent");
+            const wsContainer   = document.getElementById("wsFilterContainer");
+
+            if (!floatBtn || !overlay || !popupContent || !wsContainer) return;
+
+            // Lưu vị trí gốc của wsFilterContainer
+            const originalParent      = wsContainer.parentNode;
+            const originalNextSibling = wsContainer.nextSibling;
+
+            function showFloatingBtnOnScroll() {
+                const threshold = 260; // cuộn xuống > 260px mới hiện nút
+                if (window.scrollY > threshold) {
+                    floatBtn.style.display = "flex";
+                } else {
+                    floatBtn.style.display = "none";
+                }
+            }
+
+            // Gọi lần đầu + gắn listener scroll
+            showFloatingBtnOnScroll();
+            window.addEventListener("scroll", showFloatingBtnOnScroll);
+
+            function openWsPopup() {
+                // Di chuyển wsFilterContainer vào popup
+                popupContent.appendChild(wsContainer);
+                overlay.classList.add("show");
+            }
+
+            function closeWsPopup() {
+                // Di chuyển wsFilterContainer về chỗ cũ
+                if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+                    originalParent.insertBefore(wsContainer, originalNextSibling);
+                } else {
+                    originalParent.appendChild(wsContainer);
+                }
+                overlay.classList.remove("show");
+            }
+
+            // Click nút nổi -> mở popup
+            floatBtn.addEventListener("click", openWsPopup);
+
+            // Click nút X -> đóng popup
+            popupCloseBtn.addEventListener("click", closeWsPopup);
+
+            // Click ra ngoài khung popup (vùng overlay) -> đóng
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) {
+                    closeWsPopup();
+                }
+            });
+
+            // ESC để đóng popup
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape" && overlay.classList.contains("show")) {
+                    closeWsPopup();
+                }
+            });
+        });
+
+
+
 
 
 
     </script>
+
+    <!-- Nút nổi gọi popup WS/SITE/CELL_NAME -->
+    <div id="wsFloatingBtn" class="ws-floating-btn">
+        🧵 Chọn WS/SITE/CELL_NAME
+    </div>
+
+    <!-- Popup overlay -->
+    <div id="wsPopupOverlay" class="ws-popup-overlay">
+        <div class="ws-popup">
+            <div class="ws-popup-header">
+                <span>🧵 Chọn WS/SITE/CELL_NAME</span>
+                <button type="button" id="wsPopupClose" class="ws-popup-close">&times;</button>
+            </div>
+            <div class="ws-popup-body">
+                <!-- Ở đây sẽ DI CHUYỂN #wsFilterContainer vào -->
+                <div id="wsPopupContent"></div>
+            </div>
+        </div>
+    </div>
+
+
+
 </body>
 </html>
