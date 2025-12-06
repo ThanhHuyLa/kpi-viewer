@@ -1429,6 +1429,7 @@
         let chartConfigAppliedOnce = false;   // áp sheet từ cấu hình cũ đúng 1 lần
         let chartTargetVisible = {}; // NEW: lưu trạng thái checkbox "Target" theo từng KPI
         let globalThresholdEnabled = false; // Checkbox tổng: Target column + highlight + target line
+        const chartYAxisRange = {}; // { [valueCol]: { min: number|null, max: number|null } }
 
         // ===== LINK THƯ MỤC KPI TRÊN ONEDRIVE (CÁCH 2) =====
         const ONEDRIVE_KPI_URL = "https://rnovnpt-my.sharepoint.com/personal/anhnqt_rnovnpt_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fanhnqt%5Frnovnpt%5Fonmicrosoft%5Fcom%2FDocuments%2FKPI%20Scheduler&ga=1";
@@ -4325,41 +4326,71 @@ function processMultipleFiles(files) {
 
                 const isTargetOn = !!chartTargetVisible[valueCol];
 
+                const yRange = chartYAxisRange[valueCol] || {};
+                const yMinVal = (yRange.min != null && !isNaN(yRange.min)) ? yRange.min : "";
+                const yMaxVal = (yRange.max != null && !isNaN(yRange.max)) ? yRange.max : "";
+
                 container.innerHTML += `
                     <div class="chart-card">
                         <h3>${titleText}</h3>
                         <div class="chart-header-row"
                             style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
-                            <span id="period-label-${chartId}"
-                                style="font-size:0.8em; color:#6b7280;"></span>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <span style="font-size:0.85em; color:#555;">Kiểu chart:</span>
-                                <select class="chart-type-select"
-                                        data-chart-id="${chartId}"
-                                        data-column="${valueCol}">
-                                    <option value="line" ${prevType === "line" ? "selected" : ""}>Line</option>
-                                    <option value="bar" ${prevType === "bar" ? "selected" : ""}>Bar</option>
-                                    <option value="stackedArea" ${prevType === "stackedArea" ? "selected" : ""}>Stacked Area</option>
-                                    <option value="pie" ${prevType === "pie" ? "selected" : ""}>Pie</option>
-                                    <option value="doughnut" ${prevType === "doughnut" ? "selected" : ""}>Doughnut</option>
-                                    <option value="funnel" ${prevType === "funnel" ? "selected" : ""}>Funnel</option>
-                                </select>
-                                ${
-                                    hasThreshold
-                                        ? `
-                                <label style="display:flex; align-items:center; gap:4px; font-size:0.8em; color:#374151;">
-                                    <input type="checkbox"
-                                        class="chart-target-toggle"
-                                        data-chart-id="${chartId}"
-                                        data-column="${valueCol}"
-                                        ${isTargetOn ? "checked" : ""}/>
-                                    Target
-                                </label>
-                                `
-                                        : ""
-                                }
+
+                            <!-- BÊN TRÁI: Y min/max + nhãn period -->
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div class="chart-y-controls"
+                                        style="display:flex; align-items:center; gap:4px; font-size:0.8em; color:#374151;">
+                                        <span>Y:</span>
+                                        <input type="number" step="any"
+                                            class="chart-ymin-input"
+                                            data-column="${valueCol}"
+                                            placeholder="min"
+                                            value="${yMinVal}"
+                                            style="width:70px; padding:2px 4px; border-radius:6px; border:1px solid #d1d5db;">
+                                        <span>→</span>
+                                        <input type="number" step="any"
+                                            class="chart-ymax-input"
+                                            data-column="${valueCol}"
+                                            placeholder="max"
+                                            value="${yMaxVal}"
+                                            style="width:70px; padding:2px 4px; border-radius:6px; border:1px solid #d1d5db;">
+                                    </div>
+                                    <span id="period-label-${chartId}"
+                                        style="font-size:0.8em; color:#6b7280;"></span>
+                                </div>
+
+                            <!-- BÊN PHẢI: Kiểu chart + Target -->
+                            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:0.85em; color:#555;">Kiểu chart:</span>
+                                    <select class="chart-type-select"
+                                            data-chart-id="${chartId}"
+                                            data-column="${valueCol}">
+                                        <option value="line" ${prevType === "line" ? "selected" : ""}>Line</option>
+                                        <option value="bar" ${prevType === "bar" ? "selected" : ""}>Bar</option>
+                                        <option value="stackedArea" ${prevType === "stackedArea" ? "selected" : ""}>Stacked Area</option>
+                                        <option value="pie" ${prevType === "pie" ? "selected" : ""}>Pie</option>
+                                        <option value="doughnut" ${prevType === "doughnut" ? "selected" : ""}>Doughnut</option>
+                                        <option value="funnel" ${prevType === "funnel" ? "selected" : ""}>Funnel</option>
+                                    </select>
+                                    ${
+                                        hasThreshold
+                                            ? `
+                                    <label style="display:flex; align-items:center; gap:4px; font-size:0.8em; color:#374151;">
+                                        <input type="checkbox"
+                                            class="chart-target-toggle"
+                                            data-chart-id="${chartId}"
+                                            data-column="${valueCol}"
+                                            ${isTargetOn ? "checked" : ""}/>
+                                        Target
+                                    </label>
+                                    `
+                                            : ""
+                                    }
+                                </div>
                             </div>
                         </div>
+
                         <div class="chart-wrapper">
                             <canvas id="${chartId}"></canvas>
                         </div>
@@ -4591,10 +4622,34 @@ function processMultipleFiles(files) {
                             borderWidth: 1,
                             stack: "stack_" + valueCol,
                             borderColor: solidColor,
-                            pointRadius: 0,
+                            
+                            // pointRadius: 3,
+                            // pointHoverRadius: 6,
+                            // pointBorderWidth: 1,
+                            // pointHitRadius: 6,
+                            // radius: 3,
+                            // hoverRadius: 6,  
+                            
+                            pointRadius: 1,
                             tension: 0.3,
+                            clip: false,
                         };
                     });
+                }
+
+                // Áp cấu hình marker & clip cho tất cả dataset dạng line
+                if (chartType === "line" || chartType === "stackedArea") {
+                    chartDatasets = chartDatasets.map(ds => ({
+                        ...ds,
+                        // pointRadius: 3,
+                        // pointHoverRadius: 6,
+                        // pointBorderWidth: 1,
+                        // pointHitRadius: 6,
+                        // radius: 3,
+                        // hoverRadius: 6,
+                        pointRadius: 1,
+                        clip: false,   // 👉 cho phép vẽ chấm tròn tràn mép trên, không bị cắt
+                    }));
                 }
 
                 const hasThrForChart =
@@ -4629,13 +4684,26 @@ function processMultipleFiles(files) {
                             borderWidth: 5,        // Độ dày target line
                             borderColor: "#ff0000",
                             borderDash: [8, 5],
-                            pointRadius: 0,
+                            
+                            // pointRadius: 3,
+                            // pointHoverRadius: 6,
+                            // pointBorderWidth: 1,
+                            // pointHitRadius: 6,
+                            // radius: 3,
+                            // hoverRadius: 6,
+                            
+                            clip: false,
+                            pointRadius: 1,
                             tension: 0,
                             fill: false,
                             yAxisID: "y",
                         },
                     ];
                 }
+
+                const yOverride = chartYAxisRange[valueCol];
+                const yMinOverride = yOverride && yOverride.min != null ? yOverride.min : undefined;
+                const yMaxOverride = yOverride && yOverride.max != null ? yOverride.max : undefined;
 
                 chartInstances[chartId] = new Chart(ctx, {
                     type: internalType,
@@ -4795,7 +4863,6 @@ function processMultipleFiles(files) {
                                 },
                             },
                             y: {
-                                // Hiện trục Y cho line / bar / stackedArea / funnel
                                 display:
                                     chartType === "line" ||
                                     chartType === "bar" ||
@@ -4807,20 +4874,26 @@ function processMultipleFiles(files) {
                                         chartType === "bar" ||
                                         chartType === "stackedArea" ||
                                         chartType === "funnel",
-                                    text: titleText,   // tên KPI, dùng chung
+                                    text: titleText,
                                     font: {
                                         size: 13,
                                         weight: "bold",
                                     },
                                 },
-                                // Giữ behaviour cũ, chỉ bắt đầu từ 0 cho Funnel nếu anh muốn
-                                beginAtZero: chartType === "funnel" ? true : false,
+                                // Nếu có min override thì không ép beginAtZero nữa
+                                beginAtZero: (yMinOverride === undefined)
+                                    ? (chartType === "funnel")
+                                    : false,
                                 grace: "10%",
-                                stacked: chartType === "stackedArea"
+                                stacked: chartType === "stackedArea",
+                                min: yMinOverride,
+                                max: yMaxOverride,
+
                             },
                         },
                     },
                 });
+            
             });
 
             document
@@ -4840,6 +4913,29 @@ function processMultipleFiles(files) {
                         chartTargetVisible[col] = cb.checked;
                         renderCharts();
                     };
+                });
+
+            // NEW: thay đổi min/max trục Y cho từng KPI
+            document
+                .querySelectorAll(".chart-ymin-input, .chart-ymax-input")
+                .forEach((inp) => {
+                    if (inp._bound) return;
+                    inp.addEventListener("change", () => {
+                        const col = inp.dataset.column;
+                        const minInput = document.querySelector(`.chart-ymin-input[data-column="${col}"]`);
+                        const maxInput = document.querySelector(`.chart-ymax-input[data-column="${col}"]`);
+
+                        const minValRaw = minInput && minInput.value !== "" ? Number(minInput.value) : null;
+                        const maxValRaw = maxInput && maxInput.value !== "" ? Number(maxInput.value) : null;
+
+                        const minVal = (minValRaw != null && !isNaN(minValRaw)) ? minValRaw : null;
+                        const maxVal = (maxValRaw != null && !isNaN(maxValRaw)) ? maxValRaw : null;
+
+                        chartYAxisRange[col] = { min: minVal, max: maxVal };
+
+                        renderCharts();
+                    });
+                    inp._bound = true;
                 });
 
             renderLatestKpiTable();
@@ -7799,7 +7895,7 @@ function processMultipleFiles(files) {
                 }
             });
         }
-
+        
         function getSelectedEmailSectionsHtml() {
             const checkboxes = document.querySelectorAll(".email-section-checkbox:checked");
             if (!checkboxes.length) return "";
@@ -8002,6 +8098,7 @@ function processMultipleFiles(files) {
         }
 
         // ==== SNAPSHOT CHART NGUYÊN CARD (HTML → PNG, CÓ SẴN BORDER TRONG ẢNH) ====
+        // ==== SNAPSHOT CHART NGUYÊN CARD (HTML → PNG, CÓ SẴN BORDER TRONG ẢNH) ====
         async function getAllChartPNGs() {
             const cards = document.querySelectorAll("#chartsContainer .chart-card");
             const results = [];
@@ -8016,17 +8113,21 @@ function processMultipleFiles(files) {
                 const typeWrapper = card.querySelector(".chart-type-select")
                     ? card.querySelector(".chart-type-select").closest("div")
                     : null;
+                // 🔹 NEW: cụm Y min/max bên trái
+                const yControls = card.querySelector(".chart-y-controls");
 
                 const prevHeaderVis = headerRow ? headerRow.style.visibility : "";
                 const prevTypeVis   = typeWrapper ? typeWrapper.style.visibility : "";
+                const prevYVis      = yControls ? yControls.style.visibility : "";
                 const prevShadow    = card.style.boxShadow;
                 const prevOverflow  = card.style.overflow;
                 const prevBg        = card.style.backgroundColor;
                 const prevBorder    = card.style.border;
                 const prevRadius    = card.style.borderRadius;
 
-                // 2) Ẩn “Kiểu chart” (dropdown)
+                // 2) Ẩn “Kiểu chart” (dropdown) + cụm Y min/max
                 if (typeWrapper) typeWrapper.style.visibility = "hidden";
+                if (yControls)   yControls.style.visibility   = "hidden";
                 // nếu muốn ẩn luôn cả hàng header thì mở dòng bên dưới:
                 // if (headerRow) headerRow.style.visibility = "hidden";
 
@@ -8034,12 +8135,12 @@ function processMultipleFiles(files) {
                 card.style.boxShadow = "none";
                 card.style.overflow = "visible";
                 card.style.backgroundColor = "#ffffff";
-                card.style.border = "2px solid #000000";      // <<< border sẽ nằm TRONG ảnh
+                card.style.border = "2px solid #000000";
                 card.style.borderRadius = "12px";
 
                 // 4) Chụp card
                 const snap = await html2canvas(card, {
-                    scale: 1,                 // hoặc 1.2 nếu muốn nét hơn
+                    scale: 1,
                     backgroundColor: "#ffffff"
                 });
 
@@ -8048,6 +8149,7 @@ function processMultipleFiles(files) {
 
                 // 5) Khôi phục lại style
                 if (typeWrapper) typeWrapper.style.visibility = prevTypeVis;
+                if (yControls)   yControls.style.visibility   = prevYVis;
                 if (headerRow)   headerRow.style.visibility   = prevHeaderVis;
                 card.style.boxShadow       = prevShadow;
                 card.style.overflow        = prevOverflow;
