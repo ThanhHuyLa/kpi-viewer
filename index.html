@@ -4714,14 +4714,13 @@ function processMultipleFiles(files) {
                             stack: "stack_" + valueCol,
                             borderColor: solidColor,
                             
-                            // pointRadius: 3,
-                            // pointHoverRadius: 6,
-                            // pointBorderWidth: 1,
-                            // pointHitRadius: 6,
-                            // radius: 3,
-                            // hoverRadius: 6,  
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            pointBorderWidth: 1,
+                            pointHitRadius: 6,
+
                             
-                            pointRadius: 1,
+                            //pointRadius: 1,
                             tension: 0.3,
                             clip: false,
                         };
@@ -4732,13 +4731,13 @@ function processMultipleFiles(files) {
                 if (chartType === "line" || chartType === "stackedArea") {
                     chartDatasets = chartDatasets.map(ds => ({
                         ...ds,
-                        // pointRadius: 3,
-                        // pointHoverRadius: 6,
-                        // pointBorderWidth: 1,
-                        // pointHitRadius: 6,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        pointBorderWidth: 1,
+                        pointHitRadius: 6,
                         // radius: 3,
                         // hoverRadius: 6,
-                        pointRadius: 1,
+                        //pointRadius: 1,
                         clip: false,   // 👉 cho phép vẽ chấm tròn tràn mép trên, không bị cắt
                     }));
                 }
@@ -4776,15 +4775,15 @@ function processMultipleFiles(files) {
                             borderColor: "#ff0000",
                             borderDash: [8, 5],
                             
-                            // pointRadius: 3,
-                            // pointHoverRadius: 6,
-                            // pointBorderWidth: 1,
-                            // pointHitRadius: 6,
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            pointBorderWidth: 1,
+                            pointHitRadius: 6,
                             // radius: 3,
                             // hoverRadius: 6,
                             
                             clip: false,
-                            pointRadius: 1,
+                            //pointRadius: 1,
                             tension: 0,
                             fill: false,
                             yAxisID: "y",
