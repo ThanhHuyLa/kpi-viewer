@@ -744,7 +744,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.5.7
+                Version: v1.6.1
             </div>
         </div>
 
@@ -1152,6 +1152,24 @@
             </div>
 
             <!-- Charts -->
+            <!-- Bộ lọc khoảng thời gian hiển thị chart -->
+            <div class="control-group" id="chartTimeFilterBar" style="margin: 10px 0 6px; max-width: 480px;">
+                <label>⏱ Khoảng thời gian hiển thị:</label>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <select id="chartTimeFrom">
+                        <option value="">Từ (tất cả)</option>
+                    </select>
+                    <span style="font-size:0.85em; color:#555;">→</span>
+                    <select id="chartTimeTo">
+                        <option value="">Đến (tất cả)</option>
+                    </select>
+                    <button id="chartTimeClearBtn"
+                            style="margin-left:4px; padding:4px 10px; font-size:0.8em; border-radius:6px; border:1px solid #ccc; background:#f8f8f8; cursor:pointer;">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
             <div id="chartsContainer"></div>
 
             <!-- WORST CELL -->
@@ -3837,7 +3855,11 @@ function processMultipleFiles(files) {
             });
         }
 
-        // ===== Xử lý Period Time (day / hour) =====
+        // ===== Xử lý Period Time (day / hour) + Filter khoảng thời gian =====
+
+        // Biến global nhớ khoảng thời gian đang chọn
+        let selectedPeriodFrom = null; // label Period bắt đầu
+        let selectedPeriodTo   = null; // label Period kết thúc
 
         function parsePeriodDateTime(value) {
             let dateObj = null;
@@ -3933,6 +3955,8 @@ function processMultipleFiles(files) {
             // Các chart còn lại: Period Time / Period Hour
             return isPeriodHourly() ? "Period Hour" : "Period Time";
         }
+                
+        
         // Lấy ngày (Date) mới nhất từ currentData theo cột periodColumnName
         function getLatestDateFromCurrentData() {
             if (!currentData || !currentData.length || !periodColumnName) return null;
@@ -4116,6 +4140,109 @@ function processMultipleFiles(files) {
             renderCharts();
         }
 
+        // Lấy toàn bộ Period label đang có trong currentData (đã normalize)
+        function getAllPeriodLabelsForCurrentData() {
+            if (!currentData || !periodColumnName) return [];
+
+            const periodCol = periodColumnName;
+            const seen = new Set();
+            const labels = [];
+
+            currentData.forEach((row) => {
+                const raw = row[periodCol];
+                if (raw === undefined || raw === null) return;
+
+                const norm = normalizePeriod(raw);
+                if (!norm || !norm.label) return;
+
+                if (!seen.has(norm.label)) {
+                    seen.add(norm.label);
+                    labels.push(norm.label);
+                }
+            });
+
+            // sort tăng dần theo label (thường là yyyy-MM-dd HH:mm)
+            labels.sort();
+            return labels;
+        }
+
+        // Trả về danh sách Period sau khi áp filter From / To
+        function getEffectivePeriodLabels(allLabels) {
+            if (!allLabels || !allLabels.length) return [];
+            if (!selectedPeriodFrom && !selectedPeriodTo) return allLabels.slice();
+
+            let startIdx = selectedPeriodFrom
+                ? allLabels.indexOf(selectedPeriodFrom)
+                : 0;
+            let endIdx = selectedPeriodTo
+                ? allLabels.indexOf(selectedPeriodTo)
+                : allLabels.length - 1;
+
+            if (startIdx < 0) startIdx = 0;
+            if (endIdx < 0) endIdx = allLabels.length - 1;
+            if (startIdx > endIdx) {
+                const tmp = startIdx;
+                startIdx = endIdx;
+                endIdx = tmp;
+            }
+
+            return allLabels.slice(startIdx, endIdx + 1);
+        }
+
+        // Khởi tạo combobox "Từ Period" / "Đến Period"
+        function initChartTimeFilterControls(allPeriodLabels) {
+            const fromSel  = document.getElementById("chartTimeFrom");
+            const toSel    = document.getElementById("chartTimeTo");
+            const clearBtn = document.getElementById("chartTimeClearBtn");
+            if (!fromSel || !toSel) return;
+
+            const curFrom = selectedPeriodFrom;
+            const curTo   = selectedPeriodTo;
+
+            fromSel.innerHTML = '<option value="">Từ (tất cả)</option>';
+            toSel.innerHTML   = '<option value="">Đến (tất cả)</option>';
+
+            allPeriodLabels.forEach((lb) => {
+                const opt1 = document.createElement("option");
+                opt1.value = lb;
+                opt1.textContent = lb;
+                if (lb === curFrom) opt1.selected = true;
+                fromSel.appendChild(opt1);
+
+                const opt2 = document.createElement("option");
+                opt2.value = lb;
+                opt2.textContent = lb;
+                if (lb === curTo) opt2.selected = true;
+                toSel.appendChild(opt2);
+            });
+
+            if (!fromSel._bound) {
+                fromSel.addEventListener("change", () => {
+                    selectedPeriodFrom = fromSel.value || null;
+                    renderCharts();
+                });
+                fromSel._bound = true;
+            }
+
+            if (!toSel._bound) {
+                toSel.addEventListener("change", () => {
+                    selectedPeriodTo = toSel.value || null;
+                    renderCharts();
+                });
+                toSel._bound = true;
+            }
+
+            if (clearBtn && !clearBtn._bound) {
+                clearBtn.addEventListener("click", () => {
+                    selectedPeriodFrom = null;
+                    selectedPeriodTo   = null;
+                    fromSel.value = "";
+                    toSel.value   = "";
+                    renderCharts();
+                });
+                clearBtn._bound = true;
+            }
+        }
 
         function renderCharts() {
             if (!currentData || numericColumns.length === 0) return;
@@ -4146,9 +4273,26 @@ function processMultipleFiles(files) {
                 return;
             }
 
-
             const container = document.getElementById("chartsContainer");
             applyChartsPerRow();
+
+            // 🔹 Toàn bộ Period trong dữ liệu
+            const allPeriodLabels = getAllPeriodLabelsForCurrentData();
+
+            // 🔹 Khởi tạo combobox "Từ / Đến" (tự bind onchange -> gọi lại renderCharts)
+            initChartTimeFilterControls(allPeriodLabels);
+
+            // 🔹 Danh sách Period sau khi áp filter thời gian
+            const effectivePeriodLabels = getEffectivePeriodLabels(allPeriodLabels);
+
+            // 🔹 Period mới nhất sẽ dùng cho Pie / Doughnut / Funnel
+            let latestLabelForCharts = null;
+            if (effectivePeriodLabels.length) {
+                latestLabelForCharts = effectivePeriodLabels[effectivePeriodLabels.length - 1];
+            } else {
+                // Nếu chưa chọn / filter ra rỗng thì fallback như cũ
+                latestLabelForCharts = getLatestPeriodLabel(currentData);
+            }
 
             // Lưu lại kiểu chart đã chọn trước đó
             const prevTypes = {};
@@ -4161,7 +4305,6 @@ function processMultipleFiles(files) {
             Object.values(chartInstances).forEach((ch) => ch.destroy());
             chartInstances = {};
             container.innerHTML = "";
-
 
             // Vẽ khung chart + combobox chọn kiểu
             activeKpiCols.forEach((valueCol, index) => {
@@ -4240,17 +4383,45 @@ function processMultipleFiles(files) {
                 );
                 let chartType = typeSelect ? typeSelect.value : "line";
 
-                // ✅ Nếu chỉ có 1 period time → tự động hiển thị dạng Funnel (bar dọc)
+                // 🔹 Với chart dạng time-series (line / bar / stackedArea):
+                // luôn dùng danh sách Period đã lọc (effectivePeriodLabels)
+                if (
+                    effectivePeriodLabels &&
+                    effectivePeriodLabels.length > 0 &&
+                    (chartType === "line" ||
+                    chartType === "bar" ||
+                    chartType === "stackedArea")
+                ) {
+                    const indexMap = new Map();
+                    (labels || []).forEach((lb, idx) => {
+                        indexMap.set(lb, idx);
+                    });
+
+                    const remappedDatasets = (datasets || []).map(ds => {
+                        const srcData = ds.data || [];
+                        const newData = effectivePeriodLabels.map(lb => {
+                            const idx = indexMap.get(lb);
+                            if (idx == null) return null;   // period này không có dữ liệu
+                            return srcData[idx] !== undefined ? srcData[idx] : null;
+                        });
+                        return { ...ds, data: newData };
+                    });
+
+                    labels = effectivePeriodLabels.slice();
+                    datasets = remappedDatasets;
+                }
+
+                // ✅ Nếu chỉ có 1 period sau khi lọc → tự động hiển thị dạng Funnel (bar dọc)
                 if (
                     labels &&
                     labels.length === 1 &&
                     (chartType === "line" ||
-                     chartType === "bar"  ||
-                     chartType === "stackedArea")
+                    chartType === "bar"  ||
+                    chartType === "stackedArea")
                 ) {
                     chartType = "funnel";
                     if (typeSelect) {
-                        typeSelect.value = "funnel";   // cập nhật luôn combobox cho đúng
+                        typeSelect.value = "funnel";
                     }
                 }
 
@@ -4259,8 +4430,9 @@ function processMultipleFiles(files) {
                 );
                 if (periodLabelEl) periodLabelEl.textContent = "";
 
+                // ================= PIE / DOUGHNUT =================
                 if (chartType === "pie" || chartType === "doughnut") {
-                    const latestLabel = getLatestPeriodLabel(currentData);
+                    const latestLabel = latestLabelForCharts;   // 🔄 dùng period mới nhất sau filter
                     const periodCol = periodColumnName;
                     const wsNameCol = getCellNameColumn();
 
@@ -4314,154 +4486,156 @@ function processMultipleFiles(files) {
                     }
                 }
 
-if (chartType === "funnel") {
-    const latestLabel = getLatestPeriodLabel(currentData);
-    const periodCol = periodColumnName;
-    const wsNameCol = getCellNameColumn();
+                // ================= FUNNEL =================
+                if (chartType === "funnel") {
+                    const latestLabel = latestLabelForCharts;   // 🔄 dùng period mới nhất sau filter
+                    const periodCol = periodColumnName;
+                    const wsNameCol = getCellNameColumn();
 
-    const totalByWS = {};
+                    const totalByWS = {};
 
-    // Tính giá trị KPI cho từng WS tại thời điểm mới nhất
-    currentData.forEach((row) => {
-        const wsName    = row[wsNameCol];
-        const rawPeriod = row[periodCol];
-        const rawVal    = row[valueCol];
-        const scale     = getKpiScaleForColumn(valueCol);
-        const numeric   = parseFloat(rawVal);
+                    // Tính giá trị KPI cho từng WS tại thời điểm mới nhất
+                    currentData.forEach((row) => {
+                        const wsName    = row[wsNameCol];
+                        const rawPeriod = row[periodCol];
+                        const rawVal    = row[valueCol];
+                        const scale     = getKpiScaleForColumn(valueCol);
+                        const numeric   = parseFloat(rawVal);
 
-        if (!wsName || rawPeriod == null || isNaN(numeric)) return;
+                        if (!wsName || rawPeriod == null || isNaN(numeric)) return;
 
-        const value = numeric * scale;
-        const norm  = normalizePeriod(rawPeriod);
-        if (!norm || norm.label !== latestLabel) return;
+                        const value = numeric * scale;
+                        const norm  = normalizePeriod(rawPeriod);
+                        if (!norm || norm.label !== latestLabel) return;
 
-        const wsStr   = String(wsName);
-        const wsLower = wsStr.toLowerCase();
+                        const wsStr   = String(wsName);
+                        const wsLower = wsStr.toLowerCase();
 
-        if (!wsPassesTextFilters(wsLower)) return;
-        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr)) return;
+                        if (!wsPassesTextFilters(wsLower)) return;
+                        if (wsFilterValues && wsFilterValues.size > 0 && !wsFilterValues.has(wsStr)) return;
 
-        totalByWS[wsStr] = value;
-    });
+                        totalByWS[wsStr] = value;
+                    });
 
-    const entries = Object.entries(totalByWS);
+                    const entries = Object.entries(totalByWS);
 
-    let filteredEntries;
+                    let filteredEntries;
 
-    if (entries.length <= 30) {
-        // Ít hơn hoặc bằng 30 cell -> giữ nguyên
-        filteredEntries = entries.slice();
-    } else {
-        // Nhiều hơn 30 cell:
-        //   - Lấy 20 giá trị cao nhất
-        //   - Lấy 10 giá trị thấp nhất
-        const descSorted = [...entries].sort((a, b) => b[1] - a[1]);
-        const top20 = descSorted.slice(0, 20);
-        const bottom10 = descSorted.slice(-10);
+                    if (entries.length <= 30) {
+                        // Ít hơn hoặc bằng 30 cell -> giữ nguyên
+                        filteredEntries = entries.slice();
+                    } else {
+                        // Nhiều hơn 30 cell:
+                        //   - Lấy 20 giá trị cao nhất
+                        //   - Lấy 10 giá trị thấp nhất
+                        const descSorted = [...entries].sort((a, b) => b[1] - a[1]);
+                        const top20 = descSorted.slice(0, 20);
+                        const bottom10 = descSorted.slice(-10);
 
-        const seen = new Set();
-        filteredEntries = [];
+                        const seen = new Set();
+                        filteredEntries = [];
 
-        [...top20, ...bottom10].forEach(([name, val]) => {
-            const key = String(name);
-            if (!seen.has(key)) {
-                seen.add(key);
-                filteredEntries.push([name, val]);
-            }
-        });
-    }
+                        [...top20, ...bottom10].forEach(([name, val]) => {
+                            const key = String(name);
+                            if (!seen.has(key)) {
+                                seen.add(key);
+                                filteredEntries.push([name, val]);
+                            }
+                        });
+                    }
 
-    // Áp thứ tự hiển thị theo combobox Funnel Sort
-    if (funnelSortOrder === "asc") {
-        filteredEntries.sort((a, b) => a[1] - b[1]);   // nhỏ -> lớn
-    } else {
-        filteredEntries.sort((a, b) => b[1] - a[1]);   // lớn -> nhỏ
-    }
+                    // Áp thứ tự hiển thị theo combobox Funnel Sort
+                    if (funnelSortOrder === "asc") {
+                        filteredEntries.sort((a, b) => a[1] - b[1]);   // nhỏ -> lớn
+                    } else {
+                        filteredEntries.sort((a, b) => b[1] - a[1]);   // lớn -> nhỏ
+                    }
 
-    labels = filteredEntries.map(([ws]) => ws);
-    datasets = [
-        {
-            data: filteredEntries.map(([, v]) => v),
-            backgroundColor: generateDistinctColors(filteredEntries.length),
-            borderWidth: 1,
-        }
-    ];
+                    labels = filteredEntries.map(([ws]) => ws);
+                    datasets = [
+                        {
+                            data: filteredEntries.map(([, v]) => v),
+                            backgroundColor: generateDistinctColors(filteredEntries.length),
+                            borderWidth: 1,
+                        }
+                    ];
 
-    if (periodLabelEl && latestLabel) {
-        periodLabelEl.textContent = `Ngày: ${latestLabel}`;
-    }
-}
+                    if (periodLabelEl && latestLabel) {
+                        periodLabelEl.textContent = `Ngày: ${latestLabel}`;
+                    }
+                }
 
-// Xác định loại chart thực tế
-const thrForChart = getThresholdForKpiColumn(valueCol);
+                // ============ TARGET LINE & CONFIG CHART ============
 
-let internalType = chartType;
-if (chartType === "stackedArea") {
-    internalType = "line";
-}
+                // Xác định loại chart thực tế
+                const thrForChart = getThresholdForKpiColumn(valueCol);
 
-if (chartType === "funnel") {
-    internalType = "bar";
-}
+                let internalType = chartType;
+                if (chartType === "stackedArea") {
+                    internalType = "line";
+                }
 
-let chartDatasets = datasets;
-if (chartType === "stackedArea") {
-    chartDatasets = datasets.map((ds, idx) => {
-        let solidColor = ds.borderColor || "#667eea";
+                if (chartType === "funnel") {
+                    internalType = "bar";
+                }
 
-        return {
-            ...ds,
-            fill: true,
-            backgroundColor: solidColor,
-            borderWidth: 1,
-            stack: "stack_" + valueCol,
-            borderColor: solidColor,
-            pointRadius: 0,
-            tension: 0.3,
-        };
-    });
-}
+                let chartDatasets = datasets;
+                if (chartType === "stackedArea") {
+                    chartDatasets = datasets.map((ds, idx) => {
+                        let solidColor = ds.borderColor || "#667eea";
 
-const hasThrForChart =
-    thrForChart &&
-    typeof thrForChart.value === "number" &&
-    !isNaN(thrForChart.value);
+                        return {
+                            ...ds,
+                            fill: true,
+                            backgroundColor: solidColor,
+                            borderWidth: 1,
+                            stack: "stack_" + valueCol,
+                            borderColor: solidColor,
+                            pointRadius: 0,
+                            tension: 0.3,
+                        };
+                    });
+                }
 
-// Chỉ vẽ target line khi:
-// - Có ngưỡng
-// - Checkbox tổng đang bật
-// - Checkbox Target riêng cho KPI này đang bật
-// - Loại chart phù hợp
-const showTargetLine =
-    hasThrForChart &&
-    globalThresholdEnabled &&
-    chartTargetVisible[valueCol] &&
-    (chartType === "line" ||
-        chartType === "bar" ||
-        chartType === "stackedArea" ||
-        chartType === "funnel");
+                const hasThrForChart =
+                    thrForChart &&
+                    typeof thrForChart.value === "number" &&
+                    !isNaN(thrForChart.value);
 
-if (showTargetLine) {
-    const targetVal = thrForChart.value;
-    const targetData = (labels || []).map(() => targetVal);
+                // Chỉ vẽ target line khi:
+                // - Có ngưỡng
+                // - Checkbox tổng đang bật
+                // - Checkbox Target riêng cho KPI này đang bật
+                // - Loại chart phù hợp
+                const showTargetLine =
+                    hasThrForChart &&
+                    globalThresholdEnabled &&
+                    chartTargetVisible[valueCol] &&
+                    (chartType === "line" ||
+                        chartType === "bar" ||
+                        chartType === "stackedArea" ||
+                        chartType === "funnel");
 
-    chartDatasets = [
-        ...chartDatasets,
-        {
-            label: "Target",
-            data: targetData,
-            type: "line",
-            borderWidth: 5,        // Độ dày target line
-            borderColor: "#ff0000",
-            borderDash: [8, 5],
-            pointRadius: 0,
-            tension: 0,
-            fill: false,
-            yAxisID: "y",
-        },
-    ];
-}
+                if (showTargetLine) {
+                    const targetVal = thrForChart.value;
+                    const targetData = (labels || []).map(() => targetVal);
 
+                    chartDatasets = [
+                        ...chartDatasets,
+                        {
+                            label: "Target",
+                            data: targetData,
+                            type: "line",
+                            borderWidth: 5,        // Độ dày target line
+                            borderColor: "#ff0000",
+                            borderDash: [8, 5],
+                            pointRadius: 0,
+                            tension: 0,
+                            fill: false,
+                            yAxisID: "y",
+                        },
+                    ];
+                }
 
                 chartInstances[chartId] = new Chart(ctx, {
                     type: internalType,
@@ -4510,8 +4684,8 @@ if (showTargetLine) {
                                         const value =
                                             typeof raw === "number"
                                                 ? Math.round(
-                                                      raw * 1000
-                                                  ) / 1000
+                                                    raw * 1000
+                                                ) / 1000
                                                 : raw;
 
                                         if (
@@ -4532,9 +4706,9 @@ if (showTargetLine) {
                                                 );
                                             const pct = total
                                                 ? Math.round(
-                                                      (value / total) *
-                                                          100000
-                                                  ) / 1000
+                                                    (value / total) *
+                                                        100000
+                                                ) / 1000
                                                 : 0;
                                             return `${ctx.label}: ${value} (${pct}%)`;
                                         }
@@ -4671,7 +4845,7 @@ if (showTargetLine) {
             renderLatestKpiTable();
             renderExcelStyleTable();
         }
-
+                
         function buildExcelDateOptions() {
             if (!currentData || !periodColumnName) return;
 
@@ -5516,183 +5690,181 @@ if (showTargetLine) {
         }
 
 
-        // Tính toán lại toàn bộ Worst Cell Overview
-        function recomputeWorstCellOverview() {
-            const map = new Map(); // key = PO||Tỉnh
+    // Tính toán lại toàn bộ Worst Cell Overview
+    function recomputeWorstCellOverview() {
+        const map = new Map(); // key = PO||Tỉnh
 
-            function ensureRow(po, province) {
-                const key = po + "||" + province;
-                let obj = map.get(key);
-                if (!obj) {
-                    obj = {
-                        po,
-                        province,
-                        soTram: 0,
-                        onAir: 0,             // 🔹 "Số Cell On-Air"
-                        worstCssrCount: 0,
-                        worstDcrCount: 0,
-                        nonTrafficCount: 0
-                    };
-                    map.set(key, obj);
-                }
-                return obj;
+        function ensureRow(po, province) {
+            const key = po + "||" + province;
+            let obj = map.get(key);
+            if (!obj) {
+                obj = {
+                    po,
+                    province,
+                    soTram: 0,
+                    onAir: 0,             // 🔹 "Số Cell On-Air" (tính từ tiến độ * 3)
+                    worstCssrCount: 0,
+                    worstDcrCount: 0,
+                    nonTrafficCount: 0
+                };
+                map.set(key, obj);
             }
-
-            // 1️⃣ Tiến độ đo kiểm: CHỈ lấy Số trạm, KHÔNG dùng On-Air nữa
-            if (typeof progressFullData !== "undefined" && Array.isArray(progressFullData)) {
-                progressFullData.forEach((r) => {
-                    const info = getPoProvinceFromRow(r);
-                    if (!info) return;
-
-                    const agg = ensureRow(info.po, info.province);
-                    const s   = getStationsFromProgressRow(r);
-
-                    agg.soTram += s.soTram || 0;
-                    // ❌ KHÔNG cộng onAir từ tiến độ nữa
-                    // agg.onAir  += s.onAir || 0;
-                });
-            }
-
-            // Helper: ép kiểu số
-            function toNum(v) {
-                if (v === null || v === undefined) return NaN;
-                const n = parseFloat(String(v).replace(/\s+/g, ""));
-                return isNaN(n) ? NaN : n;
-            }
-
-            // 2️⃣ Worst Cell: dùng để đếm "Số Cell On-Air" + CSSR<95, DCR>3
-            let worstRows = [];
-            if (Array.isArray(window._latestWorstTrafficRows) && window._latestWorstTrafficRows.length) {
-                // Ưu tiên dùng đúng dataset vừa render cho bảng Worst Cell
-                worstRows = window._latestWorstTrafficRows;
-            } else {
-                // Fallback: đọc trực tiếp từ sheet WorstCell nếu chưa có
-                worstRows = getSheetDataByHints(["worstcell", "worst cell"]);
-            }
-
-            worstRows.forEach((r) => {
-                const info = getPoProvinceFromRow(r);
-                if (!info) return;
-
-                const agg = ensureRow(info.po, info.province);
-
-                // ✅ MỖI DÒNG (MỖI CELL) TRONG BẢNG "Worst Cell" = 1 "Cell On-Air"
-                agg.onAir = (agg.onAir || 0) + 1;
-
-                // --- Các KPI dùng cho điều kiện ---
-                const cssr =
-                    r["NSA call access"] ||
-                    r["NSA Call access"] ||
-                    r["NSA CALL ACCESS"];
-
-                const dcr =
-                    r["NSA Active ERAB drop UserR"] ||
-                    r["NSA active ERAB drop UserR"] ||
-                    r["NSA ACTIVE ERAB DROP USERR"];
-
-                // ⭐ KPI mới: E-UTRAN Init E-RAB acc < 95
-                const erabInitAcc =
-                    r["E-UTRAN Init E-RAB acc"] ||
-                    r["E-utran Init E-RAB acc"] ||
-                    r["E-UTRAN INIT E-RAB ACC"];
-
-                // ⭐ KPI mới: E-RAB DR RAN > 3
-                const erabDrRan =
-                    r["E-RAB DR RAN"] ||
-                    r["E-rab DR RAN"] ||
-                    r["E-RAB Dr RAN"];
-
-                const cssrNum      = toNum(cssr);
-                const dcrNum       = toNum(dcr);
-                const erabInitNum  = toNum(erabInitAcc);
-                const erabDrRanNum = toNum(erabDrRan);
-
-                // 🔹 Điều kiện tổng hợp cho CSSR
-                const cssrFail =
-                    (!isNaN(cssrNum)     && cssrNum     < 95) ||
-                    (!isNaN(erabInitNum) && erabInitNum < 95);   // thêm điều kiện mới
-
-                // 🔹 Điều kiện tổng hợp cho DCR
-                const dcrFail =
-                    (!isNaN(dcrNum)       && dcrNum       > 3) ||
-                    (!isNaN(erabDrRanNum) && erabDrRanNum > 3);  // thêm điều kiện mới
-
-                if (cssrFail) agg.worstCssrCount++;
-                if (dcrFail)  agg.worstDcrCount++;
-            });
-
-            // 3️⃣ Non-Traffic: đếm số cell + cộng vào Số Cell On-Air
-            let nonRows = [];
-            if (Array.isArray(window._latestWorstNonTrafficRows) && window._latestWorstNonTrafficRows.length) {
-                nonRows = window._latestWorstNonTrafficRows;
-            } else {
-                nonRows = getSheetDataByHints([
-                    "cell non traffic",
-                    "cell_non_traffic",
-                    "non-traffic"
-                ]);
-            }
-
-            nonRows.forEach((r) => {
-                const info = getPoProvinceFromRow(r);
-                if (!info) return;
-                const agg = ensureRow(info.po, info.province);
-
-                // ✅ Cell non-traffic cũng tính là 1 "Cell On-Air"
-                agg.onAir = (agg.onAir || 0) + 1;
-
-                // Vẫn giữ riêng số lượng non-traffic
-                agg.nonTrafficCount++;
-            });
-
-            // 4️⃣ Chuyển map -> array & sort theo PO rồi Tỉnh
-            worstOverviewData = Array.from(map.values()).sort((a, b) => {
-                if (a.po === b.po) {
-                    return a.province.localeCompare(b.province, "vi");
-                }
-                return a.po.localeCompare(b.po, "vi");
-            });
-
-            // ==== FILL COMBOBOX PO CHO WORST CELL OVERVIEW ====
-            const poFilter = document.getElementById("worstOverviewPoFilter");
-            if (poFilter) {
-                const prevValue = poFilter.value || "ALL";
-
-                // Xóa & fill lại option
-                poFilter.innerHTML = '<option value="ALL">Tất cả PO</option>';
-
-                const uniquePO = [...new Set(
-                    (worstOverviewData || [])
-                        .map(r => (r.po || "").trim())
-                        .filter(Boolean)
-                )];
-
-                uniquePO.forEach((po) => {
-                    const opt = document.createElement("option");
-                    opt.value = po;
-                    opt.textContent = po;
-                    poFilter.appendChild(opt);
-                });
-
-                // Giữ lại lựa chọn cũ nếu còn tồn tại
-                if (prevValue !== "ALL" && uniquePO.includes(prevValue)) {
-                    poFilter.value = prevValue;
-                } else {
-                    poFilter.value = "ALL";
-                }
-
-                // Gắn event change 1 lần
-                if (!poFilter._bound) {
-                    poFilter.addEventListener("change", () => {
-                        renderWorstCellOverviewTable();
-                    });
-                    poFilter._bound = true;
-                }
-            }
-
-            renderWorstCellOverviewTable();
+            return obj;
         }
 
+        // 1️⃣ Tiến độ đo kiểm: lấy Số trạm + On-Air (số trạm) rồi nhân 3 -> Số Cell On-Air
+        if (typeof progressFullData !== "undefined" && Array.isArray(progressFullData)) {
+            progressFullData.forEach((r) => {
+                const info = getPoProvinceFromRow(r);
+                if (!info) return;
+
+                const agg = ensureRow(info.po, info.province);
+                const s   = getStationsFromProgressRow(r);   // { soTram, onAir, ... }
+
+                const soTram = s.soTram || 0;
+                const onAirStation = s.onAir || 0;           // số TRẠM on-air từ file tiến độ
+
+                agg.soTram += soTram;
+                // ✅ Số Cell On-Air = Số TRẠM On-Air × 3
+                agg.onAir  += onAirStation * 3;
+            });
+        }
+
+        // Helper: ép kiểu số
+        function toNum(v) {
+            if (v === null || v === undefined) return NaN;
+            const n = parseFloat(String(v).replace(/\s+/g, ""));
+            return isNaN(n) ? NaN : n;
+        }
+
+        // 2️⃣ Worst Cell: chỉ dùng để đếm CSSR<95, DCR>3 (KHÔNG cộng thêm On-Air nữa)
+        let worstRows = [];
+        if (Array.isArray(window._latestWorstTrafficRows) && window._latestWorstTrafficRows.length) {
+            // Ưu tiên dùng đúng dataset vừa render cho bảng Worst Cell
+            worstRows = window._latestWorstTrafficRows;
+        } else {
+            // Fallback: đọc trực tiếp từ sheet WorstCell nếu chưa có
+            worstRows = getSheetDataByHints(["worstcell", "worst cell"]);
+        }
+
+        worstRows.forEach((r) => {
+            const info = getPoProvinceFromRow(r);
+            if (!info) return;
+
+            const agg = ensureRow(info.po, info.province);
+
+            // ❌ Không cộng agg.onAir nữa, vì "Số Cell On-Air" lấy từ tiến độ *3
+
+            // --- Các KPI dùng cho điều kiện ---
+            const cssr =
+                r["NSA call access"] ||
+                r["NSA Call access"] ||
+                r["NSA CALL ACCESS"];
+
+            const dcr =
+                r["NSA Active ERAB drop UserR"] ||
+                r["NSA active ERAB drop UserR"] ||
+                r["NSA ACTIVE ERAB DROP USERR"];
+
+            // ⭐ KPI mới: E-UTRAN Init E-RAB acc < 95
+            const erabInitAcc =
+                r["E-UTRAN Init E-RAB acc"] ||
+                r["E-utran Init E-RAB acc"] ||
+                r["E-UTRAN INIT E-RAB ACC"];
+
+            // ⭐ KPI mới: E-RAB DR RAN > 3
+            const erabDrRan =
+                r["E-RAB DR RAN"] ||
+                r["E-rab DR RAN"] ||
+                r["E-RAB Dr RAN"];
+
+            const cssrNum      = toNum(cssr);
+            const dcrNum       = toNum(dcr);
+            const erabInitNum  = toNum(erabInitAcc);
+            const erabDrRanNum = toNum(erabDrRan);
+
+            // 🔹 Điều kiện tổng hợp cho CSSR
+            const cssrFail =
+                (!isNaN(cssrNum)     && cssrNum     < 95) ||
+                (!isNaN(erabInitNum) && erabInitNum < 95);
+
+            // 🔹 Điều kiện tổng hợp cho DCR
+            const dcrFail =
+                (!isNaN(dcrNum)       && dcrNum       > 3) ||
+                (!isNaN(erabDrRanNum) && erabDrRanNum > 3);
+
+            if (cssrFail) agg.worstCssrCount++;
+            if (dcrFail)  agg.worstDcrCount++;
+        });
+
+        // 3️⃣ Non-Traffic: chỉ đếm Non-Traffic, KHÔNG cộng thêm On-Air nữa
+        let nonRows = [];
+        if (Array.isArray(window._latestWorstNonTrafficRows) && window._latestWorstNonTrafficRows.length) {
+            nonRows = window._latestWorstNonTrafficRows;
+        } else {
+            nonRows = getSheetDataByHints([
+                "cell non traffic",
+                "cell_non_traffic",
+                "non-traffic"
+            ]);
+        }
+
+        nonRows.forEach((r) => {
+            const info = getPoProvinceFromRow(r);
+            if (!info) return;
+            const agg = ensureRow(info.po, info.province);
+
+            // ❌ Không cộng agg.onAir nữa
+            agg.nonTrafficCount++;
+        });
+
+        // 4️⃣ Chuyển map -> array & sort theo PO rồi Tỉnh
+        worstOverviewData = Array.from(map.values()).sort((a, b) => {
+            if (a.po === b.po) {
+                return a.province.localeCompare(b.province, "vi");
+            }
+            return a.po.localeCompare(b.po, "vi");
+        });
+
+        // ==== FILL COMBOBOX PO CHO WORST CELL OVERVIEW ====
+        const poFilter = document.getElementById("worstOverviewPoFilter");
+        if (poFilter) {
+            const prevValue = poFilter.value || "ALL";
+
+            // Xóa & fill lại option
+            poFilter.innerHTML = '<option value="ALL">Tất cả PO</option>';
+
+            const uniquePO = [...new Set(
+                (worstOverviewData || [])
+                    .map(r => (r.po || "").trim())
+                    .filter(Boolean)
+            )];
+
+            uniquePO.forEach((po) => {
+                const opt = document.createElement("option");
+                opt.value = po;
+                opt.textContent = po;
+                poFilter.appendChild(opt);
+            });
+
+            // Giữ lại lựa chọn cũ nếu còn tồn tại
+            if (prevValue !== "ALL" && uniquePO.includes(prevValue)) {
+                poFilter.value = prevValue;
+            } else {
+                poFilter.value = "ALL";
+            }
+
+            // Gắn event change 1 lần
+            if (!poFilter._bound) {
+                poFilter.addEventListener("change", () => {
+                    renderWorstCellOverviewTable();
+                });
+                poFilter._bound = true;
+            }
+        }
+
+        renderWorstCellOverviewTable();
+    }
 
         // Vẽ bảng ra HTML
     function renderWorstCellOverviewTable() {
