@@ -4805,9 +4805,10 @@ function processMultipleFiles(files) {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        // ✅ dùng nearest + intersect
                         interaction: {
-                            mode: "index",
-                            intersect: false,
+                            mode: "nearest",   // hoặc "point"
+                            intersect: true,
                         },
                         plugins: {
                             legend: {
