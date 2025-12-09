@@ -4154,13 +4154,61 @@ function processMultipleFiles(files) {
                 groupedData[wsStr][label] = value;
             });
 
-            let labels = Array.from(periodMap.entries())
-                .sort((a, b) => a[1] - b[1])
-                .map(([lbl]) => lbl);
+        // Sắp xếp toàn bộ period theo thời gian
+        const periodEntries = Array.from(periodMap.entries())
+            .sort((a, b) => a[1] - b[1]); // [label, sortValue]
 
-            if (chartDaysWindow && labels.length > chartDaysWindow) {
-                labels = labels.slice(labels.length - chartDaysWindow);
+        function getDayKeyFromSortValue(sortValue) {
+            // sortValue có thể là ms hoặc string; Date đều nhận được
+            const d = sortValue instanceof Date ? sortValue : new Date(sortValue);
+            if (Number.isNaN(d.getTime())) return null;
+
+            const yyyy = d.getFullYear();
+            const mm   = String(d.getMonth() + 1).padStart(2, "0");
+            const dd   = String(d.getDate()).padStart(2, "0");
+            return `${yyyy}-${mm}-${dd}`;   // key theo ngày
+        }
+
+        let labels;
+
+        if (chartDaysWindow && chartDaysWindow > 0) {
+            // 1️⃣ Lấy N ngày gần nhất theo dữ liệu hiện có
+            const uniqueDays = [];
+            const daySet = new Set();
+
+            for (let i = periodEntries.length - 1; i >= 0; i--) {
+                const [, sortValue] = periodEntries[i];
+                const dayKey = getDayKeyFromSortValue(sortValue);
+                if (!dayKey) continue;
+
+                if (!daySet.has(dayKey)) {
+                    daySet.add(dayKey);
+                    uniqueDays.push(dayKey);
+                    if (uniqueDays.length >= chartDaysWindow) break; // đủ N ngày
+                }
             }
+
+            if (!uniqueDays.length) {
+                // fallback: lỗi parse ngày → dùng toàn bộ
+                labels = periodEntries.map(([lbl]) => lbl);
+            } else {
+                const allowedDays = new Set(uniqueDays);
+
+                // 2️⃣ Giữ lại mọi label thuộc các ngày đó
+                //    - Period chỉ có ngày → mỗi ngày 1 label
+                //    - Period có giờ   → lấy tất cả giờ trong N ngày gần nhất
+                labels = periodEntries
+                    .filter(([, sortValue]) => {
+                        const dayKey = getDayKeyFromSortValue(sortValue);
+                        return dayKey && allowedDays.has(dayKey);
+                    })
+                    .map(([lbl]) => lbl);
+            }
+        } else {
+            // "Toàn bộ" → không giới hạn ngày
+            labels = periodEntries.map(([lbl]) => lbl);
+        }
+
 
             const datasets = [];
             const colors   = generateDistinctColors(Object.keys(groupedData).length);
@@ -5220,11 +5268,12 @@ function processMultipleFiles(files) {
 
                 if (thr && thr.op && typeof thr.value === "number") {
                     const reversedOp =
-                        thr.op === "<"  ? ">"  :
-                        thr.op === "<=" ? ">=" :
-                        thr.op === ">"  ? "<"  :
-                        thr.op === ">=" ? "<=" :
-                        (thr.op === "=" || thr.op === "==") ? "=" : "";
+                        thr.op === "<"  ? ">="  :
+                        thr.op === "<=" ? ">" :
+                        thr.op === ">"  ? "<="  :
+                        thr.op === ">=" ? "<" :
+                        thr.op === "!=" ? "=" :
+                        (thr.op === "=" || thr.op === "==") ? "!=" : "";
 
                     targetDisplay = reversedOp ? `${reversedOp} ${thr.value}` : "";
                 }
