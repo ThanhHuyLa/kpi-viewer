@@ -2321,7 +2321,7 @@ async function getAllExcelFiles(driveId, rootFolderId) {
 // Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
 // Dùng tên thư mục cuối trong graphKpiConfig.kpiFolderPath, ví dụ:
 // "/KPI Scheduler"  -> tìm folder share tên "KPI Scheduler"
-async function odLoadKpiSharedFolderViaRemoteItem() {
+async function odLoadKpiSharedFolderViaRemoteItem1() {
     const rawPath = graphKpiConfig.kpiFolderPath || "/";
     const folderName = rawPath
         .split("/")
@@ -2409,6 +2409,93 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 
     // Bắt đầu duyệt từ thư mục share gốc, pathParts = []
     await traverse(itemId, []);
+
+    return resultMap;
+}
+async function odLoadKpiSharedFolderViaRemoteItem() {
+    // 🧩 1. Lấy tên gợi ý từ kpiFolderPath (nếu có)
+    const rawPath = graphKpiConfig.kpiFolderPath || "/";
+    const preferredName = rawPath
+        .split("/")
+        .filter(Boolean)
+        .pop() || "";              // vd: "KPI Scheduler" hoặc "Attachments"
+    const preferredLower = preferredName.toLowerCase();
+
+    const resultMap = {}; // { folderKey: [ { itemId, name, downloadUrl, lastModified } ] }
+
+    // 🧩 2. Lấy tất cả item trong root, mở rộng remoteItem để thấy shortcut
+    const data  = await graphGetJson("/me/drive/root/children?$expand=remoteItem");
+    const items = (data && data.value) || [];
+
+    // Chỉ giữ các item là shortcut tới folder share (có remoteItem.folder)
+    const shortcuts = items.filter(it => it.remoteItem && it.remoteItem.folder);
+
+    if (!shortcuts.length) {
+        console.warn("Không tìm thấy shortcut remoteItem nào ở root (My files).");
+        return {};
+    }
+
+    // 🧩 3. Nếu kpiFolderPath có tên cụ thể, ưu tiên các shortcut trùng tên đó
+    let targets = [];
+    if (preferredLower) {
+        targets = shortcuts.filter(sc => {
+            const n1 = (sc.name || "").toLowerCase();
+            const n2 = (sc.remoteItem.name || "").toLowerCase();
+            return n1 === preferredLower || n2 === preferredLower;
+        });
+    }
+
+    // Nếu không tìm thấy shortcut trùng tên -> fallback dùng tất cả shortcut
+    if (!targets.length) {
+        targets = shortcuts;
+    }
+
+    const isExcel = (name) => /\.(xlsx|xlsm|xlsb|xls)$/i.test(name || "");
+
+    // 🧩 4. Hàm đệ quy duyệt children của 1 folder trong drive share
+    async function traverse(driveId, folderId, folderKey, pathParts) {
+        const childrenData = await graphGetJson(
+            `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
+        );
+        const children = (childrenData && childrenData.value) || [];
+
+        for (const c of children) {
+            if (c.folder) {
+                // tiếp tục xuống subfolder
+                const nextParts = pathParts.concat(c.name || "");
+                await traverse(driveId, c.id, folderKey, nextParts);
+            } else if (isExcel(c.name)) {
+                // file Excel -> group theo folderKey (tên shortcut)
+                if (!resultMap[folderKey]) {
+                    resultMap[folderKey] = [];
+                }
+                resultMap[folderKey].push({
+                    itemId: c.id,
+                    name: c.name,
+                    downloadUrl: c["@microsoft.graph.downloadUrl"] || null,
+                    lastModified: c.lastModifiedDateTime || ""
+                });
+            }
+        }
+    }
+
+    // 🧩 5. Duyệt từng shortcut mục tiêu
+    for (const sc of targets) {
+        const remote  = sc.remoteItem;
+        const driveId = remote.parentReference
+            ? remote.parentReference.driveId
+            : null;
+        const itemId  = remote.id;
+
+        if (!driveId || !itemId) {
+            console.warn("remoteItem thiếu driveId hoặc id:", remote);
+            continue;
+        }
+
+        // folderKey = tên shortcut (vd: "KPI Scheduler")
+        const folderKey = sc.name || remote.name || "SharedFolder";
+        await traverse(driveId, itemId, folderKey, []);
+    }
 
     return resultMap;
 }
