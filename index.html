@@ -8878,29 +8878,35 @@ function processMultipleFiles(files) {
                     const g = groups[key];
                     g.total++;
 
-                    // On-Air: có giá trị bất kỳ
+                    // --- On-Air: có giá trị bất kỳ ---
+                    let hasOnAir = false;
                     if (idxOnair !== -1) {
-                        const v = String(row[idxOnair] || "").trim();
-                        if (v !== "") g.onair++;
+                        const vOn = String(row[idxOnair] || "").trim();
+                        if (vOn !== "") {
+                            g.onair++;
+                            hasOnAir = true;
+                        }
                     }
 
-                    // CQT: có "Ngày đo CQT"
-                    if (idxCqtDate !== -1) {
+                    // --- CQT: có "Ngày đo CQT" và bắt buộc phải On-Air ---
+                    if (idxCqtDate !== -1 && hasOnAir) {
                         const v = String(row[idxCqtDate] || "").trim();
                         if (v !== "") g.cqtOk++;
                     }
 
-                    // SSV: có "Ngày đo SSV/Cluster"
-                    if (idxSsvDate !== -1) {
+                    // --- SSV: có "Ngày đo SSV/Cluster" và bắt buộc phải On-Air ---
+                    if (idxSsvDate !== -1 && hasOnAir) {
                         const v = String(row[idxSsvDate] || "").trim();
                         if (v !== "") g.ssvOk++;
                     }
 
-                    // ATP report: có "Ngày gửi report ATP vung phu song"
-                    if (idxAtpDate !== -1) {
+                    // --- ATP report: có "Ngày gửi report ATP vung phu song" và bắt buộc On-Air ---
+                    if (idxAtpDate !== -1 && hasOnAir) {
                         const v = String(row[idxAtpDate] || "").trim();
                         if (v !== "") g.atpReport++;
                     }
+
+
                 });
 
                 const groupList = Object.values(groups).sort((a, b) => {
