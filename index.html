@@ -2224,9 +2224,6 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     groupSelect.value = groupNames[0];
 }
 
-
-
-// Trả về map: { folderName: [ { itemId, name, downloadUrl, lastModified } ] }
 // Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
 async function odLoadSharedExcelFilesForKpiPath() {
     // Lấy từ khóa cuối của đường dẫn KPI, ví dụ: "/Documents/KPI Scheduler" -> "KPI Scheduler"
@@ -2412,16 +2409,23 @@ async function odLoadKpiSharedFolderViaRemoteItem1() {
 
     return resultMap;
 }
+
+// ===============================================================
+//  ONE DRIVE SHARE READER – GROUP THEO SUBFOLDER CẤP 1 (NAxx…)
+// ===============================================================
 async function odLoadKpiSharedFolderViaRemoteItem() {
     const rawPath = graphKpiConfig.kpiFolderPath || "/";
-    const preferredName = rawPath.split("/").filter(Boolean).pop() || "";
-    const preferredLower = preferredName.toLowerCase();
+    const folderName = rawPath.split("/").filter(Boolean).pop() || "";
+    const prefLower = folderName.toLowerCase();
 
-    const resultMap = {};
-    const processedKeys = new Set();
-    const isExcel = (name) => /\.(xlsx|xlsm|xlsb|xls)$/i.test(name || "");
+    const resultMap = {};               // { NA08: [...], NA09: [...], ... }
+    const processed = new Set();        // tránh duyệt trùng
+    const isExcel = (name) => /\.(xlsx|xlsm?|xlsb?|xls)$/i.test(name || "");
 
-    async function traverse(driveId, folderId, folderKey) {
+    // ------------------------------
+    //  ĐỆ QUY LẤY FILE TỪ SHARE ROOT
+    // ------------------------------
+    async function traverse(driveId, folderId, pathParts) {
         const childrenData = await graphGetJson(
             `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
         );
@@ -2429,8 +2433,13 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 
         for (const c of children) {
             if (c.folder) {
-                await traverse(driveId, c.id, folderKey);
+                // Thêm tên thư mục → pathParts[0] = NAxx
+                await traverse(driveId, c.id, pathParts.concat(c.name || ""));
             } else if (isExcel(c.name)) {
+                // GROUP THEO SUBFOLDER CẤP 1
+                let folderKey = folderName;
+                if (pathParts.length > 0) folderKey = pathParts[0];
+
                 if (!resultMap[folderKey]) resultMap[folderKey] = [];
                 resultMap[folderKey].push({
                     itemId: c.id,
@@ -2442,74 +2451,48 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
         }
     }
 
-    async function collectFromRemote(remote, fallbackName) {
+    async function collectFromRemote(remote, shownName) {
         const driveId = remote.parentReference?.driveId;
         const itemId  = remote.id;
         if (!driveId || !itemId) return;
 
-        const folderKey = fallbackName || remote.name || "SharedFolder";
-        if (processedKeys.has(driveId + ":" + itemId)) return; // tránh lặp
-        processedKeys.add(driveId + ":" + itemId);
+        const key = driveId + ":" + itemId;
+        if (processed.has(key)) return;
+        processed.add(key);
 
-        await traverse(driveId, itemId, folderKey);
+        await traverse(driveId, itemId, []);
     }
 
-    // 1️⃣ Đọc các shortcut trong My files
-    try {
-        const rootData = await graphGetJson(
-            "/me/drive/root/children?$select=id,name,remoteItem"
-        );
-        const rootItems = (rootData && rootData.value) || [];
+    // -----------------------------------------
+    //  1️⃣ TÌM THƯ MỤC SHARE TRÙNG TÊN (ƯU TIÊN)
+    // -----------------------------------------
+    const swmData = await graphGetJson("/me/drive/sharedWithMe");
+    const swmItems = (swmData && swmData.value) || [];
 
-        let shortcuts = rootItems.filter(it => it.remoteItem && it.remoteItem.folder);
+    let matched = swmItems
+        .map(it => it.remoteItem)
+        .filter(r => r && r.folder && (r.name || "").toLowerCase() === prefLower);
 
-        let targets = [];
-        if (preferredLower) {
-            targets = shortcuts.filter(sc => {
-                const n1 = (sc.name || "").toLowerCase();
-                const n2 = (sc.remoteItem.name || "").toLowerCase();
-                return n1 === preferredLower || n2 === preferredLower;
-            });
-        }
-        if (!targets.length) targets = shortcuts;
-
-        for (const sc of targets) {
-            await collectFromRemote(sc.remoteItem, sc.name);
-        }
-    } catch (e) {
-        console.warn("Lỗi đọc shortcut remoteItem ở root:", e);
-    }
-
-    // 2️⃣ Đọc thêm các thư mục share trong SharedWithMe
-    try {
-        const swmData = await graphGetJson("/me/drive/sharedWithMe");
-        const swmItems = (swmData && swmData.value) || [];
-
-        let sharedFolders = swmItems
-            .map(it => it.remoteItem)
-            .filter(r => r && r.folder);
-
-        let targets2 = [];
-        if (preferredLower) {
-            targets2 = sharedFolders.filter(r =>
-                (r.name || "").toLowerCase() === preferredLower
-            );
-        }
-        if (!targets2.length) targets2 = sharedFolders;
-
-        for (const remote of targets2) {
+    // Nếu tìm được → chỉ lấy đúng thư mục đó
+    if (matched.length) {
+        for (const remote of matched) {
             await collectFromRemote(remote, remote.name);
         }
-    } catch (e) {
-        console.warn("Lỗi đọc thư mục share trong sharedWithMe:", e);
+        return resultMap;
     }
 
-    return resultMap;
+    // -------------------------------------------------------
+    //  2️⃣ KHÔNG TÌM THẤY TÊN MATCH → KHÔNG LẤY SHARE LINH TINH
+    // -------------------------------------------------------
+    // KHÔNG fallback lấy toàn bộ sharedWithMe nữa
+    console.warn(`Không tìm thấy thư mục share tên "${folderName}" trong sharedWithMe`);
+    return {};
 }
+// ===============================================================
+// END
+// ===============================================================
 
-// Đọc danh sách file KPI từ OneDrive và build map folder -> file
-// Đọc danh sách file KPI từ OneDrive (thư mục riêng + file share) và build map folder -> file
-// Đọc danh sách file KPI từ OneDrive và build map folder -> file
+
 // Đọc danh sách file KPI từ OneDrive (hỗ trợ cả folder thường và shortcut / remoteItem)
 async function odLoadKpiGroupsFromOneDrive() {
     const loading      = document.getElementById("loading");
