@@ -2422,6 +2422,17 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
     const processed = new Set();        // tránh duyệt trùng
     const isExcel = (name) => /\.(xlsx|xlsm?|xlsb?|xls)$/i.test(name || "");
 
+    console.log(
+        "SharedWithMe remote folders:",
+        swmItems
+            .map(it => it.remoteItem)
+            .filter(r => r && r.folder)
+            .map(r => ({
+                name: r.name,
+                path: r.parentReference?.path
+            }))
+    );
+
     // ------------------------------
     //  ĐỆ QUY LẤY FILE TỪ SHARE ROOT
     // ------------------------------
