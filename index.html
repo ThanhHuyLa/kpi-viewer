@@ -2025,21 +2025,21 @@ async function handleOneDriveLogin() {
 
         // Sau khi login xong → load danh sách nhóm file trong thư mục KPI Scheduler
         await odLoadKpiGroupsFromOneDrive();
-    } catch (err) {
-        console.error("Lỗi đăng nhập OneDrive:", err);
-        if (statusSpan) {
-            statusSpan.textContent = "Đăng nhập thất bại";
+        } catch (err) {
+            console.error("Lỗi đăng nhập OneDrive:", err);
+            if (statusSpan) {
+                statusSpan.textContent = "Đăng nhập thất bại";
+            }
+            if (statusRow) statusRow.style.display = "flex"; // vẫn hiện để thấy lỗi
+
+            // 🔒 Lỗi đăng nhập → tiếp tục khóa
+            setLocalExcelInputsEnabled(false);
+
+            alert(
+                "Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" +
+                    err.message
+            );
         }
-        if (statusRow) statusRow.style.display = "flex"; // vẫn hiện để thấy lỗi
-
-        // 🔒 Lỗi đăng nhập → tiếp tục khóa
-        setLocalExcelInputsEnabled(false);
-
-        alert(
-            "Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" +
-                err.message
-        );
-    }
 }
 
 
@@ -2240,6 +2240,8 @@ async function odLoadSharedExcelFilesForKpiPath() {
     // Gọi Graph API sharedWithMe
     const data = await graphGetJson("/me/drive/sharedWithMe");
     const items = (data && data.value) || [];
+
+    console.log("OD root items:", items.map(i => i.name)); // 👈 xem tên thư mục / file thực tế
 
     const isExcel = (name) => /\.(xlsx|xlsm?|xls)$/i.test(name || "");
     const resultMap = {}; // { folderName: [item...] }
@@ -2503,6 +2505,7 @@ async function odLoadKpiGroupsFromOneDrive() {
         // 🔹🔹 THÊM ĐOẠN NÀY: đọc thêm thư mục share bằng remoteItem
         try {
             const sharedMap = await odLoadKpiSharedFolderViaRemoteItem();
+            console.log("Shared folder map:", sharedMap);
             Object.keys(sharedMap || {}).forEach((folderName) => {
                 const list = sharedMap[folderName];
                 if (!list || !list.length) return;
