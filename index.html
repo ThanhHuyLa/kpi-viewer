@@ -2321,7 +2321,7 @@ async function getAllExcelFiles(driveId, rootFolderId) {
 // Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
 // Dùng tên thư mục cuối trong graphKpiConfig.kpiFolderPath, ví dụ:
 // "/KPI Scheduler"  -> tìm folder share tên "KPI Scheduler"
-async function odLoadKpiSharedFolderViaRemoteItem() {
+async function odLoadKpiSharedFolderViaRemoteItem1() {
     const rawPath = graphKpiConfig.kpiFolderPath || "/";
     const folderName = rawPath
         .split("/")
@@ -2412,7 +2412,7 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 
     return resultMap;
 }
-async function odLoadKpiSharedFolderViaRemoteItem1() {
+async function odLoadKpiSharedFolderViaRemoteItem() {
     const rawPath = graphKpiConfig.kpiFolderPath || "/";
     const preferredName = rawPath.split("/").filter(Boolean).pop() || "";
     const preferredLower = preferredName.toLowerCase();
