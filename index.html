@@ -2314,106 +2314,10 @@ async function getAllExcelFiles(driveId, rootFolderId) {
 }
 
 
-// Đọc thư mục KPI share (ví dụ /KPI Scheduler) + tách từng subfolder cho combobox Thư mục
 // Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
-// Dùng tên thư mục cuối trong graphKpiConfig.kpiFolderPath, ví dụ:
-// "/KPI Scheduler"  -> tìm folder share tên "KPI Scheduler"
-async function odLoadKpiSharedFolderViaRemoteItem1() {
-    const rawPath = graphKpiConfig.kpiFolderPath || "/";
-    const folderName = rawPath
-        .split("/")
-        .filter(Boolean)
-        .pop(); // lấy đoạn cuối
-
-    if (!folderName) {
-        console.warn("Không xác định được tên thư mục từ kpiFolderPath:", rawPath);
-        return {};
-    }
-
-    const folderNameLower = folderName.toLowerCase();
-
-    // 1. Tìm thư mục share tương ứng trong /me/drive/sharedWithMe
-    const data  = await graphGetJson("/me/drive/sharedWithMe");
-    const items = (data && data.value) || [];
-
-    let targetRemote = null;
-
-    for (const it of items) {
-        const remote = it.remoteItem;
-        if (!remote) continue;
-        if (!remote.folder) continue; // chỉ quan tâm thư mục share
-
-        const remoteName = (remote.name || "").toLowerCase();
-        if (remoteName === folderNameLower) {
-            targetRemote = remote;
-            break;
-        }
-    }
-
-    if (!targetRemote) {
-        console.warn("Không tìm thấy thư mục share tên:", folderName);
-        return {};
-    }
-
-    // 2. Lấy driveId + itemId thật của folder share
-    const driveId = targetRemote.parentReference
-        ? targetRemote.parentReference.driveId
-        : null;
-    const itemId  = targetRemote.id;
-
-    if (!driveId || !itemId) {
-        console.warn("remoteItem không có driveId hoặc id:", targetRemote);
-        return {};
-    }
-
-    // 3. Đệ quy duyệt TẤT CẢ subfolder để lấy file Excel
-    const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
-    const resultMap = {}; // { folderKey: [ { itemId, name, downloadUrl, lastModified } ] }
-
-    async function traverse(folderId, pathParts) {
-        const childrenData = await graphGetJson(
-            `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
-        );
-        const children = (childrenData && childrenData.value) || [];
-
-        for (const c of children) {
-            if (c.folder) {
-                // Tiếp tục đệ quy xuống subfolder
-                const nextParts = pathParts.concat(c.name || "");
-                await traverse(c.id, nextParts);
-            } else if (isExcel(c.name)) {
-                // Xác định khóa folder để group giống thư mục local:
-                //  - File nằm ngay trong thư mục share gốc -> dùng tên folder share
-                //  - File nằm trong subfolder -> dùng tên subfolder cấp 1
-                let folderKey = folderName;
-                if (pathParts.length > 0) {
-                    folderKey = pathParts[0] || folderName;
-                }
-
-                if (!resultMap[folderKey]) {
-                    resultMap[folderKey] = [];
-                }
-
-                resultMap[folderKey].push({
-                    itemId: c.id,
-                    name: c.name,
-                    downloadUrl: c["@microsoft.graph.downloadUrl"] || null,
-                    lastModified: c.lastModifiedDateTime || ""
-                });
-            }
-        }
-    }
-
-    // Bắt đầu duyệt từ thư mục share gốc, pathParts = []
-    await traverse(itemId, []);
-
-    return resultMap;
-}
-
-// Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
-// Group theo subfolder cấp 1 (NA08, NA09, NA10,...) giống local
+// Group theo subfolder cấp 1 (NA08, NA09, ...) giống local
 async function odLoadKpiSharedFolderViaRemoteItem() {
-    const rawPath   = graphKpiConfig.kpiFolderPath || "/";
+    const rawPath    = graphKpiConfig.kpiFolderPath || "/";
     const folderName = rawPath.split("/").filter(Boolean).pop() || "";
     const prefLower  = folderName.toLowerCase();
 
@@ -2425,30 +2329,63 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
     const swmData  = await graphGetJson("/me/drive/sharedWithMe");
     const swmItems = (swmData && swmData.value) || [];
 
-    // 🔍 LOG DEBUG: xem có những folder nào được share
+    const remoteFolders = swmItems
+        .map(it => it.remoteItem)
+        .filter(r => r && r.folder);
+
     console.log(
         "SharedWithMe remote folders:",
-        swmItems
-            .map(it => it.remoteItem)
-            .filter(r => r && r.folder)
-            .map(r => ({
-                name: r.name,
-                path: r.parentReference && r.parentReference.path
-            }))
+        remoteFolders.map(r => ({
+            name: r.name,
+            path: r.parentReference && r.parentReference.path
+        }))
     );
 
-    // Lọc các thư mục share có tên đúng với folderName (vd: "KPI Scheduler")
-    let matched = swmItems
-        .map(it => it.remoteItem)
-        .filter(r => r && r.folder && (r.name || "").toLowerCase() === prefLower);
+    let candidates = remoteFolders;
 
-    // Nếu không tìm thấy thư mục share đúng tên → trả về rỗng, không fallback
-    if (!matched.length) {
-        console.warn(`Không tìm thấy thư mục share tên "${folderName}" trong sharedWithMe`);
+    // Ưu tiên match đúng tên
+    if (prefLower) {
+        const exact = remoteFolders.filter(r =>
+            (r.name || "").toLowerCase() === prefLower
+        );
+        if (exact.length) {
+            candidates = exact;
+        } else {
+            // Nếu không có exact, thử match theo path chứa keyword
+            const pathMatch = remoteFolders.filter(r =>
+                ((r.parentReference && r.parentReference.path) || "")
+                    .toLowerCase()
+                    .includes(prefLower)
+            );
+            if (pathMatch.length) {
+                candidates = pathMatch;
+            }
+        }
+    }
+
+    if (!candidates.length) {
+        console.warn(
+            `Không tìm thấy thư mục share liên quan tới "${folderName}" trong sharedWithMe`
+        );
         return {};
     }
 
-    // 2️⃣ Đệ quy duyệt toàn bộ cây con của thư mục share, group theo NAxx
+    // Nếu vẫn nhiều folder: nếu chỉ có 1 thư mục share nói chung thì dùng nó,
+    // còn nếu nhiều hơn 1 thì log cảnh báo và không chọn bừa
+    if (candidates.length > 1) {
+        if (remoteFolders.length === 1) {
+            console.warn(
+                `Không thể lọc rõ theo "${folderName}", nhưng chỉ có 1 thư mục share -> dùng thư mục đó.`
+            );
+            candidates = remoteFolders.slice();
+        } else {
+            console.warn(
+                `Có ${candidates.length} thư mục share phù hợp với "${folderName}", không chọn bừa.`
+            );
+            return {};
+        }
+    }
+
     async function traverse(driveId, folderId, pathParts) {
         const childrenData = await graphGetJson(
             `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
@@ -2457,13 +2394,11 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 
         for (const c of children) {
             if (c.folder) {
-                // thêm tên subfolder vào pathParts (pathParts[0] sẽ là "NA08", "NA09", ...)
                 await traverse(driveId, c.id, pathParts.concat(c.name || ""));
             } else if (isExcel(c.name)) {
-                // Group theo subfolder cấp 1: KPI Scheduler/NA08/... => folderKey = "NA08"
                 let folderKey = folderName;
                 if (pathParts.length > 0) {
-                    folderKey = pathParts[0] || folderName;
+                    folderKey = pathParts[0] || folderName; // NA08 / NA09 / ...
                 }
 
                 if (!resultMap[folderKey]) {
@@ -2486,14 +2421,13 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
         if (!driveId || !itemId) return;
 
         const key = driveId + ":" + itemId;
-        if (processed.has(key)) return;   // tránh duyệt 2 lần
+        if (processed.has(key)) return;
         processed.add(key);
 
-        await traverse(driveId, itemId, []);  // bắt đầu từ thư mục share gốc
+        await traverse(driveId, itemId, []);
     }
 
-    // 3️⃣ Duyệt từng thư mục share match tên
-    for (const remote of matched) {
+    for (const remote of candidates) {
         await collectFromRemote(remote);
     }
 
@@ -2501,7 +2435,6 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 }
 
 
-// Đọc danh sách file KPI từ OneDrive (hỗ trợ cả folder thường và shortcut / remoteItem)
 async function odLoadKpiGroupsFromOneDrive() {
     const loading      = document.getElementById("loading");
     const folderSelect = document.getElementById("odFolderSelect");
@@ -2529,19 +2462,31 @@ async function odLoadKpiGroupsFromOneDrive() {
 
         console.log("OneDrive KPI endpoint:", endpoint);
 
-        const data  = await graphGetJson(endpoint);
-        const items = (data && data.value) || [];
+        let items = [];
+        // 👉 CHỈ bọc phần đọc local trong try/catch
+        try {
+            const data = await graphGetJson(endpoint);
+            items = (data && data.value) || [];
+        } catch (err) {
+            console.warn(
+                "Không đọc được thư mục KPI local (sẽ bỏ qua local, chỉ dùng thư mục share nếu có):",
+                err
+            );
+            items = [];
+        }
 
-        console.log("OD root items:", items.map(i => ({
-            name: i.name,
-            isFolder: !!i.folder
-        })));
+        console.log(
+            "OD root items:",
+            items.map(i => ({
+                name: i.name,
+                isFolder: !!i.folder
+            }))
+        );
 
         oneDriveFolderFileMap     = {};
         oneDriveGroupMap          = {};
         oneDriveCurrentFolderName = "";
 
-        // 👉 Mở rộng loại file Excel
         const isExcel = (name) => /\.(xlsx|xlsm|xlsb|xls)$/i.test(name || "");
 
         const rootFiles  = [];
@@ -2550,15 +2495,10 @@ async function odLoadKpiGroupsFromOneDrive() {
         items.forEach((it) => {
             if (it.folder) {
                 const folderName = it.name || "(no-name)";
-
-                // 👉 TẠM THỜI bỏ lọc NA để debug
-                // if (/^NA\d+/i.test(folderName.trim())) {
                 subFolders.push({
                     id: it.id,
                     name: folderName
                 });
-                // }
-
             } else if (isExcel(it.name)) {
                 rootFiles.push({
                     itemId: it.id,
@@ -2576,16 +2516,22 @@ async function odLoadKpiGroupsFromOneDrive() {
             oneDriveFolderFileMap["(ROOT)"] = rootFiles;
         }
 
+        // đọc file từ các subfolder local
         for (const f of subFolders) {
             const childData = await graphGetJson(
                 `/me/drive/items/${encodeURIComponent(f.id)}/children`
             );
             const childItems = (childData && childData.value) || [];
 
-            console.log("Children of", f.name, ":", childItems.map(i => ({
-                name: i.name,
-                isFolder: !!i.folder
-            })));
+            console.log(
+                "Children of",
+                f.name,
+                ":",
+                childItems.map(i => ({
+                    name: i.name,
+                    isFolder: !!i.folder
+                }))
+            );
 
             const excelInFolder = childItems
                 .filter((it) => !it.folder && isExcel(it.name))
@@ -2601,7 +2547,7 @@ async function odLoadKpiGroupsFromOneDrive() {
             }
         }
 
-        // đọc thêm thư mục share
+        // 🔁 Dù local có/không có thì vẫn đọc thêm thư mục share
         try {
             const sharedMap = await odLoadKpiSharedFolderViaRemoteItem();
             console.log("Shared folder map:", sharedMap);
@@ -2625,7 +2571,9 @@ async function odLoadKpiGroupsFromOneDrive() {
 
         if (!allFolders.length) {
             if (groupSelect) groupSelect.innerHTML = "";
-            alert("Không tìm thấy file Excel nào trong thư mục KPI (kể cả thư mục share).");
+            alert(
+                "Không tìm thấy file Excel nào trong thư mục KPI (kể cả thư mục share)."
+            );
             return;
         }
 
