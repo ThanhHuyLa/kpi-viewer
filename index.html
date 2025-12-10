@@ -2418,41 +2418,12 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
     const preferredLower = preferredName.toLowerCase();
 
     const resultMap = {};
+    const processedKeys = new Set();
+    const isExcel = (name) => /\.(xlsx|xlsm|xlsb|xls)$/i.test(name || "");
 
-    // 1️⃣ Lấy toàn bộ item trong root, KHÔNG expand, chỉ select remoteItem
-    const data = await graphGetJson(
-        "/me/drive/root/children?$select=id,name,remoteItem"
-    );
-    const items = (data && data.value) || [];
-
-    // tìm shortcut (driveItem có remoteItem)
-    const shortcuts = items.filter(
-        it => it.remoteItem && it.remoteItem.folder
-    );
-
-    if (!shortcuts.length) {
-        console.warn("Không tìm thấy shortcut remoteItem nào trong root.");
-        return {};
-    }
-
-    // 2️⃣ Ưu tiên shortcut có tên trùng với kpiFolderPath
-    let targets = [];
-    if (preferredLower) {
-        targets = shortcuts.filter(sc => {
-            const n1 = (sc.name || "").toLowerCase();
-            const n2 = (sc.remoteItem.name || "").toLowerCase();
-            return n1 === preferredLower || n2 === preferredLower;
-        });
-    }
-
-    if (!targets.length) targets = shortcuts;
-
-    const isExcel = n => /\.(xlsx|xlsm|xlsb|xls)$/i.test(n || "");
-
-    // 3️⃣ Hàm duyệt con của remoteItem
     async function traverse(driveId, folderId, folderKey) {
         const childrenData = await graphGetJson(
-            `/drives/${driveId}/items/${folderId}/children`
+            `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
         );
         const children = (childrenData && childrenData.value) || [];
 
@@ -2471,17 +2442,66 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
         }
     }
 
-    // 4️⃣ duyệt tất cả shortcut mục tiêu
-    for (const sc of targets) {
-        const r = sc.remoteItem;
+    async function collectFromRemote(remote, fallbackName) {
+        const driveId = remote.parentReference?.driveId;
+        const itemId  = remote.id;
+        if (!driveId || !itemId) return;
 
-        const driveId = r.parentReference?.driveId;
-        const itemId  = r.id;
+        const folderKey = fallbackName || remote.name || "SharedFolder";
+        if (processedKeys.has(driveId + ":" + itemId)) return; // tránh lặp
+        processedKeys.add(driveId + ":" + itemId);
 
-        if (!driveId || !itemId) continue;
-
-        const folderKey = sc.name || r.name || "SharedFolder";
         await traverse(driveId, itemId, folderKey);
+    }
+
+    // 1️⃣ Đọc các shortcut trong My files
+    try {
+        const rootData = await graphGetJson(
+            "/me/drive/root/children?$select=id,name,remoteItem"
+        );
+        const rootItems = (rootData && rootData.value) || [];
+
+        let shortcuts = rootItems.filter(it => it.remoteItem && it.remoteItem.folder);
+
+        let targets = [];
+        if (preferredLower) {
+            targets = shortcuts.filter(sc => {
+                const n1 = (sc.name || "").toLowerCase();
+                const n2 = (sc.remoteItem.name || "").toLowerCase();
+                return n1 === preferredLower || n2 === preferredLower;
+            });
+        }
+        if (!targets.length) targets = shortcuts;
+
+        for (const sc of targets) {
+            await collectFromRemote(sc.remoteItem, sc.name);
+        }
+    } catch (e) {
+        console.warn("Lỗi đọc shortcut remoteItem ở root:", e);
+    }
+
+    // 2️⃣ Đọc thêm các thư mục share trong SharedWithMe
+    try {
+        const swmData = await graphGetJson("/me/drive/sharedWithMe");
+        const swmItems = (swmData && swmData.value) || [];
+
+        let sharedFolders = swmItems
+            .map(it => it.remoteItem)
+            .filter(r => r && r.folder);
+
+        let targets2 = [];
+        if (preferredLower) {
+            targets2 = sharedFolders.filter(r =>
+                (r.name || "").toLowerCase() === preferredLower
+            );
+        }
+        if (!targets2.length) targets2 = sharedFolders;
+
+        for (const remote of targets2) {
+            await collectFromRemote(remote, remote.name);
+        }
+    } catch (e) {
+        console.warn("Lỗi đọc thư mục share trong sharedWithMe:", e);
     }
 
     return resultMap;
