@@ -2230,10 +2230,9 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     oneDriveGroupMap = {};
     groupSelect.innerHTML = "";
 
-    // Gom group theo prefix tên file (hàm này anh đã có sẵn)
+    // Gom group theo prefix trước dấu '-' (dùng lại hàm getGroupNameFromFile đã có sẵn)
     filesInFolder.forEach((item) => {
-        const name  = item.name || "";
-        const group = extractGroupNameFromFilename(name); // dùng lại hàm cũ
+        const group = getGroupNameFromFile(item);   // ✅ dùng helper cũ, KHÔNG còn lỗi
 
         if (!oneDriveGroupMap[group]) {
             oneDriveGroupMap[group] = [];
