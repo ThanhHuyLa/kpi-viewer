@@ -2090,69 +2090,78 @@ async function graphGetJson(endpoint) {
     return res.json();
 }
 
-// Lấy danh sách file trong thư mục KPI Scheduler, build group theo prefix
-// ================= OneDrive: Folder + Nhóm file giống local =================
 
-// Build lại combobox Thư mục OneDrive & Nhóm file OneDrive dựa trên oneDriveFolderFileMap
 function odPopulateFolderSelectOptions() {
     const folderSelect = document.getElementById("odFolderSelect");
     const groupSelect  = document.getElementById("odGroupSelect");
 
     if (!folderSelect || !groupSelect) return;
 
-    // Lấy toàn bộ tên folder thật sự có file
     const allFolders = Object.keys(oneDriveFolderFileMap);
 
+    console.log("=== Build combobox Thư mục OneDrive ===");
+    console.log("Tất cả folder keys trong oneDriveFolderFileMap:", allFolders);
+
     if (!allFolders.length) {
-        // Không có file Excel nào trong thư mục KPI
         folderSelect.parentElement.style.display = "none";
         groupSelect.innerHTML = "";
         oneDriveGroupMap = {};
+        console.log("Không có folder nào -> ẩn combobox Thư mục.");
         return;
     }
 
     const hasOnlyRoot = allFolders.length === 1 && allFolders[0] === "(ROOT)";
 
-    // Luôn hiển thị thanh trạng thái; chỉ ẩn/hiện combobox Thư mục
     if (hasOnlyRoot) {
-        // Chỉ có ROOT → ẩn combobox Thư mục, chỉ hiện Nhóm file
+        // Chỉ có ROOT → ẩn combobox Thư mục, chỉ để "Nhóm file"
         folderSelect.parentElement.style.display = "none";
 
         oneDriveCurrentFolderName = "(ROOT)";
+        console.log(
+            "Chỉ có (ROOT), không có subfolder -> Thư mục = (ROOT), build group cho (ROOT)"
+        );
         odBuildGroupMapForCurrentFolder("(ROOT)");
         return;
     }
 
-    // 🔎 CHỈ GIỮ CÁC FOLDER BẮT ĐẦU BẰNG "NA"
+    // 🔎 Lọc các folder bắt đầu bằng "NA" (NA08, NA12, ...)
     let displayFolders = allFolders.filter(name => /^NA/i.test(name || ""));
 
-    // Nếu không có folder NA nào thì fallback: dùng tất cả folder trừ (ROOT)
+    // Nếu không folder nào bắt đầu "NA" thì dùng tất cả (trừ (ROOT))
     if (!displayFolders.length) {
         displayFolders = allFolders.filter(name => name !== "(ROOT)");
     }
 
-    // Có folder con → hiện combobox Thư mục + thêm lựa chọn "Tất cả"
-    folderSelect.parentElement.style.display = "inline-block";
+    console.log("Folder sẽ hiển thị trong combobox Thư mục:", displayFolders);
 
+    // Hiện combobox Thư mục
+    folderSelect.parentElement.style.display = "inline-block";
     folderSelect.innerHTML = "";
 
-    // ➕ Option "Tất cả"
+    // Option "Tất cả"
     const allOpt = document.createElement("option");
     allOpt.value = ALL_FOLDERS_VALUE;
     allOpt.textContent = "Tất cả";
     folderSelect.appendChild(allOpt);
 
-    // Các folder còn lại (đã lọc chỉ còn NAxx)
+    // Các folder còn lại
     displayFolders.sort().forEach((folder) => {
         const opt = document.createElement("option");
         opt.value = folder;
         opt.textContent = folder;
         folderSelect.appendChild(opt);
+
+        const files = oneDriveFolderFileMap[folder] || [];
+        console.log(
+            `  - Folder trong combobox "${folder}": ${files.length} file`,
+            files.map(f => f.name)
+        );
     });
 
-    // Mặc định chọn "Tất cả"
+    // Default = "Tất cả"
     oneDriveCurrentFolderName = ALL_FOLDERS_VALUE;
     folderSelect.value = ALL_FOLDERS_VALUE;
+    console.log('Thư mục mặc định = "Tất cả" -> gom', displayFolders.length, "folder.");
     odBuildGroupMapForCurrentFolder(ALL_FOLDERS_VALUE);
 }
 
@@ -2169,12 +2178,13 @@ function odBuildGroupMapForCurrentFolder(folderName) {
 
     oneDriveCurrentFolderName = effectiveFolder;
 
+    console.log("=== Build oneDriveGroupMap cho folder ===", effectiveFolder);
+
     let filesInFolder = [];
 
     if (effectiveFolder === ALL_FOLDERS_VALUE) {
         const allFolders = Object.keys(oneDriveFolderFileMap);
         let includeFolders = allFolders.filter(name => /^NA/i.test(name || ""));
-
         if (!includeFolders.length) {
             includeFolders = allFolders;
         }
@@ -2187,41 +2197,51 @@ function odBuildGroupMapForCurrentFolder(folderName) {
         filesInFolder = oneDriveFolderFileMap[effectiveFolder] || [];
     }
 
-    // 🔹 CHỈ GIỮ FILE TÊN BẮT ĐẦU BẰNG "[S]"
+    console.log(
+        "Files trước khi lọc [S] trong folder",
+        effectiveFolder,
+        "=", filesInFolder.length,
+        filesInFolder.map(f => f.name)
+    );
+
+    // CHỈ GIỮ FILE TÊN BẮT ĐẦU BẰNG "[S]"
     filesInFolder = filesInFolder.filter(item => {
         const n = (item.name || "").trim();
         return n.startsWith("[S]");
-        // nếu sau này muốn không phân biệt hoa thường:
-        // return /^\[s\]/i.test(n);
     });
+
+    console.log(
+        "Files sau khi lọc [S] trong folder",
+        effectiveFolder,
+        "=", filesInFolder.length,
+        filesInFolder.map(f => f.name)
+    );
 
     oneDriveGroupMap = {};
 
+    // Gom group theo prefix [S]... (phần code cũ của anh ở dưới giữ nguyên)
     filesInFolder.forEach((item) => {
-        const gName = getGroupNameFromFile(item); // vẫn group bằng prefix trước dấu '-'
-        if (!oneDriveGroupMap[gName]) oneDriveGroupMap[gName] = [];
-        oneDriveGroupMap[gName].push(item);
+        const name = item.name || "";
+        const group = extractGroupNameFromFilename(name); // hàm cũ đã có
+        if (!oneDriveGroupMap[group]) {
+            oneDriveGroupMap[group] = [];
+        }
+        oneDriveGroupMap[group].push(item);
     });
 
     const groupNames = Object.keys(oneDriveGroupMap).sort();
+    console.log("Các nhóm file [S] tìm được:", groupNames);
 
     groupSelect.innerHTML = "";
 
-    if (!groupNames.length) {
-        // Không có file [S] nào → để combobox rỗng
-        // (nếu muốn báo thì thêm alert ở đây)
-        return;
-    }
+    if (!groupNames.length) return;
 
     groupNames.forEach((g) => {
         const opt = document.createElement("option");
         opt.value = g;
-        // số file hiển thị = số file [S] trong group đó
         opt.textContent = `${g} (${oneDriveGroupMap[g].length} file)`;
         groupSelect.appendChild(opt);
     });
-
-    groupSelect.value = groupNames[0];
 }
 
 // Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
@@ -2314,14 +2334,17 @@ async function getAllExcelFiles(driveId, rootFolderId) {
 }
 
 
+// Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
+// Dùng kpiFolderPath để tìm theo tên + path, rồi duyệt toàn bộ subfolder lấy file Excel
 async function odLoadKpiSharedFolderViaRemoteItem() {
     const rawPath = graphKpiConfig.kpiFolderPath || "/";
     const folderName = rawPath
         .split("/")
         .filter(Boolean)
-        .pop(); // lấy đoạn cuối, vd: "KPI Scheduler"
+        .pop(); // đoạn cuối của đường dẫn
 
-    console.log("odLoadKpiSharedFolderViaRemoteItem rawPath =", rawPath, "folderName =", folderName);
+    console.log("=== SharedWithMe: bắt đầu odLoadKpiSharedFolderViaRemoteItem ===");
+    console.log("kpiFolderPath =", rawPath, "| folderName =", folderName);
 
     if (!folderName) {
         console.warn("Không xác định được tên thư mục từ kpiFolderPath:", rawPath);
@@ -2330,20 +2353,22 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
 
     const folderNameLower = folderName.toLowerCase();
 
-    // 1. Tìm thư mục share tương ứng trong /me/drive/sharedWithMe
+    // 1. Lấy danh sách item được share cho tài khoản
     const data  = await graphGetJson("/me/drive/sharedWithMe");
     const items = (data && data.value) || [];
     console.log("/me/drive/sharedWithMe items =", items.length);
 
     let targetRemote = null;
-    const candidates  = [];
+    const candidates = [];
 
     items.forEach((it, idx) => {
         const remote = it.remoteItem;
-        if (!remote || !remote.folder) return; // chỉ quan tâm thư mục share
+        if (!remote || !remote.folder) return;
 
-        const remoteName  = (remote.name || "").toLowerCase();
-        const parentPath  = (remote.parentReference && remote.parentReference.path || "").toLowerCase();
+        const remoteName = (remote.name || "").toLowerCase();
+        const parentPath = (
+            remote.parentReference && remote.parentReference.path || ""
+        ).toLowerCase();
 
         const matchByName = remoteName === folderNameLower;
         // ví dụ parentPath = "/drive/root:/KPI Scheduler"
@@ -2354,32 +2379,36 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
             ` matchByName=${matchByName}, matchByPath=${matchByPath}`
         );
 
-        candidates.push({ remote, remoteName, parentPath, matchByName, matchByPath });
+        candidates.push({ remote, matchByName, matchByPath });
 
         if (!targetRemote && (matchByName || matchByPath)) {
             targetRemote = remote;
         }
     });
 
-    // Nếu không match chính xác, nhưng chỉ có đúng 1 candidate, dùng luôn (fallback cho case NA12)
+    // Nếu không match nhưng chỉ có duy nhất 1 thư mục share → fallback dùng luôn
     if (!targetRemote && candidates.length === 1) {
         console.warn(
-            "Không có thư mục nào trùng tên hoặc path chứa:",
-            folderName,
-            "→ dùng fallback shared folder duy nhất:",
+            "Không có thư mục nào match chính xác kpiFolderPath, dùng fallback shared folder duy nhất:",
             candidates[0].remote.name
         );
         targetRemote = candidates[0].remote;
     }
 
     if (!targetRemote) {
-        console.warn("Không tìm thấy thư mục share phù hợp với kpiFolderPath:", rawPath);
+        console.warn("Không tìm thấy thư mục share phù hợp với:", rawPath);
         return {};
     }
 
-    console.log("Found shared folder:", targetRemote.name, "id =", targetRemote.id);
+    console.log(
+        "Chọn shared folder:",
+        targetRemote.name,
+        "| id =",
+        targetRemote.id,
+        "| parentPath =",
+        targetRemote.parentReference && targetRemote.parentReference.path
+    );
 
-    // 2. Lấy driveId + itemId thật của folder share
     const driveId = targetRemote.parentReference
         ? targetRemote.parentReference.driveId
         : null;
@@ -2390,57 +2419,73 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
         return {};
     }
 
-    console.log("Shared folder driveId =", driveId, "itemId =", itemId);
+    console.log("Shared folder driveId =", driveId, "| itemId =", itemId);
 
-    // 3. Đệ quy duyệt TẤT CẢ subfolder để lấy file Excel
-    const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+    const isExcel   = (name) => /\.(xlsx|xls)$/i.test(name || "");
     const resultMap = {}; // { folderKey: [ { itemId, name, downloadUrl, lastModified } ] }
 
     async function traverse(folderId, pathParts) {
+        const currentPath = pathParts.join("/") || "(gốc của shared folder)";
         const childrenData = await graphGetJson(
             `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
         );
         const children = (childrenData && childrenData.value) || [];
-        console.log("Traverse folder path =", pathParts.join("/"), "children =", children.length);
+
+        console.log(
+            "Traverse shared folder path =", currentPath,
+            "| children =", children.length
+        );
 
         for (const c of children) {
             if (c.folder) {
+                // Đi xuống subfolder
                 const nextParts = pathParts.concat(c.name || "");
                 await traverse(c.id, nextParts);
             } else if (isExcel(c.name)) {
-                let folderKey = folderName;
+                // Nếu file nằm trực tiếp trong folder share gốc → key = tên folder share
+                // Nếu file nằm trong subfolder → key = tên subfolder cấp 1
+                let folderKey = targetRemote.name; // tên thư mục thật người share cho mình
                 if (pathParts.length > 0) {
-                    folderKey = pathParts[0] || folderName;
+                    folderKey = pathParts[0] || targetRemote.name;
                 }
 
                 if (!resultMap[folderKey]) {
                     resultMap[folderKey] = [];
                 }
 
-                resultMap[folderKey].push({
+                const item = {
                     itemId:       c.id,
                     name:         c.name,
                     downloadUrl:  c["@microsoft.graph.downloadUrl"] || null,
                     lastModified: c.lastModifiedDateTime || ""
-                });
+                };
+                resultMap[folderKey].push(item);
 
                 console.log(
-                    "Add shared Excel:",
-                    "folderKey =", folderKey,
+                    "  + Excel (shared): folderKey =", folderKey,
                     "| name =", c.name
                 );
             }
         }
     }
 
+    // Bắt đầu duyệt từ shared folder (itemId)
     await traverse(itemId, []);
 
-    console.log("Shared folder resultMap keys =", Object.keys(resultMap));
+    console.log("Kết quả shared resultMap (folder -> file[]):");
+    Object.entries(resultMap).forEach(([folder, files]) => {
+        console.log(
+            `  - [SHARED] Folder "${folder}": ${files.length} file`,
+            files.map(f => f.name)
+        );
+    });
+
+    console.log("=== Kết thúc odLoadKpiSharedFolderViaRemoteItem ===");
     return resultMap;
 }
 
 
-// Đọc danh sách file KPI từ OneDrive (hỗ trợ cả folder riêng & folder share/shortcut)
+// Đọc danh sách file KPI từ OneDrive (drive của mình + SharedWithMe) và build map folder -> file
 async function odLoadKpiGroupsFromOneDrive() {
     const loading      = document.getElementById("loading");
     const folderSelect = document.getElementById("odFolderSelect");
@@ -2451,89 +2496,91 @@ async function odLoadKpiGroupsFromOneDrive() {
         loading.classList.add("show");
     }
 
-    // Reset map trước khi load mới
-    oneDriveFolderFileMap      = {};
-    oneDriveGroupMap           = {};
-    oneDriveCurrentFolderName  = "";
+    // reset map
+    oneDriveFolderFileMap     = {};
+    oneDriveGroupMap          = {};
+    oneDriveCurrentFolderName = "";
 
     try {
         const rawPath = graphKpiConfig.kpiFolderPath || "/";
+        const trimmed = (rawPath || "").trim();
         let endpoint  = "/me/drive/root/children";
         let usingCustomPath = false;
 
-        // Xử lý kpiFolderPath -> endpoint
-        if (rawPath && rawPath.trim() !== "/" && rawPath.trim() !== ".") {
-            const trimmed = rawPath.trim();
+        if (trimmed && trimmed !== "/") {
             const encodedPath = trimmed
                 .split("/")
                 .filter(Boolean)
                 .map(encodeURIComponent)
                 .join("/");
 
-            endpoint = `/me/drive/root:/${encodedPath}:/children`;
+            endpoint        = `/me/drive/root:/${encodedPath}:/children`;
             usingCustomPath = true;
         }
 
-        console.log("OneDrive KPI endpoint (primary):", endpoint, "rawPath =", rawPath);
-
-        let data  = null;
-        let items = [];
-
-        // 1️⃣ Thử endpoint chính (theo kpiFolderPath)
-        try {
-            data  = await graphGetJson(endpoint);
-            items = (data && data.value) || [];
-            console.log("Primary endpoint OK, items =", items.length);
-        } catch (primaryErr) {
-            console.warn("Primary KPI endpoint FAILED:", endpoint, primaryErr);
-
-            // Nếu dùng custom path (vd '/KPI Scheduler') thì fallback về root
-            if (usingCustomPath) {
-                try {
-                    const fallbackEndpoint = "/me/drive/root/children";
-                    console.log("Fallback to root endpoint:", fallbackEndpoint);
-                    data  = await graphGetJson(fallbackEndpoint);
-                    items = (data && data.value) || [];
-                    console.log("Fallback root items =", items.length);
-                } catch (rootErr) {
-                    console.error("Fallback /me/drive/root/children FAILED:", rootErr);
-                    // Không throw vội, vẫn cho phép dùng remoteItem (SharedWithMe) phía dưới
-                }
-            } else {
-                // Không có custom path, lại lỗi luôn ở root → log và tiếp tục remoteItem
-                console.error("Error at root endpoint:", primaryErr);
-            }
-        }
+        console.log("=== OneDrive KPI: BẮT ĐẦU load danh sách file ===");
+        console.log("kpiFolderPath =", rawPath);
+        console.log("Primary endpoint =", endpoint);
 
         const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+
+        let items = [];
+        // 1️⃣ Gọi endpoint chính
+        try {
+            const data = await graphGetJson(endpoint);
+            items      = (data && data.value) || [];
+            console.log("Primary endpoint OK, items =", items.length);
+        } catch (e) {
+            console.error("Primary endpoint FAILED:", endpoint, e);
+
+            if (usingCustomPath) {
+                // Fallback về /me/drive/root/children
+                try {
+                    const fb = "/me/drive/root/children";
+                    console.log("Fallback endpoint =", fb);
+                    const data2 = await graphGetJson(fb);
+                    items       = (data2 && data2.value) || [];
+                    console.log("Fallback root items =", items.length);
+                } catch (e2) {
+                    console.error("Fallback root endpoint cũng lỗi:", e2);
+                }
+            }
+        }
 
         const rootFiles  = [];
         const subFolders = [];
 
+        // 2️⃣ Phân loại item ở endpoint chính
         if (items && items.length) {
-            // 2️⃣ Phân loại các item trong drive của chính anh
-            items.forEach((it) => {
+            items.forEach((it, idx) => {
                 if (it.folder) {
-                    const folderName = it.name || "(no-name)";
-                    console.log("OD root folder:", folderName, "id=", it.id);
-
-                    // ❗ CHỈ giữ các folder có tên bắt đầu bằng "NA" (NA08, NA09, ...)
-                    if (/^NA\d+/i.test(folderName.trim())) {
-                        subFolders.push({
-                            id:   it.id,
-                            name: folderName
-                        });
-                    } else {
-                        console.log("Skip folder (not NAxx):", folderName);
-                    }
+                    console.log(
+                        `[Primary children] #${idx} FOLDER:`,
+                        it.name,
+                        "| id =", it.id
+                    );
+                    subFolders.push({
+                        id:   it.id,
+                        name: it.name || "(no-name)"
+                    });
                 } else if (isExcel(it.name)) {
-                    console.log("Excel at root:", it.name, "id=", it.id);
+                    console.log(
+                        `[Primary children] #${idx} EXCEL at root:`,
+                        it.name,
+                        "| id =", it.id
+                    );
                     rootFiles.push({
                         itemId:       it.id,
                         name:         it.name,
                         downloadUrl:  it["@microsoft.graph.downloadUrl"],
                         lastModified: it.lastModifiedDateTime || ""
                     });
+                } else {
+                    console.log(
+                        `[Primary children] #${idx} SKIP:`,
+                        it.name,
+                        "| folder =", !!it.folder
+                    );
                 }
             });
 
@@ -2541,14 +2588,17 @@ async function odLoadKpiGroupsFromOneDrive() {
                 oneDriveFolderFileMap["(ROOT)"] = rootFiles;
             }
 
-            // Đọc các file Excel trong từng folder NAxx
+            // 3️⃣ Đọc file trong từng subfolder
             for (const f of subFolders) {
                 try {
-                    const childData  = await graphGetJson(
+                    const childData = await graphGetJson(
                         `/me/drive/items/${encodeURIComponent(f.id)}/children`
                     );
                     const childItems = (childData && childData.value) || [];
-                    console.log("Folder", f.name, "has children:", childItems.length);
+                    console.log(
+                        "Subfolder", f.name,
+                        "| children =", childItems.length
+                    );
 
                     const excelInFolder = childItems
                         .filter((it) => !it.folder && isExcel(it.name))
@@ -2559,29 +2609,46 @@ async function odLoadKpiGroupsFromOneDrive() {
                             lastModified: it.lastModifiedDateTime || ""
                         }));
 
-                    console.log("Excel in folder", f.name, "=", excelInFolder.length);
+                    console.log(
+                        "  -> Excel files in", f.name, "=",
+                        excelInFolder.length,
+                        excelInFolder.map(x => x.name)
+                    );
 
                     if (excelInFolder.length) {
                         oneDriveFolderFileMap[f.name] = excelInFolder;
                     }
                 } catch (e) {
-                    console.warn("Không đọc được children của folder", f.name, e);
+                    console.warn("Không đọc được children của subfolder", f.name, e);
                 }
             }
         } else {
-            console.warn("No items from primary/root endpoint – có thể chỉ dùng thư mục Share With Me.");
+            console.warn(
+                "Primary/root endpoint không có item nào – có thể data chỉ nằm trong SharedWithMe."
+            );
         }
 
-        // 3️⃣ Đọc thêm từ thư mục share (SharedWithMe) thông qua remoteItem
+        console.log(
+            "oneDriveFolderFileMap sau khi đọc drive của mình:",
+            Object.keys(oneDriveFolderFileMap)
+        );
+        Object.entries(oneDriveFolderFileMap).forEach(([folder, files]) => {
+            console.log(
+                `  - [LOCAL] Folder "${folder}": ${files.length} file`,
+                files.map(f => f.name)
+            );
+        });
+
+        // 4️⃣ Gộp thêm file từ SharedWithMe (remoteItem)
         try {
-            console.log("Try load shared folder via remoteItem, kpiFolderPath =", graphKpiConfig.kpiFolderPath);
+            console.log("Gọi odLoadKpiSharedFolderViaRemoteItem để load SharedWithMe...");
             const sharedMap = await odLoadKpiSharedFolderViaRemoteItem();
             const sharedFolders = Object.keys(sharedMap || {});
             console.log("Shared folder map keys:", sharedFolders);
 
             sharedFolders.forEach((folderName) => {
-                const list = sharedMap[folderName];
-                if (!list || !list.length) return;
+                const list = sharedMap[folderName] || [];
+                if (!list.length) return;
 
                 if (!oneDriveFolderFileMap[folderName]) {
                     oneDriveFolderFileMap[folderName] = [];
@@ -2590,7 +2657,7 @@ async function odLoadKpiGroupsFromOneDrive() {
                     oneDriveFolderFileMap[folderName].concat(list);
 
                 console.log(
-                    `Merge shared folder "${folderName}", total files =`,
+                    `  + Merge SHARED folder "${folderName}", tổng file =`,
                     oneDriveFolderFileMap[folderName].length
                 );
             });
@@ -2598,19 +2665,29 @@ async function odLoadKpiGroupsFromOneDrive() {
             console.warn("Không đọc được thư mục share qua remoteItem:", e);
         }
 
+        console.log(
+            "oneDriveFolderFileMap CUỐI CÙNG (sau khi gộp local + shared):",
+            Object.keys(oneDriveFolderFileMap)
+        );
+        Object.entries(oneDriveFolderFileMap).forEach(([folder, files]) => {
+            console.log(
+                `  - Folder "${folder}": ${files.length} file`,
+                files.map(f => f.name)
+            );
+        });
+
         const allFolders = Object.keys(oneDriveFolderFileMap);
-        console.log("Final oneDriveFolderFileMap folders =", allFolders);
 
         if (!allFolders.length) {
             if (groupSelect) groupSelect.innerHTML = "";
             alert(
                 "Không tìm thấy file Excel nào trong thư mục KPI.\n" +
-                "- Kiểm tra lại đường dẫn trong ô 🗂️ Đường dẫn thư mục KPI.\n" +
-                "- Hoặc đảm bảo thư mục Share With Me có tên trùng với đoạn cuối của đường dẫn."
+                "Kiểm tra lại đường dẫn hoặc quyền share."
             );
             return;
         }
 
+        // Build lại combobox "Thư mục" + "Nhóm file"
         odPopulateFolderSelectOptions();
     } catch (err) {
         console.error("Lỗi tổng khi tải danh sách file KPI từ OneDrive:", err);
@@ -2620,9 +2697,9 @@ async function odLoadKpiGroupsFromOneDrive() {
             loading.textContent = "⏳ Đang xử lý file...";
             loading.classList.remove("show");
         }
+        console.log("=== OneDrive KPI: KẾT THÚC odLoadKpiGroupsFromOneDrive ===");
     }
 }
-
 
 
 // Tải các file trong nhóm đã chọn từ OneDrive → chuyển thành File[] → processMultipleFiles
