@@ -2025,21 +2025,21 @@ async function handleOneDriveLogin() {
 
         // Sau khi login xong → load danh sách nhóm file trong thư mục KPI Scheduler
         await odLoadKpiGroupsFromOneDrive();
-    } catch (err) {
-        console.error("Lỗi đăng nhập OneDrive:", err);
-        if (statusSpan) {
-            statusSpan.textContent = "Đăng nhập thất bại";
+        } catch (err) {
+            console.error("Lỗi đăng nhập OneDrive:", err);
+            if (statusSpan) {
+                statusSpan.textContent = "Đăng nhập thất bại";
+            }
+            if (statusRow) statusRow.style.display = "flex"; // vẫn hiện để thấy lỗi
+
+            // 🔒 Lỗi đăng nhập → tiếp tục khóa
+            setLocalExcelInputsEnabled(false);
+
+            alert(
+                "Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" +
+                    err.message
+            );
         }
-        if (statusRow) statusRow.style.display = "flex"; // vẫn hiện để thấy lỗi
-
-        // 🔒 Lỗi đăng nhập → tiếp tục khóa
-        setLocalExcelInputsEnabled(false);
-
-        alert(
-            "Không đăng nhập được OneDrive. Kiểm tra lại cấu hình Azure AD và thử lại.\n" +
-                err.message
-        );
-    }
 }
 
 
@@ -2224,9 +2224,6 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     groupSelect.value = groupNames[0];
 }
 
-
-
-// Trả về map: { folderName: [ { itemId, name, downloadUrl, lastModified } ] }
 // Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
 async function odLoadSharedExcelFilesForKpiPath() {
     // Lấy từ khóa cuối của đường dẫn KPI, ví dụ: "/Documents/KPI Scheduler" -> "KPI Scheduler"
@@ -2240,6 +2237,8 @@ async function odLoadSharedExcelFilesForKpiPath() {
     // Gọi Graph API sharedWithMe
     const data = await graphGetJson("/me/drive/sharedWithMe");
     const items = (data && data.value) || [];
+
+    console.log("OD root items:", items.map(i => i.name)); // 👈 xem tên thư mục / file thực tế
 
     const isExcel = (name) => /\.(xlsx|xlsm?|xls)$/i.test(name || "");
     const resultMap = {}; // { folderName: [item...] }
@@ -2316,85 +2315,90 @@ async function getAllExcelFiles(driveId, rootFolderId) {
 
 
 // Đọc thư mục KPI được share (SharedWithMe) bằng remoteItem
-// Dùng tên thư mục cuối trong graphKpiConfig.kpiFolderPath, ví dụ:
-// "/KPI Scheduler" -> tìm folder share tên "KPI Scheduler"
+// Group theo subfolder cấp 1 (NA08, NA09, ...) giống local
 async function odLoadKpiSharedFolderViaRemoteItem() {
-    const rawPath = graphKpiConfig.kpiFolderPath || "/";
-    const folderName = rawPath
-        .split("/")
-        .filter(Boolean)
-        .pop(); // lấy đoạn cuối
+    const rawPath    = graphKpiConfig.kpiFolderPath || "/";
+    const folderName = rawPath.split("/").filter(Boolean).pop() || "";
+    const prefLower  = folderName.toLowerCase();
 
-    console.log("odLoadKpiSharedFolderViaRemoteItem rawPath =", rawPath, "folderName =", folderName);
+    const resultMap  = {};            // { NA08: [...], NA09: [...], ... }
+    const processed  = new Set();     // tránh duyệt trùng
+    const isExcel    = (name) => /\.(xlsx|xlsm?|xlsb?|xls)$/i.test(name || "");
 
-    if (!folderName) {
-        console.warn("Không xác định được tên thư mục từ kpiFolderPath:", rawPath);
-        return {};
-    }
+    // 1️⃣ Đọc danh sách share trong SharedWithMe
+    const swmData  = await graphGetJson("/me/drive/sharedWithMe");
+    const swmItems = (swmData && swmData.value) || [];
 
-    const folderNameLower = folderName.toLowerCase();
+    const remoteFolders = swmItems
+        .map(it => it.remoteItem)
+        .filter(r => r && r.folder);
 
-    // 1. Tìm thư mục share tương ứng trong /me/drive/sharedWithMe
-    const data  = await graphGetJson("/me/drive/sharedWithMe");
-    const items = (data && data.value) || [];
-    console.log("/me/drive/sharedWithMe items =", items.length);
+    console.log(
+        "SharedWithMe remote folders:",
+        remoteFolders.map(r => ({
+            name: r.name,
+            path: r.parentReference && r.parentReference.path
+        }))
+    );
 
-    let targetRemote = null;
+    let candidates = remoteFolders;
 
-    items.forEach((it, idx) => {
-        const remote = it.remoteItem;
-        if (!remote || !remote.folder) return;
-
-        const remoteName = (remote.name || "").toLowerCase();
-        console.log(
-            `[SharedWithMe] #${idx}: name="${remote.name}", matched =`,
-            remoteName === folderNameLower
+    // Ưu tiên match đúng tên
+    if (prefLower) {
+        const exact = remoteFolders.filter(r =>
+            (r.name || "").toLowerCase() === prefLower
         );
-
-        if (remoteName === folderNameLower && !targetRemote) {
-            targetRemote = remote;
+        if (exact.length) {
+            candidates = exact;
+        } else {
+            // Nếu không có exact, thử match theo path chứa keyword
+            const pathMatch = remoteFolders.filter(r =>
+                ((r.parentReference && r.parentReference.path) || "")
+                    .toLowerCase()
+                    .includes(prefLower)
+            );
+            if (pathMatch.length) {
+                candidates = pathMatch;
+            }
         }
-    });
+    }
 
-    if (!targetRemote) {
-        console.warn("Không tìm thấy thư mục share tên:", folderName);
+    if (!candidates.length) {
+        console.warn(
+            `Không tìm thấy thư mục share liên quan tới "${folderName}" trong sharedWithMe`
+        );
         return {};
     }
 
-    console.log("Found shared folder:", targetRemote.name, "id =", targetRemote.id);
-
-    // 2. Lấy driveId + itemId thật của folder share
-    const driveId = targetRemote.parentReference
-        ? targetRemote.parentReference.driveId
-        : null;
-    const itemId  = targetRemote.id;
-
-    if (!driveId || !itemId) {
-        console.warn("remoteItem không có driveId hoặc id:", targetRemote);
-        return {};
+    // Nếu vẫn nhiều folder: nếu chỉ có 1 thư mục share nói chung thì dùng nó,
+    // còn nếu nhiều hơn 1 thì log cảnh báo và không chọn bừa
+    if (candidates.length > 1) {
+        if (remoteFolders.length === 1) {
+            console.warn(
+                `Không thể lọc rõ theo "${folderName}", nhưng chỉ có 1 thư mục share -> dùng thư mục đó.`
+            );
+            candidates = remoteFolders.slice();
+        } else {
+            console.warn(
+                `Có ${candidates.length} thư mục share phù hợp với "${folderName}", không chọn bừa.`
+            );
+            return {};
+        }
     }
 
-    console.log("Shared folder driveId =", driveId, "itemId =", itemId);
-
-    const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
-    const resultMap = {}; // { folderKey: [ { itemId, name, downloadUrl, lastModified } ] }
-
-    async function traverse(folderId, pathParts) {
+    async function traverse(driveId, folderId, pathParts) {
         const childrenData = await graphGetJson(
             `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
         );
         const children = (childrenData && childrenData.value) || [];
-        console.log("Traverse folder path =", pathParts.join("/"), "children =", children.length);
 
         for (const c of children) {
             if (c.folder) {
-                const nextParts = pathParts.concat(c.name || "");
-                await traverse(c.id, nextParts);
+                await traverse(driveId, c.id, pathParts.concat(c.name || ""));
             } else if (isExcel(c.name)) {
                 let folderKey = folderName;
                 if (pathParts.length > 0) {
-                    // file trong subfolder -> dùng tên subfolder cấp 1
-                    folderKey = pathParts[0] || folderName;
+                    folderKey = pathParts[0] || folderName; // NA08 / NA09 / ...
                 }
 
                 if (!resultMap[folderKey]) {
@@ -2402,28 +2406,35 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
                 }
 
                 resultMap[folderKey].push({
-                    itemId:       c.id,
-                    name:         c.name,
-                    downloadUrl:  c["@microsoft.graph.downloadUrl"] || null,
+                    itemId: c.id,
+                    name: c.name,
+                    downloadUrl: c["@microsoft.graph.downloadUrl"] || null,
                     lastModified: c.lastModifiedDateTime || ""
                 });
-
-                console.log(
-                    "Add shared Excel:",
-                    "folderKey =", folderKey,
-                    "| name =", c.name
-                );
             }
         }
     }
 
-    await traverse(itemId, []);
+    async function collectFromRemote(remote) {
+        const driveId = remote.parentReference && remote.parentReference.driveId;
+        const itemId  = remote.id;
+        if (!driveId || !itemId) return;
 
-    console.log("Shared folder resultMap keys =", Object.keys(resultMap));
+        const key = driveId + ":" + itemId;
+        if (processed.has(key)) return;
+        processed.add(key);
+
+        await traverse(driveId, itemId, []);
+    }
+
+    for (const remote of candidates) {
+        await collectFromRemote(remote);
+    }
+
     return resultMap;
 }
 
-// Đọc danh sách file KPI từ OneDrive (hỗ trợ cả folder riêng & folder share/shortcut)
+
 async function odLoadKpiGroupsFromOneDrive() {
     const loading      = document.getElementById("loading");
     const folderSelect = document.getElementById("odFolderSelect");
@@ -2434,135 +2445,114 @@ async function odLoadKpiGroupsFromOneDrive() {
         loading.classList.add("show");
     }
 
-    // Reset map trước khi load mới
-    oneDriveFolderFileMap      = {};
-    oneDriveGroupMap           = {};
-    oneDriveCurrentFolderName  = "";
-
     try {
         const rawPath = graphKpiConfig.kpiFolderPath || "/";
-        let endpoint  = "/me/drive/root/children";
-        let usingCustomPath = false;
+        let endpoint;
 
-        // Xử lý kpiFolderPath -> endpoint
-        if (rawPath && rawPath.trim() !== "/" && rawPath.trim() !== ".") {
-            const trimmed = rawPath.trim();
-            const encodedPath = trimmed
+        if (!rawPath || rawPath === "/") {
+            endpoint = "/me/drive/root/children";
+        } else {
+            const encodedPath = rawPath
                 .split("/")
                 .filter(Boolean)
                 .map(encodeURIComponent)
                 .join("/");
-
             endpoint = `/me/drive/root:/${encodedPath}:/children`;
-            usingCustomPath = true;
         }
 
-        console.log("OneDrive KPI endpoint (primary):", endpoint, "rawPath =", rawPath);
+        console.log("OneDrive KPI endpoint:", endpoint);
 
-        let data  = null;
         let items = [];
-
-        // 1️⃣ Thử endpoint chính (theo kpiFolderPath)
+        // 👉 CHỈ bọc phần đọc local trong try/catch
         try {
-            data  = await graphGetJson(endpoint);
+            const data = await graphGetJson(endpoint);
             items = (data && data.value) || [];
-            console.log("Primary endpoint OK, items =", items.length);
-        } catch (primaryErr) {
-            console.warn("Primary KPI endpoint FAILED:", endpoint, primaryErr);
-
-            // Nếu dùng custom path (vd '/KPI Scheduler') thì fallback về root
-            if (usingCustomPath) {
-                try {
-                    const fallbackEndpoint = "/me/drive/root/children";
-                    console.log("Fallback to root endpoint:", fallbackEndpoint);
-                    data  = await graphGetJson(fallbackEndpoint);
-                    items = (data && data.value) || [];
-                    console.log("Fallback root items =", items.length);
-                } catch (rootErr) {
-                    console.error("Fallback /me/drive/root/children FAILED:", rootErr);
-                    // Không throw vội, vẫn cho phép dùng remoteItem (SharedWithMe) phía dưới
-                }
-            } else {
-                // Không có custom path, lại lỗi luôn ở root → log và tiếp tục remoteItem
-                console.error("Error at root endpoint:", primaryErr);
-            }
+        } catch (err) {
+            console.warn(
+                "Không đọc được thư mục KPI local (sẽ bỏ qua local, chỉ dùng thư mục share nếu có):",
+                err
+            );
+            items = [];
         }
 
-        const isExcel = (name) => /\.(xlsx|xls)$/i.test(name || "");
+        console.log(
+            "OD root items:",
+            items.map(i => ({
+                name: i.name,
+                isFolder: !!i.folder
+            }))
+        );
+
+        oneDriveFolderFileMap     = {};
+        oneDriveGroupMap          = {};
+        oneDriveCurrentFolderName = "";
+
+        const isExcel = (name) => /\.(xlsx|xlsm|xlsb|xls)$/i.test(name || "");
 
         const rootFiles  = [];
         const subFolders = [];
 
-        if (items && items.length) {
-            // 2️⃣ Phân loại các item trong drive của chính anh
-            items.forEach((it) => {
-                if (it.folder) {
-                    const folderName = it.name || "(no-name)";
-                    console.log("OD root folder:", folderName, "id=", it.id);
-
-                    // ❗ CHỈ giữ các folder có tên bắt đầu bằng "NA" (NA08, NA09, ...)
-                    if (/^NA\d+/i.test(folderName.trim())) {
-                        subFolders.push({
-                            id:   it.id,
-                            name: folderName
-                        });
-                    } else {
-                        console.log("Skip folder (not NAxx):", folderName);
-                    }
-                } else if (isExcel(it.name)) {
-                    console.log("Excel at root:", it.name, "id=", it.id);
-                    rootFiles.push({
-                        itemId:       it.id,
-                        name:         it.name,
-                        downloadUrl:  it["@microsoft.graph.downloadUrl"],
-                        lastModified: it.lastModifiedDateTime || ""
-                    });
-                }
-            });
-
-            if (rootFiles.length) {
-                oneDriveFolderFileMap["(ROOT)"] = rootFiles;
+        items.forEach((it) => {
+            if (it.folder) {
+                const folderName = it.name || "(no-name)";
+                subFolders.push({
+                    id: it.id,
+                    name: folderName
+                });
+            } else if (isExcel(it.name)) {
+                rootFiles.push({
+                    itemId: it.id,
+                    name: it.name,
+                    downloadUrl: it["@microsoft.graph.downloadUrl"],
+                    lastModified: it.lastModifiedDateTime || ""
+                });
             }
+        });
 
-            // Đọc các file Excel trong từng folder NAxx
-            for (const f of subFolders) {
-                try {
-                    const childData  = await graphGetJson(
-                        `/me/drive/items/${encodeURIComponent(f.id)}/children`
-                    );
-                    const childItems = (childData && childData.value) || [];
-                    console.log("Folder", f.name, "has children:", childItems.length);
+        console.log("Root excel files:", rootFiles);
+        console.log("Subfolders:", subFolders);
 
-                    const excelInFolder = childItems
-                        .filter((it) => !it.folder && isExcel(it.name))
-                        .map((it) => ({
-                            itemId:       it.id,
-                            name:         it.name,
-                            downloadUrl:  it["@microsoft.graph.downloadUrl"],
-                            lastModified: it.lastModifiedDateTime || ""
-                        }));
-
-                    console.log("Excel in folder", f.name, "=", excelInFolder.length);
-
-                    if (excelInFolder.length) {
-                        oneDriveFolderFileMap[f.name] = excelInFolder;
-                    }
-                } catch (e) {
-                    console.warn("Không đọc được children của folder", f.name, e);
-                }
-            }
-        } else {
-            console.warn("No items from primary/root endpoint – có thể chỉ dùng thư mục Share With Me.");
+        if (rootFiles.length) {
+            oneDriveFolderFileMap["(ROOT)"] = rootFiles;
         }
 
-        // 3️⃣ Đọc thêm từ thư mục share (SharedWithMe) thông qua remoteItem
-        try {
-            console.log("Try load shared folder via remoteItem, kpiFolderPath =", graphKpiConfig.kpiFolderPath);
-            const sharedMap = await odLoadKpiSharedFolderViaRemoteItem();
-            const sharedFolders = Object.keys(sharedMap || {});
-            console.log("Shared folder map keys:", sharedFolders);
+        // đọc file từ các subfolder local
+        for (const f of subFolders) {
+            const childData = await graphGetJson(
+                `/me/drive/items/${encodeURIComponent(f.id)}/children`
+            );
+            const childItems = (childData && childData.value) || [];
 
-            sharedFolders.forEach((folderName) => {
+            console.log(
+                "Children of",
+                f.name,
+                ":",
+                childItems.map(i => ({
+                    name: i.name,
+                    isFolder: !!i.folder
+                }))
+            );
+
+            const excelInFolder = childItems
+                .filter((it) => !it.folder && isExcel(it.name))
+                .map((it) => ({
+                    itemId: it.id,
+                    name: it.name,
+                    downloadUrl: it["@microsoft.graph.downloadUrl"],
+                    lastModified: it.lastModifiedDateTime || ""
+                }));
+
+            if (excelInFolder.length) {
+                oneDriveFolderFileMap[f.name] = excelInFolder;
+            }
+        }
+
+        // 🔁 Dù local có/không có thì vẫn đọc thêm thư mục share
+        try {
+            const sharedMap = await odLoadKpiSharedFolderViaRemoteItem();
+            console.log("Shared folder map:", sharedMap);
+
+            Object.keys(sharedMap || {}).forEach((folderName) => {
                 const list = sharedMap[folderName];
                 if (!list || !list.length) return;
 
@@ -2571,32 +2561,25 @@ async function odLoadKpiGroupsFromOneDrive() {
                 }
                 oneDriveFolderFileMap[folderName] =
                     oneDriveFolderFileMap[folderName].concat(list);
-
-                console.log(
-                    `Merge shared folder "${folderName}", total files =`,
-                    oneDriveFolderFileMap[folderName].length
-                );
             });
         } catch (e) {
             console.warn("Không đọc được thư mục share qua remoteItem:", e);
         }
 
         const allFolders = Object.keys(oneDriveFolderFileMap);
-        console.log("Final oneDriveFolderFileMap folders =", allFolders);
+        console.log("Final oneDriveFolderFileMap:", oneDriveFolderFileMap);
 
         if (!allFolders.length) {
             if (groupSelect) groupSelect.innerHTML = "";
             alert(
-                "Không tìm thấy file Excel nào trong thư mục KPI.\n" +
-                "- Kiểm tra lại đường dẫn trong ô 🗂️ Đường dẫn thư mục KPI.\n" +
-                "- Hoặc đảm bảo thư mục Share With Me có tên trùng với đoạn cuối của đường dẫn."
+                "Không tìm thấy file Excel nào trong thư mục KPI (kể cả thư mục share)."
             );
             return;
         }
 
         odPopulateFolderSelectOptions();
     } catch (err) {
-        console.error("Lỗi tổng khi tải danh sách file KPI từ OneDrive:", err);
+        console.error("Lỗi tải danh sách file KPI từ OneDrive:", err);
         alert("Không đọc được danh sách file từ OneDrive.\n" + err.message);
     } finally {
         if (loading) {
@@ -4221,13 +4204,61 @@ function processMultipleFiles(files) {
                 groupedData[wsStr][label] = value;
             });
 
-            let labels = Array.from(periodMap.entries())
-                .sort((a, b) => a[1] - b[1])
-                .map(([lbl]) => lbl);
+        // Sắp xếp toàn bộ period theo thời gian
+        const periodEntries = Array.from(periodMap.entries())
+            .sort((a, b) => a[1] - b[1]); // [label, sortValue]
 
-            if (chartDaysWindow && labels.length > chartDaysWindow) {
-                labels = labels.slice(labels.length - chartDaysWindow);
+        function getDayKeyFromSortValue(sortValue) {
+            // sortValue có thể là ms hoặc string; Date đều nhận được
+            const d = sortValue instanceof Date ? sortValue : new Date(sortValue);
+            if (Number.isNaN(d.getTime())) return null;
+
+            const yyyy = d.getFullYear();
+            const mm   = String(d.getMonth() + 1).padStart(2, "0");
+            const dd   = String(d.getDate()).padStart(2, "0");
+            return `${yyyy}-${mm}-${dd}`;   // key theo ngày
+        }
+
+        let labels;
+
+        if (chartDaysWindow && chartDaysWindow > 0) {
+            // 1️⃣ Lấy N ngày gần nhất theo dữ liệu hiện có
+            const uniqueDays = [];
+            const daySet = new Set();
+
+            for (let i = periodEntries.length - 1; i >= 0; i--) {
+                const [, sortValue] = periodEntries[i];
+                const dayKey = getDayKeyFromSortValue(sortValue);
+                if (!dayKey) continue;
+
+                if (!daySet.has(dayKey)) {
+                    daySet.add(dayKey);
+                    uniqueDays.push(dayKey);
+                    if (uniqueDays.length >= chartDaysWindow) break; // đủ N ngày
+                }
             }
+
+            if (!uniqueDays.length) {
+                // fallback: lỗi parse ngày → dùng toàn bộ
+                labels = periodEntries.map(([lbl]) => lbl);
+            } else {
+                const allowedDays = new Set(uniqueDays);
+
+                // 2️⃣ Giữ lại mọi label thuộc các ngày đó
+                //    - Period chỉ có ngày → mỗi ngày 1 label
+                //    - Period có giờ   → lấy tất cả giờ trong N ngày gần nhất
+                labels = periodEntries
+                    .filter(([, sortValue]) => {
+                        const dayKey = getDayKeyFromSortValue(sortValue);
+                        return dayKey && allowedDays.has(dayKey);
+                    })
+                    .map(([lbl]) => lbl);
+            }
+        } else {
+            // "Toàn bộ" → không giới hạn ngày
+            labels = periodEntries.map(([lbl]) => lbl);
+        }
+
 
             const datasets = [];
             const colors   = generateDistinctColors(Object.keys(groupedData).length);
@@ -4781,14 +4812,13 @@ function processMultipleFiles(files) {
                             stack: "stack_" + valueCol,
                             borderColor: solidColor,
                             
-                            // pointRadius: 3,
-                            // pointHoverRadius: 6,
-                            // pointBorderWidth: 1,
-                            // pointHitRadius: 6,
-                            // radius: 3,
-                            // hoverRadius: 6,  
+                            pointRadius: 2,
+                            pointHoverRadius: 6,
+                            pointBorderWidth: 1,
+                            pointHitRadius: 6,
+
                             
-                            pointRadius: 1,
+                            //pointRadius: 1,
                             tension: 0.3,
                             clip: false,
                         };
@@ -4799,13 +4829,13 @@ function processMultipleFiles(files) {
                 if (chartType === "line" || chartType === "stackedArea") {
                     chartDatasets = chartDatasets.map(ds => ({
                         ...ds,
-                        // pointRadius: 3,
-                        // pointHoverRadius: 6,
-                        // pointBorderWidth: 1,
-                        // pointHitRadius: 6,
+                        pointRadius: 2,
+                        pointHoverRadius: 6,
+                        pointBorderWidth: 1,
+                        pointHitRadius: 6,
                         // radius: 3,
                         // hoverRadius: 6,
-                        pointRadius: 1,
+                        //pointRadius: 1,
                         clip: false,   // 👉 cho phép vẽ chấm tròn tràn mép trên, không bị cắt
                     }));
                 }
@@ -4843,15 +4873,15 @@ function processMultipleFiles(files) {
                             borderColor: "#ff0000",
                             borderDash: [8, 5],
                             
-                            // pointRadius: 3,
-                            // pointHoverRadius: 6,
-                            // pointBorderWidth: 1,
-                            // pointHitRadius: 6,
+                            pointRadius: 2,
+                            pointHoverRadius: 6,
+                            pointBorderWidth: 1,
+                            pointHitRadius: 6,
                             // radius: 3,
                             // hoverRadius: 6,
                             
                             clip: false,
-                            pointRadius: 1,
+                            //pointRadius: 1,
                             tension: 0,
                             fill: false,
                             yAxisID: "y",
@@ -4872,9 +4902,10 @@ function processMultipleFiles(files) {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        // ✅ dùng nearest + intersect
                         interaction: {
-                            mode: "index",
-                            intersect: false,
+                            mode: "nearest",   // hoặc "point"
+                            intersect: true,
                         },
                         plugins: {
                             legend: {
@@ -5287,11 +5318,12 @@ function processMultipleFiles(files) {
 
                 if (thr && thr.op && typeof thr.value === "number") {
                     const reversedOp =
-                        thr.op === "<"  ? ">"  :
-                        thr.op === "<=" ? ">=" :
-                        thr.op === ">"  ? "<"  :
-                        thr.op === ">=" ? "<=" :
-                        (thr.op === "=" || thr.op === "==") ? "=" : "";
+                        thr.op === "<"  ? ">="  :
+                        thr.op === "<=" ? ">" :
+                        thr.op === ">"  ? "<="  :
+                        thr.op === ">=" ? "<" :
+                        thr.op === "!=" ? "=" :
+                        (thr.op === "=" || thr.op === "==") ? "!=" : "";
 
                     targetDisplay = reversedOp ? `${reversedOp} ${thr.value}` : "";
                 }
@@ -8972,8 +9004,7 @@ function processMultipleFiles(files) {
                         const v = String(row[idxAtpDate] || "").trim();
                         if (v !== "") g.atpReport++;
                     }
-
-
+                    
                 });
 
                 const groupList = Object.values(groups).sort((a, b) => {
