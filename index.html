@@ -2379,29 +2379,38 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
             if (c.folder) {
                 const nextParts = pathParts.concat(c.name || "");
                 await traverseSharedFolder(driveId, c.id, rootLabel, nextParts);
-            } else if (isExcel(c.name)) {
-                // folderKey = tên thư mục root được share cho mình
-                let folderKey = rootLabel;
+                } else if (isExcel(c.name)) {
+                    // 🔹 Nếu file nằm trong NA08/NA09/... thì dùng tên thư mục cấp 1 làm key
+                    //    VD: KPI Scheduler/NA08/...  -> folderKey = "NA08"
+                    // 🔹 Nếu file nằm trực tiếp trong KPI Scheduler (không có NAxx)
+                    //    thì dùng rootLabel = "KPI Scheduler"
+                    let folderKey;
+                    if (pathParts.length > 0) {
+                        folderKey = pathParts[0];       // 'NA08', 'NA09', 'NA10', 'NA11', 'NA12', ...
+                    } else {
+                        folderKey = rootLabel;          // file nằm ngay dưới "KPI Scheduler"
+                    }
 
-                if (!resultMap[folderKey]) {
-                    resultMap[folderKey] = [];
+                    if (!resultMap[folderKey]) {
+                        resultMap[folderKey] = [];
+                    }
+
+                    const item = {
+                        itemId:       c.id,
+                        name:         c.name,
+                        downloadUrl:  c["@microsoft.graph.downloadUrl"] || null,
+                        lastModified: c.lastModifiedDateTime || ""
+                    };
+                    resultMap[folderKey].push(item);
+
+                    console.log(
+                        "  + Excel (shared): folderKey =",
+                        folderKey,
+                        "| name =",
+                        c.name
+                    );
                 }
 
-                const item = {
-                    itemId:       c.id,
-                    name:         c.name,
-                    downloadUrl:  c["@microsoft.graph.downloadUrl"] || null,
-                    lastModified: c.lastModifiedDateTime || ""
-                };
-                resultMap[folderKey].push(item);
-
-                console.log(
-                    "  + Excel (shared): rootFolder =",
-                    folderKey,
-                    "| name =",
-                    c.name
-                );
-            }
         }
     }
 
