@@ -441,69 +441,68 @@
         }
 
         /* Overlay tối toàn màn hình */
-        .ws-popup-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.45);
-            display: none;               /* bật/tắt bằng class .show */
-            align-items: center;
-            justify-content: center;
-            z-index: 1300;
+        .ws-popup-overlay{
+        position: fixed;
+        inset: 0;
+        background: transparent;     /* ❌ bỏ nền tối */
+        display: none;
+        z-index: 1300;
         }
 
         /* Khi mở popup */
-        .ws-popup-overlay.show {
-            display: flex;
+        .ws-popup-overlay.show{
+        display: block; /* ✅ không dùng flex để khỏi can thiệp vị trí */
         }
 
         /* Hộp popup chính */
-        .ws-popup {
-            width: min(600px, 92vw);
-            max-height: 80vh;
-            background: #ffffff;
-            border-radius: 14px;
-            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.4);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+        .ws-popup{
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+
+        width: min(600px, 92vw);
+        max-height: 80vh;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         }
 
         /* Header popup */
-        .ws-popup-header {
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #e5e7eb;
-            font-weight: 600;
-            font-size: 14px;
+        .ws-popup-header{
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 14px;
+
+        cursor: move;
+        user-select: none;
         }
 
-        .ws-popup-close {
-            border: none;
-            background: transparent;
-            font-size: 20px;
-            line-height: 1;
-            cursor: pointer;
-            padding: 0 4px;
-            color: #6b7280;
+        .ws-popup-close{
+        border: none;
+        background: transparent;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 4px;
+        color: #6b7280;
         }
+        .ws-popup-close:hover{ color:#111827; }
 
-        .ws-popup-close:hover {
-            color: #111827;
+        /* Body */
+        .ws-popup-body{
+        padding: 10px 12px;
+        overflow: auto;
+        max-height: calc(80vh - 44px);
         }
-
-        /* Thân popup: chứa #wsFilterContainer được di chuyển vào đây */
-        .ws-popup-body {
-            padding: 10px 12px;
-            overflow: auto;
-            max-height: calc(80vh - 44px);
-        }
-
-        /* Cho #wsFilterContainer khi nằm trong popup đỡ dính sát mép */
-        .ws-popup-body #wsFilterContainer {
-            max-height: 60vh;
-        }
+        .ws-popup-body #wsFilterContainer{ max-height: 60vh; }
 
 
         #kpiFilterContainer {
@@ -835,7 +834,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v 1.7.1
+                Version: v1.7.3
             </div>
         </div>
 
@@ -1243,23 +1242,47 @@
             </div>
 
             <!-- Charts -->
-            <!-- Bộ lọc khoảng thời gian hiển thị chart -->
-            <div class="control-group" id="chartTimeFilterBar" style="margin: 10px 0 6px; max-width: 480px;">
-                <label>⏱ Khoảng thời gian hiển thị:</label>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <select id="chartTimeFrom">
-                        <option value="">Từ (tất cả)</option>
-                    </select>
-                    <span style="font-size:0.85em; color:#555;">→</span>
-                    <select id="chartTimeTo">
-                        <option value="">Đến (tất cả)</option>
-                    </select>
-                    <button id="chartTimeClearBtn"
-                            style="margin-left:4px; padding:4px 10px; font-size:0.8em; border-radius:6px; border:1px solid #ccc; background:#f8f8f8; cursor:pointer;">
-                        Reset
-                    </button>
+            <!-- Bộ lọc thời gian + mốc line dọc -->
+            <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:10px 0 6px;">
+
+                <!-- Khoảng thời gian hiển thị -->
+                <div class="control-group" id="chartTimeFilterBar" style="max-width:480px;">
+                    <label>⏱ Khoảng thời gian hiển thị:</label>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <select id="chartTimeFrom">
+                            <option value="">Từ (tất cả)</option>
+                        </select>
+                        <span style="font-size:0.85em; color:#555;">→</span>
+                        <select id="chartTimeTo">
+                            <option value="">Đến (tất cả)</option>
+                        </select>
+                        <button id="chartTimeClearBtn"
+                            style="margin-left:4px; padding:4px 10px; font-size:0.8em;
+                                border-radius:6px; border:1px solid #ccc;
+                                background:#f8f8f8; cursor:pointer;">
+                            Reset
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Mốc thời gian vẽ line dọc -->
+                <div class="control-group" style="max-width:420px;">
+                    <label>📍 Mốc thời gian (vẽ line dọc):</label>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <select id="chartVerticalTime">
+                            <option value="">-- Không vẽ --</option>
+                        </select>
+                        <button id="chartVerticalClearBtn"
+                            style="padding:4px 10px; font-size:0.8em;
+                                border-radius:6px; border:1px solid #ccc;
+                                background:#f8f8f8; cursor:pointer;">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
             </div>
+
 
             <div id="chartsContainer"></div>
 
@@ -1521,6 +1544,7 @@
         let chartTargetVisible = {}; // NEW: lưu trạng thái checkbox "Target" theo từng KPI
         let globalThresholdEnabled = false; // Checkbox tổng: Target column + highlight + target line
         const chartYAxisRange = {}; // { [valueCol]: { min: number|null, max: number|null } }
+        let chartVerticalTimeValue = null; // mốc thời gian được chọn
 
         // ===== LINK THƯ MỤC KPI TRÊN ONEDRIVE (CÁCH 2) =====
         const ONEDRIVE_KPI_URL = "https://rnovnpt-my.sharepoint.com/personal/anhnqt_rnovnpt_onmicrosoft_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fanhnqt%5Frnovnpt%5Fonmicrosoft%5Fcom%2FDocuments%2FKPI%20Scheduler&ga=1";
@@ -1546,6 +1570,32 @@
         let isHeavyKpiFile = false;
 
         Chart.register(ChartDataLabels);
+        
+        const verticalLinePlugin = {
+            id: 'verticalLinePlugin',
+            afterDraw(chart) {
+                if (!chartVerticalTimeValue) return;
+
+                const xScale = chart.scales.x;
+                if (!xScale) return;
+
+                const x = xScale.getPixelForValue(chartVerticalTimeValue);
+                if (isNaN(x)) return;
+
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(x, chart.chartArea.top);
+                ctx.lineTo(x, chart.chartArea.bottom);
+                ctx.strokeStyle = '#ef4444';   // đỏ
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
+        Chart.register(verticalLinePlugin);
 
         function updateWsSearchKeywordsFromInputs() {
             const i1 = document.getElementById("wsSearchInput1");
@@ -4551,6 +4601,26 @@ function processMultipleFiles(files) {
                 clearBtn._bound = true;
             }
         }
+        function populateVerticalTimeSelect(periodLabels) {
+            const select = document.getElementById("chartVerticalTime");
+            if (!select) return;
+
+            const current = select.value;
+
+            select.innerHTML = '<option value="">-- Không vẽ --</option>';
+
+            periodLabels.forEach(p => {
+                const opt = document.createElement("option");
+                opt.value = p;
+                opt.textContent = p;
+                select.appendChild(opt);
+            });
+
+            // giữ lại giá trị đang chọn nếu còn tồn tại
+            if (current && periodLabels.includes(current)) {
+                select.value = current;
+            }
+        }
 
         function renderCharts() {
             if (!currentData || numericColumns.length === 0) return;
@@ -4592,6 +4662,11 @@ function processMultipleFiles(files) {
 
             // 🔹 Danh sách Period sau khi áp filter thời gian
             const effectivePeriodLabels = getEffectivePeriodLabels(allPeriodLabels);
+            // ✅ Populate combobox chọn mốc vẽ line dọc
+            populateVerticalTimeSelect(effectivePeriodLabels && effectivePeriodLabels.length
+                ? effectivePeriodLabels
+                : allPeriodLabels
+            );
 
             // 🔹 Period mới nhất sẽ dùng cho Pie / Doughnut / Funnel
             let latestLabelForCharts = null;
@@ -9668,68 +9743,142 @@ function processMultipleFiles(files) {
 
         // ===== Popup chọn WS/SITE/CELL_NAME =====
         document.addEventListener("DOMContentLoaded", () => {
-            const floatBtn      = document.getElementById("wsFloatingBtn");
-            const overlay       = document.getElementById("wsPopupOverlay");
-            const popupCloseBtn = document.getElementById("wsPopupClose");
-            const popupContent  = document.getElementById("wsPopupContent");
-            const wsContainer   = document.getElementById("wsFilterContainer");
+        const floatBtn      = document.getElementById("wsFloatingBtn");
+        const overlay       = document.getElementById("wsPopupOverlay");
+        const popupCloseBtn = document.getElementById("wsPopupClose");
+        const popupContent  = document.getElementById("wsPopupContent");
+        const wsContainer   = document.getElementById("wsFilterContainer");
 
-            if (!floatBtn || !overlay || !popupContent || !wsContainer) return;
+        if (!floatBtn || !overlay || !popupContent || !wsContainer) return;
 
-            // Lưu vị trí gốc của wsFilterContainer
-            const originalParent      = wsContainer.parentNode;
-            const originalNextSibling = wsContainer.nextSibling;
+        // Lưu vị trí gốc của wsFilterContainer
+        const originalParent      = wsContainer.parentNode;
+        const originalNextSibling = wsContainer.nextSibling;
 
-            function showFloatingBtnOnScroll() {
-                const threshold = 260; // cuộn xuống > 260px mới hiện nút
-                if (window.scrollY > threshold) {
-                    floatBtn.style.display = "flex";
-                } else {
-                    floatBtn.style.display = "none";
-                }
+        function showFloatingBtnOnScroll() {
+            const threshold = 260;
+            floatBtn.style.display = (window.scrollY > threshold) ? "flex" : "none";
+        }
+
+        showFloatingBtnOnScroll();
+        window.addEventListener("scroll", showFloatingBtnOnScroll);
+
+        // ===== DRAG POPUP =====
+        const popupEl  = overlay.querySelector(".ws-popup");
+        const headerEl = overlay.querySelector(".ws-popup-header");
+
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let startLeft = 0, startTop = 0;
+
+        let hasConverted = false;
+
+        function onMouseDown(e) {
+        if (!popupEl) return;
+        if (e.target.closest("#wsPopupClose")) return;
+
+        // ✅ Convert 1 lần duy nhất để tránh nhảy mỗi lần click header
+        if (!hasConverted) {
+            const rect = popupEl.getBoundingClientRect();
+
+            // set left/top trước
+            popupEl.style.left = rect.left + "px";
+            popupEl.style.top  = rect.top  + "px";
+
+            // rồi mới bỏ transform
+            popupEl.style.transform = "none";
+            hasConverted = true;
+        }
+
+        isDragging = true;
+
+        const rect2 = popupEl.getBoundingClientRect();
+        startLeft = rect2.left;
+        startTop  = rect2.top;
+
+        startX = e.clientX;
+        startY = e.clientY;
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        e.preventDefault();
+        }
+
+        function onMouseMove(e) {
+        if (!isDragging || !popupEl) return;
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        let nextLeft = startLeft + dx;
+        let nextTop  = startTop + dy;
+
+        const pad = 8;
+        const maxLeft = window.innerWidth  - popupEl.offsetWidth  - pad;
+        const maxTop  = window.innerHeight - popupEl.offsetHeight - pad;
+
+        nextLeft = Math.max(pad, Math.min(maxLeft, nextLeft));
+        nextTop  = Math.max(pad, Math.min(maxTop,  nextTop));
+
+        popupEl.style.left = nextLeft + "px";
+        popupEl.style.top  = nextTop  + "px";
+        }
+
+        function onMouseUp() {
+        isDragging = false;
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        }
+
+        if (headerEl) headerEl.addEventListener("mousedown", onMouseDown);
+        // ===== END DRAG POPUP =====
+
+        function openWsPopup() {
+        popupContent.appendChild(wsContainer);
+        overlay.classList.add("show");
+
+        // reset về center mỗi lần mở
+        if (popupEl) {
+            popupEl.style.left = "50%";
+            popupEl.style.top  = "50%";
+            popupEl.style.transform = "translate(-50%, -50%)";
+        }
+        hasConverted = false;
+        }
+
+
+
+        function closeWsPopup() {
+            if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+            originalParent.insertBefore(wsContainer, originalNextSibling);
+            } else {
+            originalParent.appendChild(wsContainer);
             }
+            overlay.classList.remove("show");
+        }
 
-            // Gọi lần đầu + gắn listener scroll
-            showFloatingBtnOnScroll();
-            window.addEventListener("scroll", showFloatingBtnOnScroll);
+        floatBtn.addEventListener("click", openWsPopup);
+        popupCloseBtn.addEventListener("click", closeWsPopup);
 
-            function openWsPopup() {
-                // Di chuyển wsFilterContainer vào popup
-                popupContent.appendChild(wsContainer);
-                overlay.classList.add("show");
-            }
-
-            function closeWsPopup() {
-                // Di chuyển wsFilterContainer về chỗ cũ
-                if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-                    originalParent.insertBefore(wsContainer, originalNextSibling);
-                } else {
-                    originalParent.appendChild(wsContainer);
-                }
-                overlay.classList.remove("show");
-            }
-
-            // Click nút nổi -> mở popup
-            floatBtn.addEventListener("click", openWsPopup);
-
-            // Click nút X -> đóng popup
-            popupCloseBtn.addEventListener("click", closeWsPopup);
-
-            // Click ra ngoài khung popup (vùng overlay) -> đóng
-            overlay.addEventListener("click", (e) => {
-                if (e.target === overlay) {
-                    closeWsPopup();
-                }
-            });
-
-            // ESC để đóng popup
-            document.addEventListener("keydown", (e) => {
-                if (e.key === "Escape" && overlay.classList.contains("show")) {
-                    closeWsPopup();
-                }
-            });
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) closeWsPopup();
         });
 
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && overlay.classList.contains("show")) closeWsPopup();
+        });
+        });
+
+        document.getElementById("chartVerticalTime")?.addEventListener("change", e => {
+            chartVerticalTimeValue = e.target.value || null;
+            Object.values(chartInstances).forEach(ch => ch.update());
+        });
+
+        document.getElementById("chartVerticalClearBtn")?.addEventListener("click", () => {
+            chartVerticalTimeValue = null;
+            document.getElementById("chartVerticalTime").value = "";
+            Object.values(chartInstances).forEach(ch => ch.update());
+        });
 
 
 
