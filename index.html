@@ -2344,7 +2344,7 @@ async function odLoadSharedExcelFilesForKpiPath() {
     keyword = keyword.toLowerCase();
 
     // Gọi Graph API sharedWithMe
-    const data = await graphGetJson("/me/drive/sharedWithMe");
+    const data  = await graphGetAll("/me/drive/sharedWithMe?$top=999");
     const items = (data && data.value) || [];
 
     console.log("OD root items:", items.map(i => i.name)); // 👈 xem tên thư mục / file thực tế
@@ -2628,7 +2628,7 @@ async function odLoadKpiGroupsFromOneDrive() {
         // 2️⃣ Tìm KPI folder trong /root (folder thật hoặc shortcut)
         async function resolveFromRootOrShortcut() {
             try {
-                const data  = await graphGetJson("/me/drive/root/children");
+                const data  = await graphGetAll("/me/drive/sharedWithMe?$top=999");
                 const items = (data && data.value) || [];
                 console.log("/me/drive/root/children items =", items.length);
 
