@@ -834,7 +834,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.7.4
+                Version: v1.7.5
             </div>
         </div>
 
@@ -4680,6 +4680,24 @@ function processMultipleFiles(files) {
 
             // 🔹 Danh sách Period sau khi áp filter thời gian
             const effectivePeriodLabels = getEffectivePeriodLabels(allPeriodLabels);
+            // ✅ THÊM: nếu đang chọn "7 ngày/14 ngày..." thì cắt effectivePeriodLabels theo N ngày gần nhất
+            if (chartDaysWindow && chartDaysWindow > 0 && effectivePeriodLabels.length) {
+            const uniqueDays = [];
+            const daySet = new Set();
+
+            for (let i = effectivePeriodLabels.length - 1; i >= 0; i--) {
+                const lb = effectivePeriodLabels[i];
+                const dayKey = String(lb).split(" ")[0]; // "yyyy-MM-dd" (nếu có giờ thì tách lấy ngày)
+                if (!daySet.has(dayKey)) {
+                daySet.add(dayKey);
+                uniqueDays.push(dayKey);
+                if (uniqueDays.length >= chartDaysWindow) break;
+                }
+            }
+
+            const allowedDays = new Set(uniqueDays);
+            effectivePeriodLabels = effectivePeriodLabels.filter(lb => allowedDays.has(String(lb).split(" ")[0]));
+            }
             // ✅ Populate combobox chọn mốc vẽ line dọc
             populateVerticalTimeSelect(effectivePeriodLabels && effectivePeriodLabels.length
                 ? effectivePeriodLabels
