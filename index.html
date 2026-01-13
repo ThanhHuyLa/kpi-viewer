@@ -834,7 +834,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.7.3
+                Version: v1.7.4
             </div>
         </div>
 
@@ -2308,6 +2308,30 @@ function odBuildGroupMapForCurrentFolder(folderName) {
     groupSelect.value = groupNames[0];
 }
 
+// Fetch tất cả trang (paging) của Graph: gom hết .value
+async function graphGetAll(endpoint) {
+  const token = await getGraphAccessToken();
+  const base = "https://graph.microsoft.com/v1.0";
+
+  // có thể endpoint là relative (/me/...) hoặc absolute (nextLink)
+  let url = endpoint.startsWith("http") ? endpoint : (base + endpoint);
+
+  const all = [];
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + token } });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error("Graph API lỗi " + res.status + ": " + txt);
+    }
+
+    const data = await res.json();
+    all.push(...(data.value || []));
+    url = data["@odata.nextLink"] || null;
+  }
+
+  return { value: all };
+}
+
 
 // Đọc các file Excel được share (SharedWithMe) có liên quan tới đường dẫn KPI
 async function odLoadSharedExcelFilesForKpiPath() {
@@ -2374,9 +2398,7 @@ async function getAllExcelFiles(driveId, rootFolderId) {
     const isExcel = (name) => /\.(xlsx|xlsm?|xls)$/i.test(name || "");
 
     async function traverse(folderId) {
-        const childrenData = await graphGetJson(
-            `/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(folderId)}/children`
-        );
+        const childrenData = await graphGetAll(`/drives/${enc(driveId)}/items/${enc(folderId)}/children?$top=999`);
         const children = (childrenData && childrenData.value) || [];
 
         for (const c of children) {
@@ -2404,7 +2426,7 @@ async function getAllExcelFiles(driveId, rootFolderId) {
 async function odLoadKpiSharedFolderViaRemoteItem() {
     console.log("=== SharedWithMe: bắt đầu load TẤT CẢ shared folders ===");
 
-    const data  = await graphGetJson("/me/drive/sharedWithMe");
+    const data  = await graphGetAll("/me/drive/sharedWithMe?$top=999");
     const items = (data && data.value) || [];
     console.log("/me/drive/sharedWithMe items =", items.length);
 
@@ -2415,9 +2437,7 @@ async function odLoadKpiSharedFolderViaRemoteItem() {
     // Đệ quy duyệt 1 shared folder (có thể nằm trên drive khác)
     async function traverseSharedFolder(driveId, folderId, rootLabel, pathParts) {
         const currentPath = pathParts.join("/") || "(gốc)";
-        const childrenData = await graphGetJson(
-            `/drives/${enc(driveId)}/items/${enc(folderId)}/children`
-        );
+        const childrenData = await graphGetAll(`/drives/${enc(driveId)}/items/${enc(folderId)}/children?$top=999`);
         const children = (childrenData && childrenData.value) || [];
 
         console.log(
@@ -2538,9 +2558,7 @@ async function odLoadKpiGroupsFromOneDrive() {
 
         // 1️⃣ Helper: đọc Excel từ 1 thư mục gốc (đã biết driveId + itemId)
         async function collectExcelFromKpiRoot(driveId, rootItemId, rootLabel) {
-            const data  = await graphGetJson(
-                `/drives/${enc(driveId)}/items/${enc(rootItemId)}/children`
-            );
+            const data  = await graphGetAll("/me/drive/sharedWithMe?$top=999");
             const items = (data && data.value) || [];
             console.log(`KPI root "${rootLabel}" children =`, items.length);
 
