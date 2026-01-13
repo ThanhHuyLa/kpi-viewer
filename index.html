@@ -834,7 +834,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.7.4
+                Version: v1.7.5
             </div>
         </div>
 
@@ -4679,7 +4679,31 @@ function processMultipleFiles(files) {
             initChartTimeFilterControls(allPeriodLabels);
 
             // 🔹 Danh sách Period sau khi áp filter thời gian
-            const effectivePeriodLabels = getEffectivePeriodLabels(allPeriodLabels);
+            let  effectivePeriodLabels = getEffectivePeriodLabels(allPeriodLabels);
+            // ✅ Nếu chọn "N ngày gần nhất" thì scale trục X theo đúng N ngày (cắt effectivePeriodLabels)
+            if (chartDaysWindow && chartDaysWindow > 0 && effectivePeriodLabels && effectivePeriodLabels.length) {
+
+                // Lấy danh sách NGÀY (yyyy-MM-dd) gần nhất dựa trên label
+                const lastDays = [];
+                const seen = new Set();
+
+                for (let i = effectivePeriodLabels.length - 1; i >= 0; i--) {
+                    const lb = String(effectivePeriodLabels[i]);
+                    const dayKey = lb.split(" ")[0];     // nếu label có giờ thì lấy phần ngày
+                    if (!seen.has(dayKey)) {
+                        seen.add(dayKey);
+                        lastDays.push(dayKey);
+                        if (lastDays.length >= chartDaysWindow) break;
+                    }
+                }
+
+                const allowed = new Set(lastDays);
+                effectivePeriodLabels = effectivePeriodLabels.filter(lb => {
+                    const dayKey = String(lb).split(" ")[0];
+                    return allowed.has(dayKey);
+                });
+            }
+
             // ✅ Populate combobox chọn mốc vẽ line dọc
             populateVerticalTimeSelect(effectivePeriodLabels && effectivePeriodLabels.length
                 ? effectivePeriodLabels
