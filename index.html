@@ -12,6 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- MSAL cho đăng nhập OneDrive (Microsoft Graph) -->
     <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -823,6 +824,35 @@
         .hide-col {
             display: none !important;
         }
+        /* 🎨 Nút Snapshot */
+        .snapshot-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+
+            border: none;
+            border-radius: 999px;
+
+            background: linear-gradient(135deg, #6d5dfc, #8b7bff);
+            color: #ffffff;
+
+            cursor: pointer;
+            box-shadow: 0 6px 14px rgba(109, 93, 252, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .snapshot-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(109, 93, 252, 0.35);
+        }
+
+        .snapshot-btn:active {
+            transform: scale(0.96);
+        }
                 
     </style>
 </head>
@@ -834,7 +864,7 @@
         <div class="header">
             <h1>📊 KPI Viewer and Report</h1>
             <div style="font-size: 0.95em; color:#6b7280; margin-top:-6px;">
-                Version: v1.7.6.2
+                Version: v1.7.7
             </div>
         </div>
 
@@ -1155,91 +1185,99 @@
                         <button type="button" id="excelLatestBtn" class="excel-latest-btn">Latest</button>
                     </div>
                 </div>
-                    <div
-                id="kpiThresholdPanel"
-                style="
-                    margin-bottom: 10px;
-                    padding: 8px 10px;
-                    border-radius: 8px;
-                    border: 1px dashed #d1d5db;
-                    background: #f9fafb;
-                    font-size: 0.85em;
-                    display: none;
-                "
-            >
-            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-
-                <!-- Hàng 1: Tiêu đề -->
-                <strong>⚙️ Tùy chỉnh ngưỡng:</strong>
-
-                <!-- BẮT BUỘC THÊM DÒNG NÀY để xuống hàng -->
-                <div style="width:100%;"></div>
-
-                <!-- Hàng 2: KPI + Operator + Threshold + Button -->
-                <label style="display:flex; align-items:center;">
-                    KPI:
-                    <select
-                        id="thresholdKpiSelect"
-                        style="margin-left:4px; padding:4px 8px; min-width:220px;"
-                    ></select>
-                </label>
-
-                <label style="display:flex; align-items:center;">
-                    Operator:
-                    <select
-                        id="thresholdOpSelect"
-                        style="margin-left:4px; padding:4px 8px; min-width:80px;"
-                    >
-                        <option value="">--</option>
-                        <option value="<">&lt;</option>
-                        <option value="<=">&lt;=</option>
-                        <option value=">">&gt;</option>
-                        <option value=">=">&gt;=</option>
-                        <option value="=">=</option>
-                        <option value="==">==</option>
-                    </select>
-                </label>
-
-                <label style="display:flex; align-items:center;">
-                    Threshold:
-                    <input
-                        id="thresholdValueInput"
-                        type="number"
-                        step="any"
-                        style="margin-left:4px; padding:4px 6px; width:110px;"
-                    />
-                </label>
-
-                <button
-                    type="button"
-                    id="thresholdApplyBtn"
+                <div
+                    id="kpiThresholdPanel"
                     style="
-                        padding:6px 12px;
-                        border-radius:6px;
-                        border:1px solid #2563eb;
-                        background:#2563eb;
-                        color:#fff;
-                        cursor:pointer;
+                        margin-bottom: 10px;
+                        padding: 8px 10px;
+                        border-radius: 8px;
+                        border: 1px dashed #d1d5db;
+                        background: #f9fafb;
+                        font-size: 0.85em;
+                        display: none;
                     "
                 >
-                    Áp dụng
-                </button>
-                
-                <div class="email-section-options">
-                    <label>
-                        <input type="checkbox" id="thresholdGlobalToggle">
-                        Kích hoạt tùy chỉnh
-                    </label>
-                </div>
 
-            </div>
+
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+
+                        <!-- Hàng 1: Tiêu đề -->
+                        <strong>⚙️ Tùy chỉnh ngưỡng:</strong>
+
+                        <!-- BẮT BUỘC THÊM DÒNG NÀY để xuống hàng -->
+                        <div style="width:100%;"></div>
+
+                        <!-- Hàng 2: KPI + Operator + Threshold + Button -->
+                        <label style="display:flex; align-items:center;">
+                            KPI:
+                            <select
+                                id="thresholdKpiSelect"
+                                style="margin-left:4px; padding:4px 8px; min-width:220px;"
+                            ></select>
+                        </label>
+
+                        <label style="display:flex; align-items:center;">
+                            Operator:
+                            <select
+                                id="thresholdOpSelect"
+                                style="margin-left:4px; padding:4px 8px; min-width:80px;"
+                            >
+                                <option value="">--</option>
+                                <option value="<">&lt;</option>
+                                <option value="<=">&lt;=</option>
+                                <option value=">">&gt;</option>
+                                <option value=">=">&gt;=</option>
+                                <option value="=">=</option>
+                                <option value="==">==</option>
+                            </select>
+                        </label>
+
+                        <label style="display:flex; align-items:center;">
+                            Threshold:
+                            <input
+                                id="thresholdValueInput"
+                                type="number"
+                                step="any"
+                                style="margin-left:4px; padding:4px 6px; width:110px;"
+                            />
+                        </label>
+
+                        <button
+                            type="button"
+                            id="thresholdApplyBtn"
+                            style="
+                                padding:6px 12px;
+                                border-radius:6px;
+                                border:1px solid #2563eb;
+                                background:#2563eb;
+                                color:#fff;
+                                cursor:pointer;
+                            "
+                        >
+                            Áp dụng
+                        </button>
+                        
+                        <div class="email-section-options">
+                            <label>
+                                <input type="checkbox" id="thresholdGlobalToggle">
+                                Kích hoạt tùy chỉnh
+                            </label>
+                        </div>
+
+                        <button class="snapshot-btn"
+                                onclick="snapshotKpiOverview()"
+                                style="margin-left:auto;">
+                            📸 Snapshot
+                        </button>
+                    </div>
 
                 </div>
 
                 <div id="excelTable"></div>
-            </div>
 
             </div>
+
+</div>
 
             <!-- Charts -->
             <!-- Bộ lọc thời gian + mốc line dọc -->
@@ -9676,7 +9714,18 @@ function processMultipleFiles(files) {
             document.getElementById(id).addEventListener("change", saveChartConfig);
         });
 
+        async function snapshotKpiOverview() {
+            const result = await captureSectionCardAsPng("excel");
+            if (!result) {
+                alert("Không thể snapshot KPI Overview");
+                return;
+            }
 
+            const link = document.createElement("a");
+            link.href = "data:image/png;base64," + result.base64;
+            link.download = `${result.title}.png`;
+            link.click();
+        }
         /* ==========================================================
             2. SAVE & LOAD EMAIL FIELDS
         ========================================================== */
